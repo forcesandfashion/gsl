@@ -104,11 +104,14 @@ const handleSendViaMail = async () => {
 
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50 px-4">
+    <div className="flex items-center justify-center min-h-screen h-screen bg-cover bg-center bg-gray-50 px-4"
+    style={{ backgroundImage: "url('/public/bgImage.jpg')" }}>
+
+
       <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center border border-gray-200">
         <header className="mb-6">
           <h1 className="text-3xl font-bold text-gray-800">
-            Welcome to the Waiting Page
+            Welcome to the Waiting Lounge
           </h1>
           <p className="text-gray-600 mt-2">
             Please upload your range license for verification.
@@ -192,6 +195,7 @@ const handleSendViaMail = async () => {
   <p className="text-sm text-gray-600 mb-2">
     If you want to send the document via mail, please press the button below and include your phone number in the mail.
   </p>
+  <p className="text-sm text-gray-600 mb-2">Email is sample@gmail.com and for further query contact us at 9992222333</p>
   <button
     type="button"
     onClick={handleSendViaMail}
