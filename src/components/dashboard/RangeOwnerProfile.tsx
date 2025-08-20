@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router'
-import { db } from "../../firebase/config";
-import { collection, getDocs, query, where, doc, updateDoc, setDoc, getDoc } from "firebase/firestore";
+import { db, auth } from "../../firebase/config";
+import { collection, getDocs, query, where, doc, updateDoc, getDoc } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { onAuthStateChanged } from "firebase/auth";
 import { Camera, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function RangeOwnerProfile() {
@@ -16,7 +17,6 @@ export default function RangeOwnerProfile() {
         phone: '',
         description: '',
         logo: null,
-        docExists: false // Track if document already exists
     });
     const [ranges, setRanges] = useState([]);
     const [ownerId, setOwnerId] = useState(null);
@@ -30,7 +30,6 @@ export default function RangeOwnerProfile() {
     const fetchOwnerData = async () => {
         setLoading(true);
         try {
-            // Fetch owner profile data using document ID = user.uid
             if (ownerId) {
                 const ownerDocRef = doc(db, "range-owners", ownerId);
                 const ownerDocSnap = await getDoc(ownerDocRef);
@@ -38,27 +37,17 @@ export default function RangeOwnerProfile() {
                 if (ownerDocSnap.exists()) {
                     const data = ownerDocSnap.data();
                     setOwnerData({
-                        name: data.name || '',
+                        name: data.name || data.username || '',
                         phone: data.phone || '',
                         description: data.description || '',
-                        logo: data.logoUrl || null,
-                        docExists: true
+                        logo: data.logoUrl || null
                     });
                     if (data.logoUrl) {
                         setLogoUrl(data.logoUrl);
                     }
-                } else {
-                    // Document doesn't exist, will be created on save
-                    setOwnerData({
-                        name: '',
-                        phone: '',
-                        description: '',
-                        logo: null,
-                        docExists: false
-                    });
                 }
                 
-                // Fetch ranges owned by this owner
+                // Fetch ranges
                 const rangesQuery = query(
                     collection(db, "ranges"), 
                     where("ownerId", "==", ownerId)
@@ -194,25 +183,12 @@ export default function RangeOwnerProfile() {
                 name: ownerData.name,
                 phone: ownerData.phone,
                 description: ownerData.description,
-                logoUrl: logoUrl, // Store logo URL in Firestore
-                userId: ownerId, // Keep this for backward compatibility if needed
-                updatedAt: new Date(),
-                ...(ownerData.docExists ? {} : { createdAt: new Date() }) // Only add createdAt for new documents
+                logoUrl: logoUrl,
+                updatedAt: new Date()
             };
             
-            // Use the user's UID as the document ID
             const docRef = doc(db, "range-owners", ownerId);
-            
-            if (ownerData.docExists) {
-                // Update existing document
-                await updateDoc(docRef, profileData);
-                console.log("Profile updated successfully");
-            } else {
-                // Create new document with setDoc using user.uid as document ID
-                await setDoc(docRef, profileData);
-                setOwnerData(prev => ({ ...prev, docExists: true }));
-                console.log("Profile created successfully");
-            }
+            await updateDoc(docRef, profileData);
             
             alert("Profile saved successfully!");
         } catch (error) {
@@ -231,14 +207,19 @@ export default function RangeOwnerProfile() {
     };
 
     useEffect(() => {
-        // Get owner ID from auth, localStorage, or props
-        // For demo purposes, set a sample ID. Replace with your auth method:
-        // const user = auth.currentUser;
-        // if (user) {
-        //     setOwnerId(user.uid);
-        // }
-        setOwnerId("sample-owner-id"); // Remove this line and use your auth
+        // Set up authentication listener
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (user) {
+                setOwnerId(user.uid);
+            } else {
+                navigate('/login'); // Redirect if not authenticated
+            }
+        });
         
+        return () => unsubscribe();
+    }, [navigate]);
+
+    useEffect(() => {
         if (ownerId) {
             fetchOwnerData();
         }
