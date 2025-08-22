@@ -5,6 +5,7 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../../firebase/config";
 import { signOut } from 'firebase/auth';
+
 export default function WaitingPage() {
   const [file, setFile] = useState<File | null>(null);
   const [phone, setPhone] = useState("");
@@ -105,7 +106,7 @@ const handleSendViaMail = async () => {
 
   return (
     <div className="flex items-center justify-center min-h-screen h-screen bg-cover bg-center bg-gray-50 px-4"
-    style={{ backgroundImage: "url('/public/bgImage.jpg')" }}>
+    style={{ backgroundImage: "url('/bgImage.jpg')" }}>
 
 
       <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center border border-gray-200">

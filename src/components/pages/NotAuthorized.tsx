@@ -8,7 +8,7 @@ export default function NotAuthorizedPage() {
 
   return (
     <div className="flex items-center justify-center min-h-screen h-screen bg-cover bg-center bg-gray-50 px-4"
-    style={{ backgroundImage: "url('/public/bgImage.jpg')" }}>
+    style={{ backgroundImage: "url('/bgImage.jpg')" }}>
       <div className="bg-white shadow-lg rounded-2xl p-8 max-w-md w-full text-center border border-gray-200">
         <h1 className="text-2xl font-bold text-red-600 mb-4">
           Access Denied
