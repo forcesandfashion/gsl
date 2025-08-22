@@ -1,13 +1,17 @@
 import { useState, useEffect } from "react";
 import { db } from "../../firebase/config";
-import { collection, getDocs, updateDoc, doc, query, where, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, updateDoc, doc, query, where, deleteDoc, getDoc } from "firebase/firestore";
+import { sendWelcomeEmail } from "../../lib/emailService"; // adjust path
 
 interface RangeOwner {
   id: string;
   username: string;
   email: string;
-  phone?: string;
   status: string;
+  role: string;
+  premium: boolean;
+  createdAt: any; // Firestore timestamp
+  phone?: string;
   documentURL?: string;
 }
 
@@ -37,7 +41,33 @@ export default function PendingRanges() {
 
   const updateStatus = async (id: string, status: "active" | "blocked") => {
     try {
-      await updateDoc(doc(db, "range-owners", id), { status });
+      const ownerRef = doc(db, "range-owners", id);
+      await updateDoc(ownerRef, { status });
+      
+      // If admin activates → send welcome email
+      if (status === "active") {
+        const ownerDoc = await getDoc(ownerRef);
+        if (ownerDoc.exists()) {
+          const docData = ownerDoc.data();
+          const ownerData = { id: ownerDoc.id, ...docData } as RangeOwner;
+          
+          if (ownerData.email) {
+            try {
+              const emailSent = await sendWelcomeEmail(ownerData.email, ownerData.username || "Range Owner");
+              if (emailSent) {
+                alert(`📧 Welcome email sent to ${ownerData.email}`);
+              } else {
+                alert(`❌ Failed to send welcome email to ${ownerData.email}`);
+              }
+            } catch (emailError) {
+              console.error("Error sending welcome email:", emailError);
+              alert(`❌ Error sending welcome email to ${ownerData.email}`);
+            }
+          } else {
+            console.warn("No email address found for owner:", ownerData.username);
+          }
+        }
+      }
 
       if (status === "blocked") {
         const rangesSnapshot = await getDocs(
@@ -98,26 +128,25 @@ export default function PendingRanges() {
                 <span className="inline-block mt-1 px-3 py-1 text-xs font-semibold text-yellow-800 bg-yellow-100 rounded-full">
                   {owner.status}
                 </span>
-<div className="mt-2">
-  {owner.documentURL ? (
-    <a
-      href={owner.documentURL}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition shadow-sm"
-    >
-      📄 Download Document
-    </a>
-  ) : (
-    <p className="text-sm text-gray-500 italic">Document sent via mail</p>
-  )}
+                <div className="mt-2">
+                  {owner.documentURL ? (
+                    <a
+                      href={owner.documentURL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition shadow-sm"
+                    >
+                      📄 Download Document
+                    </a>
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">Document sent via mail</p>
+                  )}
 
-  {/* Also check if email or phone is missing */}
-  {(!owner.email || !owner.phone) && (
-    <p className="text-sm text-gray-500 italic mt-1">Document sent via mail</p>
-  )}
-</div>
-
+                  {/* Also check if email or phone is missing */}
+                  {(!owner.email || !owner.phone) && (
+                    <p className="text-sm text-gray-500 italic mt-1">Document sent via mail</p>
+                  )}
+                </div>
               </div>
               <div className="flex gap-3">
                 <button
