@@ -83,12 +83,12 @@ const BuyPremiumModal = ({
           <Button
             onClick={() => {
               onClose(); // Close modal
-              navigate("/dashboard/range-owner/subscription"); // Redirect to payments page
+              navigate("/pricing"); // Redirect to payments page
             }}
             className="flex-1 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white font-semibold py-3 px-6 shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2"
           >
             <Crown className="w-5 h-5" />
-            Upgrade Now - ₹1,000/month
+            Upgrade Now 
           </Button>
         </div>
       </div>

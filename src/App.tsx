@@ -28,7 +28,7 @@ import RangeInfo from "./components/dashboard/RangeInfo";
 import BookRange from "./components/dashboard/BookRange";
 import WaitingPage from "./components/pages/WaitingPage";
 import NotAuthorizedPage from "./components/pages/NotAuthorized";
-
+import CommunityPage from "./components/pages/community";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -64,6 +64,7 @@ function App() {
           <Route path="/shooters" element={<Athletes />} />
           <Route path="/media" element={<ParallaxScrollPage />} />
           <Route path="/contact" element={<ContactUs />} />
+          <Route path="/community" element={<CommunityPage />} />
           <Route path="/events" element={<EventPage />} />
           <Route path="/events/:id" element={<EventDetailPage />} />
           <Route path="/terms" element={<TermsPage />} />
