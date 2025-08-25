@@ -1,5 +1,9 @@
 import emailjs from "emailjs-com";
 
+
+
+emailjs.init(import.meta.env.VITE_EMAILJS_PUBLIC_KEY);
+
 export const sendWelcomeEmail = async (toEmail: string, username: string) => {
   try {
     // Add logging to debug the parameters
