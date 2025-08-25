@@ -16,7 +16,7 @@ import ShooterEvents from "./ShooterEvents";
 import RangeOwnerList from "./RangeOwnerList";
 import Payment from "./Payment";
 import AdminActiveRanges from "./AdminActiveRanges";
-
+import UserDocumentsPage from "./UserDocumentsPage";
 
 const DashboardRouter = () => {
   const { userRole, loading } = useAuth();
@@ -54,6 +54,7 @@ const DashboardRouter = () => {
       {/* Shooter sub-routes */}
       <Route path="shooter/bookings" element={<ShooterBooking />} />
       <Route path="shooter/events" element={<ShooterEvents />} />
+      <Route path="shooter/documents" element={<UserDocumentsPage />} />
 
       {/* Range owner sub-routes */}
       <Route path="range-owner/my-ranges" element={<RangeListOwners />} />

@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { MapPin, Info, List, Clock, Phone, Image as ImageIcon, Type, DollarSign, Navigation, Video, Crown } from "lucide-react";
+import { IndianRupee } from "lucide-react";
 
 // Add your Google Maps API key here
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API;// Replace with your actual API key
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API; // Replace with your actual API key
 
 interface RangeFormData {
   name: string;
@@ -206,6 +207,23 @@ export default function RangeListingForm() {
     const newAddress = e.target.value;
     setFormData({ ...formData, address: newAddress });
     debouncedGeocode(newAddress);
+  };
+
+  // Fixed price change handler
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    
+    // Allow empty string for clearing the field
+    if (value === '') {
+      setFormData({ ...formData, pricePerHour: 0 });
+      return;
+    }
+    
+    // Parse the number and ensure it's valid
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue) && numValue >= 0) {
+      setFormData({ ...formData, pricePerHour: numValue });
+    }
   };
 
   // Handle opening hours change - same as modal
@@ -623,15 +641,15 @@ export default function RangeListingForm() {
 
           <div>
             <Label htmlFor="pricePerHour" className="flex items-center gap-2 font-semibold">
-              <DollarSign className="w-4 h-4 text-green-500" /> Price Per Hour
+              <IndianRupee className="w-4 h-4 text-green-500" /> Price Per Hour
             </Label>
             <Input
               id="pricePerHour"
               type="number"
-              min={0}
+              min="0"
               step="0.01"
-              value={formData.pricePerHour}
-              onChange={(e) => setFormData({ ...formData, pricePerHour: parseFloat(e.target.value) || 0 })}
+              value={formData.pricePerHour === 0 ? '' : formData.pricePerHour}
+              onChange={handlePriceChange}
               required
               className="mt-1 focus:ring-2 focus:ring-green-300 focus:border-green-400 transition"
               placeholder="Enter hourly rate"
