@@ -3,7 +3,7 @@ const functions = require("firebase-functions");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const admin = require("firebase-admin");
-
+const cors = require("cors")({ origin: true }); 
 admin.initializeApp();
 const db = admin.firestore();
 
@@ -13,6 +13,40 @@ setGlobalOptions({ maxInstances: 10 });
 const razorpay = new Razorpay({
   key_id: "YOUR_RAZORPAY_KEY_ID",
   key_secret: "YOUR_RAZORPAY_SECRET",
+});
+
+exports.adminDeleteUser = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    try {
+      // 🔹 Verify token
+      const idToken = req.headers.authorization?.split("Bearer ")[1];
+      if (!idToken) return res.status(401).send("No auth token provided");
+      
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      
+      // 🔹 Check admin role in admins collection
+      const db = admin.firestore();
+      const adminDoc = await db.collection("admins").doc(decodedToken.uid).get();
+      
+      if (!adminDoc.exists || adminDoc.data()?.role !== "admin") {
+        return res.status(403).send("Forbidden: Not an admin");
+      }
+      
+      // 🔹 Parse body
+      const body = JSON.parse(req.rawBody.toString());
+      const { uid } = body;
+      if (!uid) return res.status(400).send("Missing uid");
+      
+      // 🔹 Delete user
+      await admin.auth().deleteUser(uid);
+      await db.collection("users").doc(uid).delete();
+      
+      return res.status(200).send({ message: `Deleted user ${uid}` });
+    } catch (err) {
+      console.error("❌ Error deleting user:", err);
+      return res.status(500).send("Internal server error");
+    }
+  });
 });
 
 // 1. Create order + store in Firestore
