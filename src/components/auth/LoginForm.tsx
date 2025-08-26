@@ -9,12 +9,19 @@ import { getAuth, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../firebase/config";
 import { useToast } from "@/components/ui/use-toast";
+import { User } from "firebase/auth";
+import GoogleRoleSelection from "./GoogleRoleSelection"; // Import your role selection component
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
+  
+  // Add these states for handling Google role selection
+  const [showRoleSelection, setShowRoleSelection] = useState(false);
+  const [newGoogleUser, setNewGoogleUser] = useState<User | null>(null);
+  
   const { signIn, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -74,10 +81,17 @@ export default function LoginForm() {
       setGoogleLoading(true);
       setError("");
       
-      // Sign in with Google
-      await signInWithGoogle();
+      // Get the result from Google sign-in
+      const result = await signInWithGoogle();
       
-      // Check user status and navigate accordingly
+      // If it's a new user, show role selection instead of logging them in
+      if (result && result.isNewUser) {
+        setShowRoleSelection(true);
+        setNewGoogleUser(result.user);
+        return; // Don't proceed with login flow
+      }
+      
+      // For existing users, check status and navigate
       const navigatedSuccessfully = await checkUserStatusAndNavigate();
       
       // Only show success toast if user wasn't redirected to not-authorized
@@ -93,6 +107,32 @@ export default function LoginForm() {
       setGoogleLoading(false);
     }
   };
+
+  const handleRoleSelectionCancel = async () => {
+    // Delete the Firebase Auth account since user cancelled
+    if (newGoogleUser) {
+      try {
+        await newGoogleUser.delete();
+      } catch (error) {
+        console.error("Error deleting cancelled Google account:", error);
+      }
+    }
+    
+    // Reset states
+    setShowRoleSelection(false);
+    setNewGoogleUser(null);
+    setGoogleLoading(false);
+  };
+
+  // Show role selection if needed
+  if (showRoleSelection && newGoogleUser) {
+    return (
+      <GoogleRoleSelection 
+        user={newGoogleUser} 
+        onCancel={handleRoleSelectionCancel}
+      />
+    );
+  }
 
   return (
     <AuthLayout title="Sign In">
