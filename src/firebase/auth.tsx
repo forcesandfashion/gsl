@@ -14,7 +14,7 @@ import { useToast } from '../components/ui/use-toast';
 import { db } from "./config";
 import { doc, setDoc } from "firebase/firestore";
 import { serverTimestamp } from "firebase/firestore";
-
+import { sendWelcomeEmail } from '@/lib/sendWelcomeEmail';
 type UserRole =
   | "shooter"
   | "range_owner"
@@ -62,26 +62,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, []);
 
-  const signUp = async (
-    email: string,
-    password: string,
-    fullName: string,
-    role: UserRole,
-  ): Promise<void> => {
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      
-      // Store role in displayName as metadata (you might want to use custom claims instead)
-      await updateProfile(user, {
-        displayName: `${fullName}|${role}`
-      });
+const signUp = async (
+  email: string,
+  password: string,
+  fullName: string,
+  role: UserRole,
+): Promise<void> => {
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
 
-      setUser(user);
-      setUserRole(role);
+    await updateProfile(user, {
+      displayName: `${fullName}|${role}`
+    });
 
-      if (role === "range_owner") {
+    setUser(user);
+    setUserRole(role);
 
+    if (role === "range_owner") {
       await setDoc(doc(db, "range-owners", user.uid), {
         username: fullName,
         email,
@@ -90,21 +88,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         premium: false,
         createdAt: serverTimestamp()
       });
-     
-      
-      }
-      toast({ title: "Account created successfully" });
-      
-    } catch (error: any) {
-      console.error('Signup error:', error);
-      toast({ 
-        title: "Signup failed", 
-        description: error.message,
-        variant: "destructive"
-      });
-      throw error;
     }
-  };
+
+    // Role-specific messages
+    let roleMessage = "";
+    if (role === "shooter") {
+      roleMessage = "Your Shooter account has been created. You can log in using the link below.";
+    } else if (role === "range_owner") {
+      roleMessage = "Your Range Owner account has been created. Please wait until confirmation mail before logging in to your dashboard.";
+    } else {
+      roleMessage = `Your ${role} account has been created. You can log in using the link below.`;
+    }
+
+    // Send welcome email
+    await sendWelcomeEmail(email, fullName, roleMessage);
+
+    toast({ title: "Account created successfully" });
+  } catch (error: any) {
+    console.error('Signup error:', error);
+    toast({ 
+      title: "Signup failed", 
+      description: error.message,
+      variant: "destructive"
+    });
+    throw error;
+  }
+};
 
   const signIn = async (email: string, password: string): Promise<void> => {
     try {
