@@ -127,6 +127,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           totalPoints: 0,
           createdAt: serverTimestamp()
         });
+      } else if (role === "admin") {
+        await setDoc(doc(db, "admins", user.uid), {
+          uid: user.uid,
+          fullName,
+          email,
+          role: "admin",
+          createdAt: serverTimestamp()
+        });
+      } else if (role === "admin") {
+        await setDoc(doc(db, "admins", user.uid), {
+          uid: user.uid,
+          fullName,
+          email,
+          role: "admin",
+          createdAt: serverTimestamp()
+        });
       }
 
       // Role-specific messages
@@ -233,6 +249,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           role: "range_owner",
           status: "pending",
           premium: false,
+          createdAt: serverTimestamp()
+        });
+      } else if (role === "admin") {
+        await setDoc(doc(db, "admins", user.uid), {
+          uid: user.uid,
+          fullName,
+          email: user.email,
+          role: "admin",
+          createdAt: serverTimestamp()
+        });
+      } else if (role === "admin") {
+        await setDoc(doc(db, "admins", user.uid), {
+          uid: user.uid,
+          fullName,
+          email: user.email,
+          role: "admin",
           createdAt: serverTimestamp()
         });
       }
