@@ -16,7 +16,7 @@ import { auth } from './config';
 import { useToast } from '../components/ui/use-toast';
 import { db } from "./config";
 import { doc, setDoc, getDoc } from "firebase/firestore";
-import { serverTimestamp } from "firebase/firestore";
+import { serverTimestamp, Timestamp } from "firebase/firestore";
 import { sendWelcomeEmail } from '@/lib/sendWelcomeEmail';
 
 type UserRole =
@@ -46,6 +46,68 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Helper function to create role-based documents
+const createRoleBasedDocument = async (user: User, fullName: string, email: string, role: UserRole) => {
+  const timestamp = serverTimestamp();
+  
+  switch (role) {
+    case "shooter":
+      await setDoc(doc(db, "shooters", user.uid), {
+        fullName,
+        uid: user.uid,
+        email,
+        premium: false,
+        createdAt: timestamp
+      });
+      break;
+
+    case "range_owner":
+      await setDoc(doc(db, "range-owners", user.uid), {
+        uid: user.uid,
+        status: "pending",
+        createdAt: timestamp,
+        // Add any other existing fields from your current code
+        username: fullName,
+        email,
+        role: "range_owner",
+        premium: false
+      });
+      break;
+
+    case "admin":
+      await setDoc(doc(db, "admins", user.uid), {
+        createdAt: timestamp,
+        email,
+        fullName,
+        role: "admin",
+        uid: user.uid
+      });
+      break;
+
+    case "technical_coach":
+    case "dietician":
+    case "mental_trainer":
+    case "franchise_owner":
+      // Create documents in their respective collections
+      const collectionName = role === "technical_coach" ? "technical-coaches" :
+                           role === "dietician" ? "dieticians" :
+                           role === "mental_trainer" ? "mental-trainers" :
+                           "franchise-owners";
+      
+      await setDoc(doc(db, collectionName, user.uid), {
+        uid: user.uid,
+        fullName,
+        email,
+        role,
+        createdAt: timestamp
+      });
+      break;
+
+    default:
+      console.warn(`No specific collection handler for role: ${role}`);
+  }
+};
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
@@ -59,12 +121,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // First check if user has role in displayName (existing users)
         let role = user.displayName?.split('|')[1] as UserRole;
         
-        // If no role in displayName, check Firestore
+        // If no role in displayName, check role-specific collections
         if (!role) {
           try {
-            const userDoc = await getDoc(doc(db, "users", user.uid));
-            if (userDoc.exists()) {
-              role = userDoc.data().role as UserRole;
+            // Check different collections based on potential roles
+            const collections = ['shooters', 'range-owners', 'admins', 'technical-coaches', 'dieticians', 'mental-trainers', 'franchise-owners'];
+            
+            for (const collection of collections) {
+              const userDoc = await getDoc(doc(db, collection, user.uid));
+              if (userDoc.exists()) {
+                role = userDoc.data().role as UserRole;
+                break;
+              }
             }
           } catch (error) {
             console.error("Error fetching user role:", error);
@@ -95,55 +163,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         displayName: `${fullName}|${role}`
       });
 
-      // Store user data in Firestore
-      await setDoc(doc(db, "users", user.uid), {
-        uid: user.uid,
-        email,
-        fullName,
-        role,
-        provider: "email",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
+      // Create role-specific document
+      await createRoleBasedDocument(user, fullName, email, role);
 
       setUser(user);
       setUserRole(role);
-
-      // Create role-specific collections
-      if (role === "range_owner") {
-        await setDoc(doc(db, "range-owners", user.uid), {
-          username: fullName,
-          email,
-          role: "range_owner",
-          status: "pending",
-          premium: false,
-          createdAt: serverTimestamp()
-        });
-      } else if (role === "shooter") {
-        await setDoc(doc(db, "shooters", user.uid), {
-          uid: user.uid,
-          fullName,
-          email,
-          totalPoints: 0,
-          createdAt: serverTimestamp()
-        });
-      } else if (role === "admin") {
-        await setDoc(doc(db, "admins", user.uid), {
-          uid: user.uid,
-          fullName,
-          email,
-          role: "admin",
-          createdAt: serverTimestamp()
-        });
-      } else if (role === "admin") {
-        await setDoc(doc(db, "admins", user.uid), {
-          uid: user.uid,
-          fullName,
-          email,
-          role: "admin",
-          createdAt: serverTimestamp()
-        });
-      }
 
       // Role-specific messages
       let roleMessage = "";
@@ -183,16 +207,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (!isNewUser) {
         // Existing user - check if they have a role set
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          const role = userData.role as UserRole;
+        // Check role-specific collections to find existing user
+        const collections = ['shooters', 'range-owners', 'admins', 'technical-coaches', 'dieticians', 'mental-trainers', 'franchise-owners'];
+        let foundRole = null;
+        
+        for (const collection of collections) {
+          const userDoc = await getDoc(doc(db, collection, user.uid));
+          if (userDoc.exists()) {
+            foundRole = userDoc.data().role as UserRole;
+            break;
+          }
+        }
+        
+        if (foundRole) {
           setUser(user);
-          setUserRole(role);
+          setUserRole(foundRole);
           toast({ title: "Login successful" });
           return;
         } else {
-          // User exists in auth but not in Firestore - treat as new user
+          // User exists in auth but not in role collections - treat as new user
           return { isNewUser: true, user };
         }
       }
@@ -227,47 +260,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         displayName: `${fullName}|${role}`
       });
 
-      // Store user data in Firestore
-      await setDoc(doc(db, "users", user.uid), {
-        uid: user.uid,
-        email: user.email,
-        fullName,
-        role,
-        provider: "google",
-        photoURL: user.photoURL,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
+      // Create role-specific document
+      if (user.email) {
+        await createRoleBasedDocument(user, fullName, user.email, role);
+      }
 
       setUser(user);
       setUserRole(role);
-
-      if (role === "range_owner") {
-        await setDoc(doc(db, "range-owners", user.uid), {
-          username: fullName,
-          email: user.email,
-          role: "range_owner",
-          status: "pending",
-          premium: false,
-          createdAt: serverTimestamp()
-        });
-      } else if (role === "admin") {
-        await setDoc(doc(db, "admins", user.uid), {
-          uid: user.uid,
-          fullName,
-          email: user.email,
-          role: "admin",
-          createdAt: serverTimestamp()
-        });
-      } else if (role === "admin") {
-        await setDoc(doc(db, "admins", user.uid), {
-          uid: user.uid,
-          fullName,
-          email: user.email,
-          role: "admin",
-          createdAt: serverTimestamp()
-        });
-      }
 
       // Role-specific messages
       let roleMessage = "";

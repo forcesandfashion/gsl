@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { db } from "../../firebase/config";
 import { collection, getDocs, updateDoc, doc, deleteDoc, query, where, writeBatch } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import { toast } from "../ui/use-toast";
+
 
 interface ActiveRange {
   id: string;
@@ -68,43 +71,70 @@ export default function ActiveRanges() {
     }
   };
 
-  const deleteUser = async (id: string) => {
-    const confirmDelete = window.confirm(
-      "⚠ Are you sure you want to delete this range owner? This action cannot be undone and will also delete all their ranges."
-    );
-    if (!confirmDelete) return;
+const deleteUser = async (uid: string) => {
+  const confirmDelete = window.confirm(
+    "⚠ Are you sure you want to delete this user? This action cannot be undone."
+  );
+  if (!confirmDelete) return;
 
-    try {
-      // Find and delete all ranges owned by this user
-      const rangesQuery = query(
-        collection(db, "ranges"), 
-        where("ownerId", "==", id)
-      );
-      const rangesSnapshot = await getDocs(rangesQuery);
-      
-      if (!rangesSnapshot.empty) {
-        // Use batch write for better performance when deleting multiple documents
-        const batch = writeBatch(db);
-        
-        rangesSnapshot.docs.forEach((rangeDoc) => {
-          batch.delete(rangeDoc.ref);
-        });
-        
-        await batch.commit();
-        console.log(`Deleted ${rangesSnapshot.docs.length} ranges for user ${id}`);
-      }
-      
-      // Delete the user document
-      await deleteDoc(doc(db, "range-owners", id));
-      
-      // Remove from local state
-      setActiveRanges((prev) => prev.filter((user) => user.id !== id));
-      alert("🗑 User and all their ranges have been deleted.");
-    } catch (err) {
-      console.error("Error deleting user and ranges:", err);
-      alert("❌ Error occurred while deleting user. Please try again.");
+  try {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      alert("❌ You must be logged in as an admin to perform this action.");
+      return;
     }
-  };
+
+    const idToken = await currentUser.getIdToken();
+
+    // 🔹 Call backend Cloud Function to delete auth user + users collection doc
+    const response = await fetch(
+      "https://admindeleteuser-5uzq5pp2ia-uc.a.run.app",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ uid }),
+      }
+    );
+
+    if (!response.ok) {
+      const data = await response.json();
+      console.error("Error deleting user:", data);
+      alert(`❌ Failed to delete user: ${data}`);
+      return;
+    }
+
+    // 🔹 Delete the user's document from range-owners
+    await deleteDoc(doc(db, "range-owners", uid));
+
+    // 🔹 Delete all ranges owned by this user
+    const rangesQuery = query(collection(db, "ranges"), where("ownerId", "==", uid));
+    const rangesSnapshot = await getDocs(rangesQuery);
+
+    if (!rangesSnapshot.empty) {
+      const batch = writeBatch(db);
+      rangesSnapshot.docs.forEach((rangeDoc) => {
+        batch.delete(rangeDoc.ref);
+      });
+      await batch.commit();
+      console.log(`Deleted ${rangesSnapshot.docs.length} ranges for user ${uid}`);
+    }
+
+    // 🔹 Update local state
+    setActiveRanges((prev) => prev.filter((user) => user.id !== uid));
+
+    alert(`✅ User ${uid} and all their ranges have been deleted successfully.`);
+
+  } catch (err) {
+    console.error("Error deleting user and ranges:", err);
+    alert("❌ An error occurred while deleting user. Please try again.");
+  }
+};
+
+
 
   useEffect(() => {
     fetchActiveRanges();
