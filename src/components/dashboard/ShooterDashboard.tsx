@@ -154,8 +154,6 @@ const ShooterDashboard = () => {
           const bookingsQuery = query(
             collection(db, "bookings"),
             where("userId", "==", user.uid),
-            orderBy("date", "desc"),
-            limit(10)
           );
           const bookingsSnapshot = await getDocs(bookingsQuery);
           
@@ -163,6 +161,8 @@ const ShooterDashboard = () => {
             id: doc.id,
             ...(doc.data() as Omit<Booking, "id">)
           }));
+          
+          bookingsCount = bookings.length;
 
           console.log("All user bookings:", bookings); // Debug: see all bookings
           

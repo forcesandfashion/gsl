@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { MapPin, Info, List, Clock, Phone, Image as ImageIcon, Type, DollarSign, Navigation, Video, Crown } from "lucide-react";
+import { MapPin, Info, List, Clock, Phone, Image as ImageIcon, Type, DollarSign, Navigation, Video, Crown, Map, RefreshCw } from "lucide-react";
 import { IndianRupee } from "lucide-react";
 
 // Add your Google Maps API key here
@@ -40,8 +40,84 @@ interface GeocodingResult {
 
 interface RangeOwner {
   premium: boolean;
+  logoUrl?: string;
   // other fields...
 }
+
+declare global {
+  interface Window {
+    google: {
+      maps: {
+        Map: any;
+        Marker: any;
+        Geocoder: any;
+        [key: string]: any;
+      };
+    };
+  }
+}
+
+interface MapProps {
+  latitude: number;
+  longitude: number;
+  onLocationChange: (lat: number, lng: number, address: string) => void;
+}
+
+// Map Component
+const InteractiveMap: React.FC<MapProps> = ({ latitude, longitude, onLocationChange }) => {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstance = useRef<any>(null);
+  const markerInstance = useRef<any>(null);
+
+  useEffect(() => {
+    if (!mapRef.current || !window.google) return;
+
+    // Initialize map
+    mapInstance.current = new window.google.maps.Map(mapRef.current, {
+      center: { lat: latitude, lng: longitude },
+      zoom: 15,
+      mapTypeId: 'roadmap'
+    });
+
+    // Add marker
+    markerInstance.current = new window.google.maps.Marker({
+      position: { lat: latitude, lng: longitude },
+      map: mapInstance.current,
+      draggable: true,
+      title: 'Drag to adjust location'
+    });
+
+    // Handle marker drag
+    markerInstance.current.addListener('dragend', async () => {
+      const position = markerInstance.current.getPosition();
+      const lat = position.lat();
+      const lng = position.lng();
+
+      // Reverse geocode to get address
+      const geocoder = new window.google.maps.Geocoder();
+      try {
+        const response = await geocoder.geocode({ location: { lat, lng } });
+        if (response.results[0]) {
+          onLocationChange(lat, lng, response.results[0].formatted_address);
+        } else {
+          onLocationChange(lat, lng, `${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+        }
+      } catch (error) {
+        console.error('Reverse geocoding failed:', error);
+        onLocationChange(lat, lng, `${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+      }
+    });
+
+  }, [latitude, longitude]);
+
+  return (
+    <div 
+      ref={mapRef} 
+      style={{ width: '100%', height: '300px' }}
+      className="rounded-lg border border-gray-300 shadow-sm"
+    />
+  );
+};
 
 export default function RangeListingForm() {
   const { user } = useAuth();
@@ -50,6 +126,8 @@ export default function RangeListingForm() {
   const [geocodingLoading, setGeocodingLoading] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [premiumLoading, setPremiumLoading] = useState(true);
+  const [ownerLogoUrl, setOwnerLogoUrl] = useState<string | null>(null);
+  const [showMap, setShowMap] = useState(false);
   
   const [formData, setFormData] = useState<RangeFormData>({
     name: "",
@@ -91,7 +169,7 @@ export default function RangeListingForm() {
   
   const weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-  // Time options for dropdown (every 30 minutes) - same as modal
+  // Time options for dropdown (every 30 minutes)
   const timeOptions = Array.from({ length: 48 }, (_, i) => {
     const hours = Math.floor(i / 2);
     const minutes = i % 2 === 0 ? "00" : "30";
@@ -104,9 +182,9 @@ export default function RangeListingForm() {
     return { value: time, display: displayTime };
   });
 
-  // Check if user is premium
+  // Check if user is premium and fetch owner logo
   useEffect(() => {
-    const checkPremiumStatus = async () => {
+    const checkPremiumStatusAndLogo = async () => {
       if (!user) return;
       
       try {
@@ -115,6 +193,12 @@ export default function RangeListingForm() {
         if (ownerDoc.exists()) {
           const ownerData = ownerDoc.data() as RangeOwner;
           setIsPremium(ownerData.premium || false);
+          
+          // Set owner logo as default if exists
+          if (ownerData.logoUrl) {
+            setOwnerLogoUrl(ownerData.logoUrl);
+            setLogo(ownerData.logoUrl);
+          }
         }
       } catch (error) {
         console.error("Error checking premium status:", error);
@@ -124,8 +208,26 @@ export default function RangeListingForm() {
       }
     };
 
-    checkPremiumStatus();
+    checkPremiumStatusAndLogo();
   }, [user]);
+
+  // Load Google Maps Script
+  useEffect(() => {
+    if (!GOOGLE_MAPS_API_KEY) return;
+
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
+    script.async = true;
+    document.head.appendChild(script);
+
+    return () => {
+      // Cleanup script on unmount
+      const existingScript = document.querySelector(`script[src*="maps.googleapis.com"]`);
+      if (existingScript) {
+        document.head.removeChild(existingScript);
+      }
+    };
+  }, []);
 
   // Debounce function for address input
   const debounce = (func: Function, delay: number) => {
@@ -226,7 +328,35 @@ export default function RangeListingForm() {
     }
   };
 
-  // Handle opening hours change - same as modal
+  // Fixed max bookings per slot handler
+  const handleMaxBookingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    
+    // Allow empty string for clearing the field
+    if (value === '') {
+      setMaxBookingsPerSlot(1);
+      return;
+    }
+    
+    // Parse the number and ensure it's valid and at least 1
+    const numValue = parseInt(value, 10);
+    if (!isNaN(numValue) && numValue >= 1) {
+      setMaxBookingsPerSlot(numValue);
+    }
+  };
+
+  // Handle location change from map
+  const handleMapLocationChange = (lat: number, lng: number, address: string) => {
+    setFormData(prev => ({
+      ...prev,
+      latitude: lat,
+      longitude: lng,
+      address: address
+    }));
+    setGeocodingError(null);
+  };
+
+  // Handle opening hours change
   const handleOpeningHoursChange = (day: string, field: 'start' | 'end', value: string) => {
     setStructuredOpeningHours(prev => ({
       ...prev,
@@ -261,6 +391,13 @@ export default function RangeListingForm() {
   const handleRemoveLogo = () => {
     setLogo(null);
     setLogoFile(null);
+  };
+
+  const handleResetToOwnerLogo = () => {
+    if (ownerLogoUrl) {
+      setLogo(ownerLogoUrl);
+      setLogoFile(null);
+    }
   };
 
   const handleRangeImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -394,6 +531,12 @@ export default function RangeListingForm() {
       let logoUrl = "";
       if (logoFile) {
         logoUrl = await uploadFile(logoFile, `ranges/${user.uid}/logo/${Date.now()}_${logoFile.name}`);
+      } else if (logo && logo !== ownerLogoUrl) {
+        // If logo is set but not the owner's default logo, it means user uploaded a new one
+        logoUrl = logo;
+      } else if (logo === ownerLogoUrl) {
+        // Use the owner's logo URL directly
+        logoUrl = ownerLogoUrl;
       }
 
       let mainImageUrl = "";
@@ -456,7 +599,7 @@ export default function RangeListingForm() {
       });
       setImageFile(null);
       setImagePreview(null);
-      setLogo(null);
+      setLogo(ownerLogoUrl); // Reset to owner's default logo
       setLogoFile(null);
       setRangeImages([]);
       setRangeImageFiles([]);
@@ -464,6 +607,8 @@ export default function RangeListingForm() {
       setVideoPreview(null);
       setYoutubeUrl("");
       setGeocodingError(null);
+      setShowMap(false);
+      setMaxBookingsPerSlot(5);
 
     } catch (error) {
       console.error("Error creating range listing:", error);
@@ -479,7 +624,7 @@ export default function RangeListingForm() {
 
   if (premiumLoading) {
     return (
-      <div className="max-w-2xl mx-auto p-6 text-center">
+      <div className="max-w-4xl mx-auto p-6 text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
         <p className="mt-4 text-gray-600">Loading your account details...</p>
       </div>
@@ -487,43 +632,48 @@ export default function RangeListingForm() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <div className="rounded-2xl shadow-2xl bg-gradient-to-br from-white via-blue-50 to-purple-50 p-8 border border-blue-100">
-        <div className="text-center mb-6">
-          <h2 className="text-3xl font-extrabold mb-4 flex items-center justify-center gap-2">
-            <List className="w-7 h-7 text-blue-500" /> Create Range Listing
+    <div className="max-w-4xl mx-auto p-6">
+      <div className="rounded-3xl shadow-2xl bg-gradient-to-br from-white via-blue-50 to-purple-50 p-8 border border-blue-100">
+        <div className="text-center mb-8">
+          <h2 className="text-4xl font-extrabold mb-6 flex items-center justify-center gap-3 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <List className="w-8 h-8 text-blue-500" /> Create Range Listing
           </h2>
           
           {/* Premium Status Display */}
-          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${
+          <div className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold shadow-lg ${
             isPremium 
               ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-white' 
-              : 'bg-gray-200 text-gray-700'
+              : 'bg-gradient-to-r from-gray-400 to-gray-600 text-white'
           }`}>
-            <Crown className="w-4 h-4" />
+            <Crown className="w-5 h-5" />
             {isPremium ? 'Premium Account' : 'Free Account'}
           </div>
           
           {!isPremium && (
-            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-700">
-                <strong>Free Account Limits:</strong> 9 images max, 1 YouTube link OR 1 video upload (max 100MB)
-              </p>
-              <p className="text-xs text-yellow-600 mt-1">
-                Upgrade to Premium for unlimited images and direct video uploads up to 500MB
+            <div className="mt-4 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl shadow-sm">
+              <h4 className="font-semibold text-orange-800 mb-2">Free Account Features:</h4>
+              <div className="text-sm text-orange-700 space-y-1">
+                <p>• Maximum 9 range images</p>
+                <p>• Either YouTube video OR file upload (max 100MB)</p>
+                <p>• Interactive map for precise location</p>
+                <p>• Default owner logo integration</p>
+              </div>
+              <p className="text-xs text-orange-600 mt-2 font-medium">
+                Upgrade to Premium for unlimited images and 500MB video uploads!
               </p>
             </div>
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Logo Upload Section */}
-          <div className="flex flex-col items-center mb-6">
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Logo Upload Section - Enhanced */}
+          <div className="flex flex-col items-center mb-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl border border-blue-200">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4">Range Logo</h3>
             {logo ? (
-              <img src={logo} alt="Range Logo" className="w-24 h-24 rounded-full object-cover border-4 border-blue-200 shadow mb-2" />
+              <img src={logo} alt="Range Logo" className="w-32 h-32 rounded-full object-cover border-4 border-blue-300 shadow-lg mb-3" />
             ) : (
-              <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 mb-2">
-                No Logo
+              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-gray-500 mb-3 shadow-inner">
+                <ImageIcon className="w-12 h-12" />
               </div>
             )}
             <input
@@ -533,149 +683,228 @@ export default function RangeListingForm() {
               onChange={handleLogoChange}
               className="hidden"
             />
-            <div className="flex gap-2">
-              <button
+            <div className="flex flex-wrap gap-3 justify-center">
+              <Button
                 type="button"
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition"
+                variant="outline"
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-all duration-200"
                 onClick={() => logoInputRef.current?.click()}
               >
+                <ImageIcon className="w-4 h-4 mr-2" />
                 {logo ? "Change Logo" : "Upload Logo"}
-              </button>
-              {logo && (
-                <button
+              </Button>
+              {ownerLogoUrl && logo !== ownerLogoUrl && (
+                <Button
                   type="button"
-                  className="px-3 py-2 bg-red-400 text-white rounded-lg shadow hover:bg-red-500 transition"
+                  variant="outline"
+                  className="px-4 py-2 bg-green-500 text-white rounded-lg shadow hover:bg-green-600 transition-all duration-200"
+                  onClick={handleResetToOwnerLogo}
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Use Owner Logo
+                </Button>
+              )}
+              {logo && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-all duration-200"
                   onClick={handleRemoveLogo}
                 >
-                  Remove
-                </button>
+                  Remove Logo
+                </Button>
               )}
             </div>
-            <span className="text-xs text-gray-500 mt-1">Max size: 2MB | PNG, JPG, or SVG recommended</span>
-          </div>
-          
-          {/* Basic Fields */}
-          <div>
-            <Label htmlFor="name" className="flex items-center gap-2 font-semibold">
-              <Type className="w-4 h-4 text-blue-400" /> Range Name
-            </Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-              className="mt-1 focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition"
-            />
+            <span className="text-xs text-gray-500 mt-2 text-center">Max size: 2MB | PNG, JPG, or SVG recommended</span>
           </div>
 
-          <div>
-            <Label htmlFor="address" className="flex items-center gap-2 font-semibold">
-              <MapPin className="w-4 h-4 text-green-400" /> Address
-            </Label>
-            <Input
-              id="address"
-              value={formData.address}
-              onChange={handleAddressChange}
-              required
-              className="mt-1 focus:ring-2 focus:ring-green-300 focus:border-green-400 transition"
-              placeholder="Enter the complete address"
-            />
+          {/* Basic Information Section */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-6">
+              <div>
+                <Label htmlFor="name" className="flex items-center gap-2 font-semibold text-gray-700 mb-2">
+                  <Type className="w-4 h-4 text-blue-400" /> Range Name
+                </Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                  className="focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all duration-200 rounded-lg"
+                  placeholder="Enter your range name"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="contactNumber" className="flex items-center gap-2 font-semibold text-gray-700 mb-2">
+                  <Phone className="w-4 h-4 text-indigo-400" /> Contact Number
+                </Label>
+                <Input
+                  id="contactNumber"
+                  value={formData.contactNumber}
+                  onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value })}
+                  required
+                  className="focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all duration-200 rounded-lg"
+                  placeholder="+91 XXXXXXXXXX"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="pricePerHour" className="flex items-center gap-2 font-semibold text-gray-700 mb-2">
+                  <IndianRupee className="w-4 h-4 text-green-500" /> Price Per Hour
+                </Label>
+                <Input
+                  id="pricePerHour"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.pricePerHour === 0 ? '' : formData.pricePerHour}
+                  onChange={handlePriceChange}
+                  required
+                  className="focus:ring-2 focus:ring-green-300 focus:border-green-400 transition-all duration-200 rounded-lg"
+                  placeholder="Enter hourly rate"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="maxSlots" className="flex items-center gap-2 font-semibold text-gray-700 mb-2">
+                  <Clock className="w-4 h-4 text-red-400" /> Max Bookings Per Slot
+                </Label>
+                <Input
+                  id="maxSlots"
+                  type="number"
+                  min={1}
+                  value={maxBookingsPerSlot === 0 ? '' : maxBookingsPerSlot}
+                  onChange={handleMaxBookingsChange}
+                  required
+                  className="focus:ring-2 focus:ring-red-300 focus:border-red-400 transition-all duration-200 rounded-lg"
+                  placeholder="e.g., 5"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <Label htmlFor="description" className="flex items-center gap-2 font-semibold text-gray-700 mb-2">
+                  <Info className="w-4 h-4 text-purple-400" /> Description
+                </Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  required
+                  rows={4}
+                  className="focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition-all duration-200 rounded-lg"
+                  placeholder="Describe your shooting range..."
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="facilities" className="flex items-center gap-2 font-semibold text-gray-700 mb-2">
+                  <List className="w-4 h-4 text-pink-400" /> Facilities
+                </Label>
+                <Textarea
+                  id="facilities"
+                  value={formData.facilities}
+                  onChange={(e) => setFormData({ ...formData, facilities: e.target.value })}
+                  placeholder="• Air-conditioned shooting bays&#10;• Professional targets&#10;• Safety equipment provided&#10;• Parking available"
+                  required
+                  rows={4}
+                  className="focus:ring-2 focus:ring-pink-300 focus:border-pink-400 transition-all duration-200 rounded-lg"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Enhanced Address Section with Map */}
+          <div className="p-6 bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl border border-green-200">
+            <div className="mb-4">
+              <Label htmlFor="address" className="flex items-center gap-2 font-semibold text-gray-700 mb-2">
+                <MapPin className="w-5 h-5 text-green-500" /> Address & Location
+              </Label>
+              <Input
+                id="address"
+                value={formData.address}
+                onChange={handleAddressChange}
+                required
+                className="focus:ring-2 focus:ring-green-300 focus:border-green-400 transition-all duration-200 rounded-lg"
+                placeholder="Enter the complete address"
+              />
+            </div>
             
             {/* Coordinates Display */}
-            <div className="mt-2 p-3 bg-gray-50 rounded-lg border">
-              <div className="flex items-center gap-2 mb-1">
-                <Navigation className="w-4 h-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Coordinates</span>
-                {geocodingLoading && (
-                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className="mb-4 p-4 bg-white rounded-xl border shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Navigation className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-700">Location Details</span>
+                  {geocodingLoading && (
+                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  )}
+                </div>
+                
+                {formData.latitude && formData.longitude && GOOGLE_MAPS_API_KEY && (
+                  <Button
+                    type="button"
+                    onClick={() => setShowMap(!showMap)}
+                    className="flex items-center gap-2 px-3 py-1 text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200"
+                  >
+                    <Map className="w-3 h-3" />
+                    {showMap ? 'Hide Map' : 'Show Map'}
+                  </Button>
                 )}
               </div>
               
               {formData.latitude && formData.longitude ? (
-                <div className="text-sm text-green-600">
-                  <div>Latitude: {formData.latitude.toFixed(6)}</div>
-                  <div>Longitude: {formData.longitude.toFixed(6)}</div>
+                <div className="text-sm text-green-600 space-y-1">
+                  <div className="flex justify-between">
+                    <span>Latitude:</span>
+                    <span className="font-mono">{formData.latitude.toFixed(6)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Longitude:</span>
+                    <span className="font-mono">{formData.longitude.toFixed(6)}</span>
+                  </div>
                 </div>
               ) : geocodingError ? (
-                <div className="text-sm text-red-500">
-                  {geocodingError} (You can still create the range without coordinates)
+                <div className="text-sm text-orange-600 bg-orange-50 p-2 rounded-lg">
+                  <div className="font-medium">⚠️ {geocodingError}</div>
+                  <div className="text-xs mt-1">You can still create the range. Location can be updated later.</div>
                 </div>
               ) : formData.address.trim() && !geocodingLoading ? (
-                <div className="text-sm text-yellow-600">
-                  Coordinates not found (You can still create the range)
+                <div className="text-sm text-yellow-600 bg-yellow-50 p-2 rounded-lg">
+                  📍 Coordinates not found for this address
                 </div>
               ) : (
                 <div className="text-sm text-gray-500">
-                  Enter an address to get coordinates automatically
+                  📍 Enter an address to get coordinates automatically
                 </div>
               )}
             </div>
+
+            {/* Interactive Map */}
+            {showMap && formData.latitude && formData.longitude && GOOGLE_MAPS_API_KEY && (
+              <div className="mt-4">
+                <div className="mb-2 flex items-center gap-2 text-sm text-gray-600">
+                  <Map className="w-4 h-4" />
+                  <span>Drag the marker to adjust the exact location</span>
+                </div>
+                <InteractiveMap
+                  latitude={formData.latitude}
+                  longitude={formData.longitude}
+                  onLocationChange={handleMapLocationChange}
+                />
+              </div>
+            )}
           </div>
 
-          <div>
-            <Label htmlFor="description" className="flex items-center gap-2 font-semibold">
-              <Info className="w-4 h-4 text-purple-400" /> Description
-            </Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              required
-              className="mt-1 focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="facilities" className="flex items-center gap-2 font-semibold">
-              <List className="w-4 h-4 text-pink-400" /> Facilities
-            </Label>
-            <Textarea
-              id="facilities"
-              value={formData.facilities}
-              onChange={(e) => setFormData({ ...formData, facilities: e.target.value })}
-              placeholder="List available facilities..."
-              required
-              className="mt-1 focus:ring-2 focus:ring-pink-300 focus:border-pink-400 transition"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="pricePerHour" className="flex items-center gap-2 font-semibold">
-              <IndianRupee className="w-4 h-4 text-green-500" /> Price Per Hour
-            </Label>
-            <Input
-              id="pricePerHour"
-              type="number"
-              min="0"
-              step="0.01"
-              value={formData.pricePerHour === 0 ? '' : formData.pricePerHour}
-              onChange={handlePriceChange}
-              required
-              className="mt-1 focus:ring-2 focus:ring-green-300 focus:border-green-400 transition"
-              placeholder="Enter hourly rate"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="contactNumber" className="flex items-center gap-2 font-semibold">
-              <Phone className="w-4 h-4 text-indigo-400" /> Contact Number
-            </Label>
-            <Input
-              id="contactNumber"
-              value={formData.contactNumber}
-              onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value })}
-              required
-              className="mt-1 focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition"
-            />
-          </div>
-
-          {/* Range Images Section */}
-          <div>
-            <Label htmlFor="rangeImages" className="flex items-center gap-2 font-semibold">
-              <ImageIcon className="w-4 h-4 text-orange-400" /> 
-              Range Images 
-              <span className="text-sm font-normal text-gray-500">
-                ({rangeImageFiles.length}/{isPremium ? '∞' : '9'} images)
+          {/* Range Images Section - Enhanced */}
+          <div className="p-6 bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl border border-orange-200">
+            <Label htmlFor="rangeImages" className="flex items-center gap-2 font-semibold text-gray-700 mb-4">
+              <ImageIcon className="w-5 h-5 text-orange-500" /> 
+              Range Gallery
+              <span className="text-sm font-normal text-gray-500 bg-white px-2 py-1 rounded-full">
+                {rangeImageFiles.length}/{isPremium ? '∞' : '9'} images
               </span>
             </Label>
             <Input
@@ -684,22 +913,22 @@ export default function RangeListingForm() {
               accept="image/*"
               multiple
               onChange={handleRangeImagesChange}
-              className="mt-1 focus:ring-2 focus:ring-orange-300 focus:border-orange-400 transition"
+              className="mb-4 focus:ring-2 focus:ring-orange-300 focus:border-orange-400 transition-all duration-200 rounded-lg"
               disabled={!isPremium && rangeImageFiles.length >= 9}
             />
             
             {rangeImages.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 {rangeImages.map((img, idx) => (
-                  <div key={idx} className="relative">
+                  <div key={idx} className="relative group">
                     <img
                       src={img}
                       alt={`Range ${idx + 1}`}
-                      className="w-24 h-20 object-cover rounded-lg border border-gray-200 shadow"
+                      className="w-full h-24 object-cover rounded-lg border-2 border-gray-200 shadow-sm hover:shadow-md transition-all duration-200"
                     />
                     <button
                       type="button"
-                      className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg hover:bg-red-600 transition-all duration-200 opacity-0 group-hover:opacity-100"
                       onClick={() => handleRemoveRangeImage(idx)}
                     >
                       ×
@@ -710,70 +939,74 @@ export default function RangeListingForm() {
             )}
           </div>
 
-          {/* Video Section */}
-          <div className="border border-purple-200 p-4 rounded-xl shadow-sm bg-gradient-to-r from-purple-50 to-pink-50">
-            <Label className="flex items-center gap-2 text-lg font-semibold mb-4">
-              <Video className="w-5 h-5 text-purple-500" /> Video Content
+          {/* Enhanced Video Section */}
+          <div className="p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200">
+            <Label className="flex items-center gap-2 text-lg font-semibold text-gray-700 mb-6">
+              <Video className="w-6 h-6 text-purple-500" /> Video Content
               {!isPremium && <span className="text-sm font-normal text-gray-500">(Choose one option)</span>}
             </Label>
             
-            {/* YouTube URL Input */}
-            <div className="mb-4">
-              <Label htmlFor="youtubeUrl" className="text-sm font-medium text-gray-700 mb-2 block">
-                YouTube Video URL
-              </Label>
-              <Input
-                id="youtubeUrl"
-                type="url"
-                value={youtubeUrl}
-                onChange={handleYouTubeUrlChange}
-                placeholder="https://www.youtube.com/watch?v=..."
-                className="focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition"
-                disabled={!isPremium && videoFile !== null}
-              />
-              {youtubeUrl && !validateYouTubeUrl(youtubeUrl) && (
-                <p className="text-red-500 text-sm mt-1">Please enter a valid YouTube URL</p>
-              )}
-            </div>
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* YouTube URL Input */}
+              <div className="space-y-3">
+                <Label htmlFor="youtubeUrl" className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <span className="w-6 h-6 bg-red-600 text-white text-xs font-bold rounded flex items-center justify-center">YT</span>
+                  YouTube Video URL
+                </Label>
+                <Input
+                  id="youtubeUrl"
+                  type="url"
+                  value={youtubeUrl}
+                  onChange={handleYouTubeUrlChange}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  className="focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition-all duration-200 rounded-lg"
+                  disabled={!isPremium && videoFile !== null}
+                />
+                {youtubeUrl && !validateYouTubeUrl(youtubeUrl) && (
+                  <p className="text-red-500 text-sm">Please enter a valid YouTube URL</p>
+                )}
+              </div>
 
-            {/* Video Upload (Premium users or if no YouTube URL for free users) */}
-            {(isPremium || (!isPremium && !youtubeUrl)) && (
-              <div>
-                <Label htmlFor="videoFile" className="text-sm font-medium text-gray-700 mb-2 block">
+              {/* Video Upload */}
+              <div className="space-y-3">
+                <Label htmlFor="videoFile" className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <Video className="w-4 h-4 text-purple-500" />
                   Upload Video File
-                  {!isPremium && <span className="text-xs text-gray-500 ml-2">(Max 100MB for free users)</span>}
-                  {isPremium && <span className="text-xs text-green-600 ml-2">(Max 500MB for premium users)</span>}
+                  <span className="text-xs text-gray-500">
+                    (Max {isPremium ? '500MB' : '100MB'})
+                  </span>
                 </Label>
                 <Input
                   id="videoFile"
                   type="file"
                   accept="video/*"
                   onChange={handleVideoChange}
-                  className="focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition"
+                  className="focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition-all duration-200 rounded-lg"
+                  disabled={!isPremium && youtubeUrl !== ''}
                 />
-                
-                {videoPreview && (
-                  <div className="mt-3">
-                    <video 
-                      src={videoPreview} 
-                      controls 
-                      className="w-full max-w-md h-48 object-cover rounded-lg border border-gray-200 shadow"
-                    />
-                    <button
-                      type="button"
-                      className="mt-2 px-3 py-1 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition"
-                      onClick={handleRemoveVideo}
-                    >
-                      Remove Video
-                    </button>
-                  </div>
-                )}
+              </div>
+            </div>
+            
+            {videoPreview && (
+              <div className="mt-6">
+                <video 
+                  src={videoPreview} 
+                  controls 
+                  className="w-full max-w-md h-48 object-cover rounded-lg border-2 border-gray-200 shadow-lg"
+                />
+                <Button
+                  type="button"
+                  onClick={handleRemoveVideo}
+                  className="mt-3 px-4 py-2 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition-all duration-200"
+                >
+                  Remove Video
+                </Button>
               </div>
             )}
 
             {!isPremium && (
-              <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-xs text-yellow-700">
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-700">
                   <strong>Free users:</strong> Choose either YouTube URL OR video upload, not both. 
                   Upgrade to Premium to use both options and upload larger videos.
                 </p>
@@ -781,23 +1014,23 @@ export default function RangeListingForm() {
             )}
           </div>
 
-          {/* Opening Hours - Modal Style */}
-          <div className="border border-orange-200 p-4 rounded-xl shadow-sm bg-orange-50">
-            <label className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-orange-500" />
+          {/* Enhanced Opening Hours Section */}
+          <div className="p-6 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl border border-blue-200">
+            <label className="text-lg font-semibold text-gray-700 mb-6 flex items-center gap-2">
+              <Clock className="w-5 h-5 text-blue-500" />
               Weekly Opening Hours
             </label>
-            <div className="space-y-3">
+            <div className="grid gap-4">
               {weekdays.map((day) => (
-                <div key={day} className="flex items-center gap-4 bg-white p-4 rounded-lg shadow-sm">
-                  <span className="w-24 font-medium text-gray-700 text-sm">{day}</span>
-                  <div className="flex items-center gap-3">
+                <div key={day} className="flex items-center gap-4 bg-white p-4 rounded-xl shadow-sm border hover:shadow-md transition-all duration-200">
+                  <span className="w-20 font-medium text-gray-700 text-sm">{day}</span>
+                  <div className="flex items-center gap-4 flex-1">
                     <div className="flex flex-col">
                       <label className="text-xs text-gray-500 mb-1">Start Time</label>
                       <select
                         value={structuredOpeningHours[day]?.start || ''}
                         onChange={(e) => handleOpeningHoursChange(day, 'start', e.target.value)}
-                        className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                        className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                       >
                         <option value="">Closed</option>
                         {timeOptions.map((time) => (
@@ -813,7 +1046,7 @@ export default function RangeListingForm() {
                       <select
                         value={structuredOpeningHours[day]?.end || ''}
                         onChange={(e) => handleOpeningHoursChange(day, 'end', e.target.value)}
-                        className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                        className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                         disabled={!structuredOpeningHours[day]?.start}
                       >
                         <option value="">Closed</option>
@@ -829,29 +1062,56 @@ export default function RangeListingForm() {
               ))}
             </div>
           </div>
-          
-          <div>
-            <Label htmlFor="maxSlots" className="flex items-center gap-2 font-semibold">
-              <Clock className="w-4 h-4 text-red-400" /> Max Bookings Per Slot (per hour)
-            </Label>
-            <Input
-              id="maxSlots"
-              type="number"
-              min={1}
-              value={maxBookingsPerSlot}
-              onChange={(e) => setMaxBookingsPerSlot(Number(e.target.value))}
-              required
-              className="mt-1 focus:ring-2 focus:ring-red-300 focus:border-red-400 transition"
-            />
-          </div>
 
+          {/* Enhanced Submit Button */}
           <Button
             type="submit"
             disabled={loading}
-            className="w-full py-3 text-lg font-bold bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg hover:from-purple-500 hover:to-blue-500 transition"
+            className="w-full py-4 text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg hover:from-purple-600 hover:to-blue-600 transition-all duration-300 transform hover:scale-[1.02] rounded-xl"
           >
-            {loading ? "Creating..." : "Create Range Listing"}
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Creating Range...
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <List className="w-5 h-5" />
+                Create Range Listing
+              </div>
+            )}
           </Button>
+
+          {/* Feature Summary */}
+          <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-200">
+            <h4 className="font-semibold text-gray-700 mb-3">✨ Enhanced Features Included:</h4>
+            <div className="grid md:grid-cols-2 gap-2 text-sm text-gray-600">
+              <div className="flex items-center gap-2">
+                <span className="text-green-500">1.</span>
+                <span>Interactive map for precise location</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-green-500">2.</span>
+                <span>Auto-fetch owner's default logo</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-green-500">3.</span>
+                <span>Enhanced image gallery management</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-green-500">4.</span>
+                <span>Flexible video content options</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-green-500">5.</span>
+                <span>Comprehensive opening hours setup</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-green-500">6.</span>
+                <span>Real-time address geocoding</span>
+              </div>
+            </div>
+          </div>
         </form>
       </div>
     </div>

@@ -72,7 +72,14 @@ export default function ShooterProfile() {
           setIsNewProfile(false);
           shootersSnapshot.forEach((doc) => {
             const data = doc.data() as ShooterProfile;
-            setProfile(data);
+            // Fix: Ensure preferredDisciplines is always an array
+            const safeData = {
+              ...data,
+              preferredDisciplines: Array.isArray(data.preferredDisciplines) 
+                ? data.preferredDisciplines 
+                : []
+            };
+            setProfile(safeData);
             setImage(data.profileImage || null);
           });
         }
@@ -90,12 +97,19 @@ export default function ShooterProfile() {
   };
 
   const handleDisciplineChange = (discipline: string) => {
-    setProfile(prev => ({
-      ...prev,
-      preferredDisciplines: prev.preferredDisciplines.includes(discipline)
-        ? prev.preferredDisciplines.filter(d => d !== discipline)
-        : [...prev.preferredDisciplines, discipline]
-    }));
+    setProfile(prev => {
+      // Fix: Ensure preferredDisciplines is always an array before using includes
+      const currentDisciplines = Array.isArray(prev.preferredDisciplines) 
+        ? prev.preferredDisciplines 
+        : [];
+      
+      return {
+        ...prev,
+        preferredDisciplines: currentDisciplines.includes(discipline)
+          ? currentDisciplines.filter(d => d !== discipline)
+          : [...currentDisciplines, discipline]
+      };
+    });
   };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,7 +139,14 @@ export default function ShooterProfile() {
     try {
       const docRef = doc(db, "shooters", user.uid);
       
-      let dataToSave = { ...profile, uid: user.uid };
+      let dataToSave = { 
+        ...profile, 
+        uid: user.uid,
+        // Ensure preferredDisciplines is always an array when saving
+        preferredDisciplines: Array.isArray(profile.preferredDisciplines) 
+          ? profile.preferredDisciplines 
+          : []
+      };
       
       if (isNewProfile) {
         dataToSave.totalPoints = 0;
@@ -213,7 +234,7 @@ export default function ShooterProfile() {
               <label key={discipline} className="flex items-center space-x-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={profile.preferredDisciplines.includes(discipline)}
+                  checked={(profile.preferredDisciplines || []).includes(discipline)}
                   onChange={() => handleDisciplineChange(discipline)}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
