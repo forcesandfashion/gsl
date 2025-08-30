@@ -91,8 +91,8 @@ const Header = () => {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-7 text-sm font-medium">
-          <Link to="/" className="hover:text-blue-600">
-            Home
+          <Link to="/shop" className="hover:text-blue-600">
+            Shop
           </Link>
           <Link to="/about" className="hover:text-blue-600">
             About Us
@@ -192,8 +192,8 @@ const Header = () => {
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-t border-gray-100 py-2">
           <nav className="flex flex-col space-y-3 px-4 py-2">
-            <Link to="/" className="py-2 hover:text-blue-600">
-              Home
+            <Link to="/shop" className="py-2 hover:text-blue-600">
+              Shop
             </Link>
             <Link to="/about" className="py-2 hover:text-blue-600">
               About Us

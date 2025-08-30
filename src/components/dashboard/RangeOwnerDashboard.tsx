@@ -17,19 +17,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Users, Calendar, MapPin, BarChart, ArrowRightCircle, CheckCircle, AlertTriangle, XCircle, TrendingUp, Clock, Star, Crown, Zap, Shield, Camera, Video, HeartHandshake, X } from "lucide-react";
+import { Users, Calendar, MapPin, BarChart, ArrowRightCircle, CheckCircle, AlertTriangle, XCircle, TrendingUp, Clock, Star, Crown, Zap, Shield, Camera, Video, HeartHandshake, X, FileText, Bot, MessageSquare, UserCheck } from "lucide-react";
 import RangeListingForm from "./RangeListingForm";
 import { db } from "@/firebase/config";
 import { collection, query, where, getDocs, orderBy, limit, doc, getDoc } from "firebase/firestore";
 import BlockUserModal from "./BlockedUserModal";
 import BuyPremiumModal from "./BuyPremiumModal";
+
 const eventStatus = {
   Open: { color: "bg-emerald-100 text-emerald-800 border border-emerald-200", icon: <CheckCircle className="inline w-4 h-4 mr-1" /> },
   "Almost Full": { color: "bg-amber-100 text-amber-800 border border-amber-200", icon: <AlertTriangle className="inline w-4 h-4 mr-1" /> },
   Full: { color: "bg-rose-100 text-rose-800 border border-rose-200", icon: <XCircle className="inline w-4 h-4 mr-1" /> },
 };
-
-// BuyPremium Modal Component
 
 const RangeOwnerDashboard = () => {
   const { signOut, user } = useAuth();
@@ -40,6 +39,8 @@ const RangeOwnerDashboard = () => {
     monthlyRevenue: 0,
     upcomingEvents: [],
     recentBookings: 0,
+    totalPosts: 0,
+    activeAssistants: 0,
     loading: true
   });
   const [isBlocked, setIsBlocked] = useState(false);
@@ -117,6 +118,37 @@ const RangeOwnerDashboard = () => {
       
       console.log("Found ranges:", ranges.length, ranges);
       const rangeIds = ranges.map(range => range.id);
+
+      // Fetch posts data
+      let totalPosts = 0;
+      try {
+        const postsQuery = query(
+          collection(db, "posts"),
+          where("authorId", "==", user.uid)
+        );
+        const postsSnapshot = await getDocs(postsQuery);
+        totalPosts = postsSnapshot.docs.length;
+        console.log("Total posts found:", totalPosts);
+      } catch (error) {
+        console.error("Error fetching posts:", error);
+      }
+
+      // Fetch assistant accounts data - only for premium users
+      let activeAssistants = 0;
+      if (isPremium) {
+        try {
+          const assistantsQuery = query(
+            collection(db, "assistant-accounts"),
+            where("ownerId", "==", user.uid),
+            where("status", "==", "active")
+          );
+          const assistantsSnapshot = await getDocs(assistantsQuery);
+          activeAssistants = assistantsSnapshot.docs.length;
+          console.log("Active assistants found:", activeAssistants);
+        } catch (error) {
+          console.error("Error fetching assistant accounts:", error);
+        }
+      }
 
       // Fetch events - Try multiple approaches
       let events: Array<any> = [];
@@ -338,7 +370,9 @@ const RangeOwnerDashboard = () => {
         totalMembers,
         monthlyRevenue,
         upcomingEvents: processedEvents.length,
-        recentBookings
+        recentBookings,
+        totalPosts,
+        activeAssistants
       });
 
       setDashboardData({
@@ -347,6 +381,8 @@ const RangeOwnerDashboard = () => {
         monthlyRevenue,
         upcomingEvents: processedEvents.slice(0, 5),
         recentBookings,
+        totalPosts,
+        activeAssistants,
         loading: false
       });
 
@@ -473,8 +509,9 @@ const RangeOwnerDashboard = () => {
           </div>
         )}
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Stats Cards - Now with 6 cards in 2 rows */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {/* Row 1 */}
           {/* Total Ranges */}
           <Card 
             onClick={() => navigate("/dashboard/range-owner/my-ranges")}
@@ -538,6 +575,7 @@ const RangeOwnerDashboard = () => {
             </CardContent>
           </Card>
 
+          {/* Row 2 */}
           {/* Upcoming Events */}
           <Card 
             onClick={() => navigate("/dashboard/range-owner/events")}
@@ -559,6 +597,78 @@ const RangeOwnerDashboard = () => {
               </p>
             </CardContent>
           </Card>
+
+          {/* Posts */}
+          <Card 
+            onClick={() => navigate("/dashboard/range-owner/post-range-owner")}
+            className="bg-gradient-to-br from-rose-50 to-rose-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 group"
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-semibold text-rose-900">My Posts</CardTitle>
+              <div className="p-2 bg-rose-500 rounded-lg group-hover:bg-rose-600 transition-colors">
+                <FileText className="h-5 w-5 text-white" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-rose-900 mb-1">
+                {dashboardData.loading ? "..." : dashboardData.totalPosts}
+              </div>
+              <p className="text-xs text-rose-700 font-medium flex items-center gap-1">
+                <MessageSquare className="w-3 h-3" />
+                Published content
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Assistant Accounts - Only show for premium users */}
+          {isPremium ? (
+            <Card 
+              onClick={() => navigate("/dashboard/range-owner/assistant-accounts")}
+              className="bg-gradient-to-br from-cyan-50 to-cyan-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 group"
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-semibold text-cyan-900">Assistant Accounts</CardTitle>
+                <div className="p-2 bg-cyan-500 rounded-lg group-hover:bg-cyan-600 transition-colors">
+                  <Bot className="h-5 w-5 text-white" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-cyan-900 mb-1">
+                  {dashboardData.loading ? "..." : dashboardData.activeAssistants}
+                </div>
+                <p className="text-xs text-cyan-700 font-medium flex items-center gap-1">
+                  <UserCheck className="w-3 h-3" />
+                  Active assistants
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card 
+              onClick={() => setShowPremiumModal(true)}
+              className="bg-gradient-to-br from-slate-50 to-slate-100 border-2 border-dashed border-slate-300 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 group relative overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/10 to-yellow-600/10"></div>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+                <CardTitle className="text-sm font-semibold text-slate-600 flex items-center gap-2">
+                  Assistant Accounts
+                  <Crown className="w-4 h-4 text-yellow-500" />
+                </CardTitle>
+                <div className="p-2 bg-slate-400 rounded-lg group-hover:bg-yellow-500 transition-colors">
+                  <Bot className="h-5 w-5 text-white" />
+                </div>
+              </CardHeader>
+              <CardContent className="relative">
+                <div className="text-3xl font-bold text-slate-600 mb-1 flex items-center gap-2">
+                  <Shield className="w-8 h-8 text-yellow-500" />
+                  Premium
+                </div>
+                <p className="text-xs text-slate-500 font-medium flex items-center gap-1">
+                  <Crown className="w-3 h-3 text-yellow-500" />
+                  Upgrade to access
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Scheduled Events Table */}
@@ -699,7 +809,6 @@ const RangeOwnerDashboard = () => {
       <BuyPremiumModal 
         isOpen={showPremiumModal} 
         onClose={() => setShowPremiumModal(false)}
-        
       />
     </div>
   );

@@ -114,3 +114,115 @@ exports.verifyPayment = functions.https.onRequest(async (req, res) => {
     res.status(400).send("Invalid signature");
   }
 });
+
+
+exports.createManagerHttp = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    try {
+      // Verify authentication manually
+      const idToken = req.headers.authorization?.split("Bearer ")[1];
+      if (!idToken) {
+        return res.status(401).json({ error: "No auth token provided" });
+      }
+      
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const ownerId = decodedToken.uid;
+      console.log("✅ Authenticated user:", ownerId);
+      
+      // Parse request body
+      const { name, email, password } = req.body;
+      if (!email || !password || !name) {
+        return res.status(400).json({ error: "Name, email and password are required." });
+      }
+      
+      // Create user in Firebase Auth with role in displayName (consistent with your signup)
+      const userRecord = await admin.auth().createUser({
+        email,
+        password,
+        displayName: `${name}|manager`, // Store role in displayName like your signup
+      });
+      
+      // Create manager document in Firestore
+      await db
+        .collection("range-owners")
+        .doc(ownerId)
+        .collection("managers")
+        .doc(userRecord.uid)
+        .set({
+          uid: userRecord.uid,
+          name,
+          email,
+          role: "manager",
+          ownerId,
+          status: "active",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      
+      // Also create in the main managers collection for consistency with your auth system
+      await db
+        .collection("managers")
+        .doc(userRecord.uid)
+        .set({
+          uid: userRecord.uid,
+          fullName: name,
+          email,
+          role: "manager",
+          ownerId,
+          status: "active",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      
+      return res.status(200).json({
+        message: "Manager created successfully",
+        managerId: userRecord.uid,
+      });
+      
+    } catch (err) {
+      console.error("Error creating manager:", err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+});
+
+exports.deleteManagerHttp = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    try {
+      // Verify authentication manually
+      const idToken = req.headers.authorization?.split("Bearer ")[1];
+      if (!idToken) {
+        return res.status(401).json({ error: "No auth token provided" });
+      }
+      
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const ownerId = decodedToken.uid;
+      
+      console.log("✅ Authenticated user:", ownerId);
+      
+      // Parse request body
+      const { managerUid } = req.body;
+      
+      if (!managerUid) {
+        return res.status(400).json({ error: "Manager UID is required." });
+      }
+      
+      // Delete from Firebase Auth
+      await admin.auth().deleteUser(managerUid);
+      
+      // Delete from Firestore
+      await db
+        .collection("range-owners")
+        .doc(ownerId)
+        .collection("managers")
+        .doc(managerUid)
+        .delete();
+      
+      return res.status(200).json({
+        message: "Manager deleted successfully",
+        managerId: managerUid,
+      });
+    } catch (err) {
+      console.error("Error deleting manager:", err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+});

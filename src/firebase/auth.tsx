@@ -26,7 +26,8 @@ type UserRole =
   | "dietician"
   | "mental_trainer"
   | "franchise_owner"
-  | "admin";
+  | "admin"
+  | "manager";
 
 interface AuthContextType {
   user: User | null;
@@ -125,7 +126,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (!role) {
           try {
             // Check different collections based on potential roles
-            const collections = ['shooters', 'range-owners', 'admins', 'technical-coaches', 'dieticians', 'mental-trainers', 'franchise-owners'];
+            const collections = ['shooters', 'range-owners', 'admins','manager', 'technical-coaches', 'dieticians', 'mental-trainers', 'franchise-owners'];
             
             for (const collection of collections) {
               const userDoc = await getDoc(doc(db, collection, user.uid));
