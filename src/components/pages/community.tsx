@@ -218,9 +218,7 @@ export default function CommunityPage() {
 
   // Load posts with pagination
   const loadPosts = async (isInitial = false) => {
-    if (loading || (!hasMore && !isInitial)) return;
-    
-    setLoading(true);
+   
     
     try {
       console.log('Loading posts...', { isInitial, hasMore });
@@ -228,14 +226,12 @@ export default function CommunityPage() {
       // First, let's try a simple query without status filter to see if posts exist
       let postsQuery = query(
         collection(db, 'posts'),
-        orderBy('createdAt', 'desc'),
         limit(6)
       );
 
       if (!isInitial && lastVisible) {
         postsQuery = query(
           collection(db, 'posts'),
-          orderBy('createdAt', 'desc'),
           startAfter(lastVisible),
           limit(6)
         );
