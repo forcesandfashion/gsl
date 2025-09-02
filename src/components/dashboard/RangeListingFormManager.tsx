@@ -44,6 +44,13 @@ interface RangeOwner {
   // other fields...
 }
 
+interface Manager {
+  ownerId: string;
+  email: string;
+  name?: string;
+  // other fields...
+}
+
 interface AuditLog {
   action: string;
   actionId: string;
@@ -142,6 +149,8 @@ export default function RangeListingForm() {
   const [ownerLogoUrl, setOwnerLogoUrl] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(false);
   const [ownerId, setOwnerId] = useState<string | null>(null);
+  const [managerData, setManagerData] = useState<Manager | null>(null);
+  const [fetchingManagerData, setFetchingManagerData] = useState(true);
   
   const [formData, setFormData] = useState<RangeFormData>({
     name: "",
@@ -205,8 +214,8 @@ export default function RangeListingForm() {
         action: "RANGE_CREATED",
         actionId: rangeId,
         timestamp: serverTimestamp(),
-        managerId: user.uid,
-        managerEmail: user.email || '',
+        managerId: ownerId, // Use ownerId instead of user.uid
+        managerEmail: user.email || '', // Keep manager's email for tracking who performed the action
         details: {
           rangeName: rangeData.name,
           rangeId: rangeId,
@@ -218,7 +227,12 @@ export default function RangeListingForm() {
           hasLogo: !!rangeData.logoUrl,
           imageCount: rangeData.rangeImages?.length || 0,
           hasVideo: !!(rangeData.videoUrl || rangeData.youtubeUrl),
-          videoType: rangeData.videoUrl ? 'upload' : rangeData.youtubeUrl ? 'youtube' : null
+          videoType: rangeData.videoUrl ? 'upload' : rangeData.youtubeUrl ? 'youtube' : null,
+          // Add manager info to details for better tracking
+          createdByManager: {
+            managerId: user.uid,
+            managerEmail: user.email || ''
+          }
         }
       };
 
@@ -232,36 +246,65 @@ export default function RangeListingForm() {
     }
   };
 
-  // Fetch owner logo - removed premium check since managers have access to premium features
+  // Fetch manager data and then owner logo
   useEffect(() => {
-    const fetchOwnerLogo = async () => {
+    const fetchManagerAndOwnerData = async () => {
       if (!user) return;
       
+      setFetchingManagerData(true);
+      
       try {
-        const ownerDoc = await getDoc(doc(db, "range-owners", user.uid));
-        if (ownerDoc.exists()) {
-          const ownerData = ownerDoc.data() as RangeOwner;
-          setOwnerId(user.uid);
+        // First, fetch manager data to get the ownerId
+        const managerDoc = await getDoc(doc(db, "managers", user.uid));
+        
+        if (managerDoc.exists()) {
+          const managerInfo = managerDoc.data() as Manager;
+          setManagerData(managerInfo);
+          const actualOwnerId = managerInfo.ownerId;
+          setOwnerId(actualOwnerId);
           
-          // Set owner logo as default if exists
-          if (ownerData.logoUrl) {
-            setOwnerLogoUrl(ownerData.logoUrl);
-            setLogo(ownerData.logoUrl);
+          // Now fetch the owner's data using the actual ownerId
+          const ownerDoc = await getDoc(doc(db, "range-owners", actualOwnerId));
+          if (ownerDoc.exists()) {
+            const ownerData = ownerDoc.data() as RangeOwner;
+            
+            // Set owner logo as default if exists
+            if (ownerData.logoUrl) {
+              setOwnerLogoUrl(ownerData.logoUrl);
+              setLogo(ownerData.logoUrl);
+            }
+          } else {
+            console.warn("Owner document not found for ownerId:", actualOwnerId);
+            toast({
+              title: "Warning",
+              description: "Could not fetch owner data. Some features may be limited.",
+              variant: "destructive"
+            });
           }
         } else {
-          // If not found as owner, this might be a manager
-          // You might need to fetch manager data to get the actual ownerId
-          // For now, assuming user.uid is the ownerId
-          setOwnerId(user.uid);
+          // If manager document doesn't exist, this user might not be a valid manager
+          console.error("Manager document not found for user:", user.uid);
+          toast({
+            title: "Access Error",
+            description: "You are not registered as a manager. Please contact the system administrator.",
+            variant: "destructive"
+          });
+          return;
         }
       } catch (error) {
-        console.error("Error fetching owner data:", error);
-        setOwnerId(user.uid); // Fallback to user.uid
+        console.error("Error fetching manager/owner data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch manager data. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setFetchingManagerData(false);
       }
     };
 
-    fetchOwnerLogo();
-  }, [user]);
+    fetchManagerAndOwnerData();
+  }, [user, toast]);
 
   // Load Google Maps Script
   useEffect(() => {
@@ -542,14 +585,21 @@ export default function RangeListingForm() {
       return;
     }
 
-    // No premium validation needed for managers since they have premium access
+    if (!ownerId) {
+      toast({
+        title: "Error",
+        description: "Owner ID not found. Please refresh the page and try again.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setLoading(true);
 
     try {
       let logoUrl = "";
       if (logoFile) {
-        logoUrl = await uploadFile(logoFile, `ranges/${user.uid}/logo/${Date.now()}_${logoFile.name}`);
+        logoUrl = await uploadFile(logoFile, `ranges/${ownerId}/logo/${Date.now()}_${logoFile.name}`);
       } else if (logo && logo !== ownerLogoUrl) {
         // If logo is set but not the owner's default logo, it means user uploaded a new one
         logoUrl = logo;
@@ -560,19 +610,19 @@ export default function RangeListingForm() {
 
       let mainImageUrl = "";
       if (imageFile) {
-        mainImageUrl = await uploadFile(imageFile, `ranges/${user.uid}/main/${Date.now()}_${imageFile.name}`);
+        mainImageUrl = await uploadFile(imageFile, `ranges/${ownerId}/main/${Date.now()}_${imageFile.name}`);
       }
 
       const rangeImageUrls: string[] = [];
       for (let i = 0; i < rangeImageFiles.length; i++) {
         const file = rangeImageFiles[i];
-        const url = await uploadFile(file, `ranges/${user.uid}/gallery/${Date.now()}_${i}_${file.name}`);
+        const url = await uploadFile(file, `ranges/${ownerId}/gallery/${Date.now()}_${i}_${file.name}`);
         rangeImageUrls.push(url);
       }
 
       let videoUrl = "";
       if (videoFile) {
-        videoUrl = await uploadFile(videoFile, `ranges/${user.uid}/video/${Date.now()}_${videoFile.name}`);
+        videoUrl = await uploadFile(videoFile, `ranges/${ownerId}/video/${Date.now()}_${videoFile.name}`);
       }
 
       const rangeData = {
@@ -590,12 +640,17 @@ export default function RangeListingForm() {
         pricePerHour: formData.pricePerHour,
         latitude: formData.latitude || null,
         longitude: formData.longitude || null,
-        ownerId: user.uid,
-        ownerEmail: user.email,
+        ownerId: ownerId, // Use the actual ownerId from manager document
+        ownerEmail: managerData?.email || user.email, // Use manager's email or fallback
         ownerPremium: true, // Managers have premium access
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        status: "active"
+        status: "active",
+        // Add manager information for tracking
+        createdByManager: {
+          managerId: user.uid,
+          managerEmail: user.email || ''
+        }
       };
 
       // Create the range document
@@ -606,7 +661,7 @@ export default function RangeListingForm() {
 
       toast({
         title: "Success",
-        description: `Range listing created successfully with ID: ${docRef.id}`,
+        description: `Range listing created successfully for Owner ID: ${ownerId}`,
       });
 
       // Reset form
@@ -645,6 +700,40 @@ export default function RangeListingForm() {
     }
   };
 
+  // Show loading state while fetching manager data
+  if (fetchingManagerData) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="rounded-3xl shadow-2xl bg-gradient-to-br from-white via-blue-50 to-purple-50 p-8 border border-blue-100">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <h2 className="text-xl font-semibold text-gray-700">Loading Manager Data...</h2>
+            <p className="text-gray-500 mt-2">Fetching your manager information and owner details</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if no valid manager data
+  if (!managerData || !ownerId) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="rounded-3xl shadow-2xl bg-gradient-to-br from-red-50 via-white to-red-50 p-8 border border-red-200">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold text-red-700 mb-4">Access Denied</h2>
+            <p className="text-red-600 mb-4">
+              You are not registered as a manager or your manager data could not be found.
+            </p>
+            <p className="text-gray-600">
+              Please contact the system administrator to get manager access.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="rounded-3xl shadow-2xl bg-gradient-to-br from-white via-blue-50 to-purple-50 p-8 border border-blue-100">
@@ -656,12 +745,13 @@ export default function RangeListingForm() {
           {/* Manager Status Display */}
           <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold shadow-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white">
             <Crown className="w-5 h-5" />
-            Manager Access - Full Features Available
+            Manager Access - Owner ID: {ownerId}
           </div>
           
           <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl shadow-sm">
             <h4 className="font-semibold text-blue-800 mb-2">Manager Features:</h4>
             <div className="text-sm text-blue-700 space-y-1">
+              <p>• Creating range for Owner: {ownerId}</p>
               <p>• Unlimited range images</p>
               <p>• Both YouTube video AND file upload (max 500MB)</p>
               <p>• Interactive map for precise location</p>
@@ -1088,32 +1178,36 @@ export default function RangeListingForm() {
             <h4 className="font-semibold text-gray-700 mb-3">✨ Manager Features Available:</h4>
             <div className="grid md:grid-cols-2 gap-2 text-sm text-gray-600">
               <div className="flex items-center gap-2">
-                <span className="text-green-500">1.</span>
+                <span className="text-green-500">✓</span>
                 <span>Interactive map for precise location</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-green-500">2.</span>
+                <span className="text-green-500">✓</span>
                 <span>Auto-fetch owner's default logo</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-green-500">3.</span>
+                <span className="text-green-500">✓</span>
                 <span>Unlimited image gallery uploads</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-green-500">4.</span>
+                <span className="text-green-500">✓</span>
                 <span>Both YouTube and video upload (500MB max)</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-green-500">5.</span>
+                <span className="text-green-500">✓</span>
                 <span>Comprehensive opening hours setup</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-green-500">6.</span>
+                <span className="text-green-500">✓</span>
                 <span>Real-time address geocoding</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-green-500">7.</span>
+                <span className="text-green-500">✓</span>
                 <span>Automated audit logging for owner tracking</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-green-500">✓</span>
+                <span>Creating for Owner: {ownerId}</span>
               </div>
             </div>
           </div>
