@@ -645,7 +645,7 @@ export default function RangeListingForm() {
         ownerPremium: true, // Managers have premium access
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        status: "active",
+        status: "pending",
         // Add manager information for tracking
         createdByManager: {
           managerId: user.uid,

@@ -27,22 +27,28 @@ import {
   ChevronRight,
   MoreHorizontal,
   Star,
-  Calendar
+  Calendar,
+  Check,
+  X,
+  ShieldCheck,
+  ShieldOff
 } from 'lucide-react';
 
 const AdminActiveRanges = () => {
   const [ranges, setRanges] = useState([]);
-  const [filteredRanges, setFilteredRanges] = useState([]);
-  const [paginatedRanges, setPaginatedRanges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState('active');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedRange, setSelectedRange] = useState(null);
   const [actionLoading, setActionLoading] = useState({});
   
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
+  // Pagination state for each tab
+  const [currentPage, setCurrentPage] = useState({
+    active: 1,
+    blocked: 1,
+    pending: 1
+  });
   const [rangesPerPage] = useState(10);
 
   // Fetch all ranges
@@ -50,38 +56,10 @@ const AdminActiveRanges = () => {
     fetchRanges();
   }, []);
 
-  // Filter ranges based on search term and status
+  // Reset search and pagination when switching tabs
   useEffect(() => {
-    let filtered = ranges;
-
-    // Filter by status
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(range => range.status === statusFilter);
-    }
-
-    // Filter by search term
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(range => 
-        range.name?.toLowerCase().includes(term) ||
-        range.ownerEmail?.toLowerCase().includes(term) ||
-        range.ownerName?.toLowerCase().includes(term) ||
-        range.address?.toLowerCase().includes(term)
-      );
-    }
-
-    setFilteredRanges(filtered);
-    setCurrentPage(1); // Reset to first page when filters change
-  }, [ranges, searchTerm, statusFilter]);
-
-  // Paginate filtered ranges
-  useEffect(() => {
-    const startIndex = (currentPage - 1) * rangesPerPage;
-    const endIndex = startIndex + rangesPerPage;
-    setPaginatedRanges(filteredRanges.slice(startIndex, endIndex));
-  }, [filteredRanges, currentPage, rangesPerPage]);
-
-  const totalPages = Math.ceil(filteredRanges.length / rangesPerPage);
+    setSearchTerm('');
+  }, [activeTab]);
 
   const fetchRanges = async () => {
     try {
@@ -104,34 +82,122 @@ const AdminActiveRanges = () => {
     }
   };
 
-  const handleBlockRange = async (rangeId, currentStatus) => {
+  // Filter ranges by tab and search
+  const getFilteredRanges = (status) => {
+    let filtered = ranges.filter(range => range.status === status);
+
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(range => 
+        range.name?.toLowerCase().includes(term) ||
+        range.ownerEmail?.toLowerCase().includes(term) ||
+        range.ownerName?.toLowerCase().includes(term) ||
+        range.address?.toLowerCase().includes(term)
+      );
+    }
+
+    return filtered;
+  };
+
+  // Get paginated ranges for current tab
+  const getPaginatedRanges = (status) => {
+    const filtered = getFilteredRanges(status);
+    const startIndex = (currentPage[status] - 1) * rangesPerPage;
+    const endIndex = startIndex + rangesPerPage;
+    return filtered.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = (status) => {
+    const filtered = getFilteredRanges(status);
+    return Math.ceil(filtered.length / rangesPerPage);
+  };
+
+  const handlePageChange = (status, page) => {
+    setCurrentPage(prev => ({
+      ...prev,
+      [status]: page
+    }));
+  };
+
+  // Accept pending range (change status to active)
+  const handleAcceptRange = async (rangeId) => {
     try {
       setActionLoading(prev => ({ ...prev, [rangeId]: true }));
       
-      const newStatus = currentStatus === 'active' ? 'blocked' : 'active';
       const rangeRef = doc(db, 'ranges', rangeId);
-      
       await updateDoc(rangeRef, {
-        status: newStatus,
+        status: 'active',
         updatedAt: new Date()
       });
 
-      // Update local state
       setRanges(prev => prev.map(range => 
         range.id === rangeId 
-          ? { ...range, status: newStatus }
+          ? { ...range, status: 'active' }
           : range
       ));
 
-      alert(`Range ${newStatus === 'blocked' ? 'blocked' : 'unblocked'} successfully!`);
+      alert('Range accepted successfully!');
     } catch (error) {
-      console.error('Error updating range status:', error);
-      alert('Error updating range status. Please try again.');
+      console.error('Error accepting range:', error);
+      alert('Error accepting range. Please try again.');
     } finally {
       setActionLoading(prev => ({ ...prev, [rangeId]: false }));
     }
   };
 
+  // Block active range
+  const handleBlockRange = async (rangeId) => {
+    try {
+      setActionLoading(prev => ({ ...prev, [rangeId]: true }));
+      
+      const rangeRef = doc(db, 'ranges', rangeId);
+      await updateDoc(rangeRef, {
+        status: 'blocked',
+        updatedAt: new Date()
+      });
+
+      setRanges(prev => prev.map(range => 
+        range.id === rangeId 
+          ? { ...range, status: 'blocked' }
+          : range
+      ));
+
+      alert('Range blocked successfully!');
+    } catch (error) {
+      console.error('Error blocking range:', error);
+      alert('Error blocking range. Please try again.');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [rangeId]: false }));
+    }
+  };
+
+  // Unblock blocked range
+  const handleUnblockRange = async (rangeId) => {
+    try {
+      setActionLoading(prev => ({ ...prev, [rangeId]: true }));
+      
+      const rangeRef = doc(db, 'ranges', rangeId);
+      await updateDoc(rangeRef, {
+        status: 'active',
+        updatedAt: new Date()
+      });
+
+      setRanges(prev => prev.map(range => 
+        range.id === rangeId 
+          ? { ...range, status: 'active' }
+          : range
+      ));
+
+      alert('Range unblocked successfully!');
+    } catch (error) {
+      console.error('Error unblocking range:', error);
+      alert('Error unblocking range. Please try again.');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [rangeId]: false }));
+    }
+  };
+
+  // Delete range (used for reject and delete)
   const handleDeleteRange = async () => {
     if (!selectedRange) return;
 
@@ -141,7 +207,6 @@ const AdminActiveRanges = () => {
       const rangeRef = doc(db, 'ranges', selectedRange.id);
       await deleteDoc(rangeRef);
 
-      // Update local state
       setRanges(prev => prev.filter(range => range.id !== selectedRange.id));
       
       setShowDeleteModal(false);
@@ -192,12 +257,104 @@ const AdminActiveRanges = () => {
     );
   };
 
+  const renderActionButtons = (range) => {
+    const isLoading = actionLoading[range.id];
+
+    switch (activeTab) {
+      case 'active':
+        return (
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleBlockRange(range.id)}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <div className="h-4 w-4 animate-spin border-2 border-current border-t-transparent rounded-full"></div>
+              ) : (
+                <>
+                  <ShieldOff className="h-4 w-4" />
+                  Block
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => {
+                setSelectedRange(range);
+                setShowDeleteModal(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-all text-sm font-medium border border-red-200"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </button>
+          </div>
+        );
+
+      case 'blocked':
+        return (
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleUnblockRange(range.id)}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <div className="h-4 w-4 animate-spin border-2 border-current border-t-transparent rounded-full"></div>
+              ) : (
+                <>
+                  <ShieldCheck className="h-4 w-4" />
+                  Unblock
+                </>
+              )}
+            </button>
+          </div>
+        );
+
+      case 'pending':
+        return (
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleAcceptRange(range.id)}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <div className="h-4 w-4 animate-spin border-2 border-current border-t-transparent rounded-full"></div>
+              ) : (
+                <>
+                  <Check className="h-4 w-4" />
+                  Accept
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => {
+                setSelectedRange(range);
+                setShowDeleteModal(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-all text-sm font-medium border border-red-200"
+            >
+              <X className="h-4 w-4" />
+              Reject
+            </button>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   const renderPagination = () => {
+    const totalPages = getTotalPages(activeTab);
+    const currentTabPage = currentPage[activeTab];
+    
     if (totalPages <= 1) return null;
 
     const pageNumbers = [];
     const maxVisiblePages = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let startPage = Math.max(1, currentTabPage - Math.floor(maxVisiblePages / 2));
     let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
 
     if (endPage - startPage + 1 < maxVisiblePages) {
@@ -208,18 +365,20 @@ const AdminActiveRanges = () => {
       pageNumbers.push(i);
     }
 
+    const filteredCount = getFilteredRanges(activeTab).length;
+    const startIndex = (currentTabPage - 1) * rangesPerPage + 1;
+    const endIndex = Math.min(currentTabPage * rangesPerPage, filteredCount);
+
     return (
       <div className="flex items-center justify-between mt-8 px-6 py-4 bg-white border-t">
         <div className="text-sm text-gray-700">
-          Showing {((currentPage - 1) * rangesPerPage) + 1} to{' '}
-          {Math.min(currentPage * rangesPerPage, filteredRanges.length)} of{' '}
-          {filteredRanges.length} results
+          Showing {startIndex} to {endIndex} of {filteredCount} results
         </div>
         
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-            disabled={currentPage === 1}
+            onClick={() => handlePageChange(activeTab, Math.max(1, currentTabPage - 1))}
+            disabled={currentTabPage === 1}
             className="p-2 rounded-lg border hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -228,7 +387,7 @@ const AdminActiveRanges = () => {
           {startPage > 1 && (
             <>
               <button
-                onClick={() => setCurrentPage(1)}
+                onClick={() => handlePageChange(activeTab, 1)}
                 className="px-3 py-2 rounded-lg border hover:bg-gray-50"
               >
                 1
@@ -240,9 +399,9 @@ const AdminActiveRanges = () => {
           {pageNumbers.map(page => (
             <button
               key={page}
-              onClick={() => setCurrentPage(page)}
+              onClick={() => handlePageChange(activeTab, page)}
               className={`px-3 py-2 rounded-lg border ${
-                currentPage === page
+                currentTabPage === page
                   ? 'bg-blue-600 text-white border-blue-600'
                   : 'hover:bg-gray-50'
               }`}
@@ -255,7 +414,7 @@ const AdminActiveRanges = () => {
             <>
               {endPage < totalPages - 1 && <MoreHorizontal className="h-4 w-4 text-gray-400" />}
               <button
-                onClick={() => setCurrentPage(totalPages)}
+                onClick={() => handlePageChange(activeTab, totalPages)}
                 className="px-3 py-2 rounded-lg border hover:bg-gray-50"
               >
                 {totalPages}
@@ -264,8 +423,8 @@ const AdminActiveRanges = () => {
           )}
 
           <button
-            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-            disabled={currentPage === totalPages}
+            onClick={() => handlePageChange(activeTab, Math.min(totalPages, currentTabPage + 1))}
+            disabled={currentTabPage === totalPages}
             className="p-2 rounded-lg border hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white"
           >
             <ChevronRight className="h-4 w-4" />
@@ -274,6 +433,33 @@ const AdminActiveRanges = () => {
       </div>
     );
   };
+
+  const tabs = [
+    { 
+      key: 'active', 
+      label: 'Active', 
+      count: ranges.filter(r => r.status === 'active').length,
+      color: 'text-emerald-600',
+      bgColor: 'bg-emerald-50'
+    },
+    { 
+      key: 'blocked', 
+      label: 'Blocked', 
+      count: ranges.filter(r => r.status === 'blocked').length,
+      color: 'text-red-600',
+      bgColor: 'bg-red-50'
+    },
+    { 
+      key: 'pending', 
+      label: 'Pending', 
+      count: ranges.filter(r => r.status === 'pending').length,
+      color: 'text-amber-600',
+      bgColor: 'bg-amber-50'
+    }
+  ];
+
+  const currentRanges = getPaginatedRanges(activeTab);
+  const currentFilteredCount = getFilteredRanges(activeTab).length;
 
   if (loading) {
     return (
@@ -303,11 +489,38 @@ const AdminActiveRanges = () => {
           </div>
         </div>
 
-        {/* Search and Filter Section */}
+        {/* Tabs */}
+        <div className="bg-white border-b">
+          <div className="flex space-x-8 px-6">
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`py-4 px-2 border-b-2 font-medium text-sm transition-all ${
+                  activeTab === tab.key
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {tab.label}
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    activeTab === tab.key 
+                      ? `${tab.bgColor} ${tab.color}` 
+                      : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {tab.count}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Search Section */}
         <div className="p-6">
           <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
-            <div className="flex flex-col lg:flex-row gap-4">
-              {/* Search Input */}
+            <div className="flex items-center gap-4">
               <div className="flex-1 relative">
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                 <input
@@ -318,60 +531,34 @@ const AdminActiveRanges = () => {
                   className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 />
               </div>
-
-              {/* Status Filter */}
-              <div className="relative min-w-[200px]">
-                <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full pl-12 pr-8 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white transition-all"
-                >
-                  <option value="all">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="blocked">Blocked</option>
-                  <option value="pending">Pending</option>
-                </select>
-              </div>
             </div>
 
-            {/* Stats Row */}
-            <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-100">
+            <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
               <div className="text-sm text-gray-600">
-                Showing {paginatedRanges.length} of {filteredRanges.length} ranges
-                {searchTerm && ` (filtered from ${ranges.length} total)`}
-              </div>
-              <div className="flex gap-4 text-sm">
-                <span className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                  Active: {ranges.filter(r => r.status === 'active').length}
-                </span>
-                <span className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                  Blocked: {ranges.filter(r => r.status === 'blocked').length}
-                </span>
+                Showing {currentRanges.length} of {currentFilteredCount} {activeTab} ranges
+                {searchTerm && ` (filtered)`}
               </div>
             </div>
           </div>
 
           {/* Ranges Grid */}
-          {paginatedRanges.length === 0 ? (
+          {currentRanges.length === 0 ? (
             <div className="bg-white rounded-xl shadow-sm border">
               <div className="text-center py-16">
                 <div className="text-gray-300 mb-4">
                   <MapPin className="h-20 w-20 mx-auto" />
                 </div>
-                <h3 className="text-xl font-medium text-gray-900 mb-2">No ranges found</h3>
+                <h3 className="text-xl font-medium text-gray-900 mb-2">No {activeTab} ranges found</h3>
                 <p className="text-gray-500 max-w-md mx-auto">
                   {searchTerm 
-                    ? 'No ranges match your search criteria. Try adjusting your filters or search terms.' 
-                    : 'No ranges match the current filters. Try changing the status filter.'}
+                    ? 'No ranges match your search criteria. Try adjusting your search terms.' 
+                    : `No ${activeTab} ranges available at the moment.`}
                 </p>
               </div>
             </div>
           ) : (
             <div className="space-y-4">
-              {paginatedRanges.map((range) => (
+              {currentRanges.map((range) => (
                 <div key={range.id} className="bg-white rounded-xl shadow-sm border hover:shadow-md transition-all duration-200">
                   <div className="p-6">
                     {/* Header */}
@@ -391,37 +578,7 @@ const AdminActiveRanges = () => {
                       </div>
                       
                       {/* Action Buttons */}
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleBlockRange(range.id, range.status)}
-                          disabled={actionLoading[range.id]}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                            range.status === 'active'
-                              ? 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'
-                              : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
-                          } disabled:opacity-50 disabled:cursor-not-allowed`}
-                        >
-                          {actionLoading[range.id] ? (
-                            <div className="h-4 w-4 animate-spin border-2 border-current border-t-transparent rounded-full"></div>
-                          ) : (
-                            <>
-                              <Shield className="h-4 w-4" />
-                              {range.status === 'active' ? 'Block' : 'Unblock'}
-                            </>
-                          )}
-                        </button>
-                        
-                        <button
-                          onClick={() => {
-                            setSelectedRange(range);
-                            setShowDeleteModal(true);
-                          }}
-                          className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-all text-sm font-medium border border-red-200"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Delete
-                        </button>
-                      </div>
+                      {renderActionButtons(range)}
                     </div>
 
                     {/* Range Details Grid */}
@@ -563,21 +720,11 @@ const AdminActiveRanges = () => {
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete/Reject Confirmation Modal */}
       {showDeleteModal && selectedRange && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl">
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-3 bg-red-100 rounded-full">
-                <AlertTriangle className="h-6 w-6 text-red-600" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900">Delete Range</h3>
-            </div>
-            
-            <div className="mb-6">
-              <p className="text-gray-600 mb-3">
-                Are you sure you want to delete this range? This action cannot be undone.
-              </p>
               <div className="p-3 bg-gray-50 rounded-lg border-l-4 border-red-400">
                 <p className="font-medium text-gray-900">{selectedRange.name}</p>
                 <p className="text-sm text-gray-600">{selectedRange.address}</p>
@@ -603,10 +750,10 @@ const AdminActiveRanges = () => {
                 {actionLoading[selectedRange.id] ? (
                   <div className="flex items-center gap-2">
                     <div className="h-4 w-4 animate-spin border-2 border-white border-t-transparent rounded-full"></div>
-                    Deleting...
+                    {activeTab === 'pending' ? 'Rejecting...' : 'Deleting...'}
                   </div>
                 ) : (
-                  'Delete Range'
+                  activeTab === 'pending' ? 'Reject Range' : 'Delete Range'
                 )}
               </button>
             </div>
@@ -617,4 +764,4 @@ const AdminActiveRanges = () => {
   );
 };
 
-export default AdminActiveRanges;   
+export default AdminActiveRanges;

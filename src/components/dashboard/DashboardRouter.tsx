@@ -20,6 +20,9 @@ import AdminActiveRanges from "./AdminActiveRanges";
 import UserDocumentsPage from "./UserDocumentsPage";
 import PostRangeOwner from "./PostRangeOwner";
 import AssistantAccounts from "./AssistantAccounts";
+import DashboardShooterData from "./DashboardShooterData";
+import AdminEventsPage from "./AdminEventsPage";
+
 
 const DashboardRouter = () => {
   const { userRole, loading } = useAuth();
@@ -65,6 +68,8 @@ const DashboardRouter = () => {
       {/* Admin sub routes */}
       <Route path="admin/range-owners" element={<RangeOwnerList />} />
       <Route path="admin/ranges" element={<AdminActiveRanges />} />
+      <Route path="admin/shooter-data" element={<DashboardShooterData />} />
+      <Route path="admin/events" element={<AdminEventsPage />} />
       
       {/* Shooter sub-routes */}
       <Route path="shooter/bookings" element={<ShooterBooking />} />

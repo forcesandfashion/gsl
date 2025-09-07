@@ -576,7 +576,7 @@ export default function RangeListingForm() {
         ownerPremium: isPremium,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        status: "active"
+        status: "pending"
       };
 
       const docRef = await addDoc(collection(db, "ranges"), rangeData);

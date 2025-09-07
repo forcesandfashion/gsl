@@ -81,7 +81,7 @@ export default function EditRange({ range, isOpen, onClose, onUpdate, isPremium 
     images: range?.rangeImages || [],
     videoUrl: range?.videoUrl || "",
     youtubeUrl: range?.youtubeUrl || "",
-    status: range?.status || "active",
+    status: range?.status,
     structuredOpeningHours: range?.structuredOpeningHours || {
       Monday: { start: "", end: "" },
       Tuesday: { start: "", end: "" },
@@ -132,7 +132,7 @@ export default function EditRange({ range, isOpen, onClose, onUpdate, isPremium 
         images: range.rangeImages || [],
         videoUrl: range.videoUrl || "",
         youtubeUrl: range.youtubeUrl || "",
-        status: range.status || "active",
+        status: range.status ,
         structuredOpeningHours: range.structuredOpeningHours || {
           Monday: { start: "", end: "" },
           Tuesday: { start: "", end: "" },
@@ -300,12 +300,7 @@ export default function EditRange({ range, isOpen, onClose, onUpdate, isPremium 
     }
   };
 
-  const toggleStatus = () => {
-    setForm(prev => ({ 
-      ...prev, 
-      status: prev.status === 'active' ? 'inactive' : 'active' 
-    }));
-  };
+
 
   const removeLogo = () => {
     setForm(prev => ({ ...prev, logoUrl: "" }));
@@ -776,17 +771,7 @@ export default function EditRange({ range, isOpen, onClose, onUpdate, isPremium 
                   {form.status === 'active' ? 'Range is visible to customers' : 'Range is hidden from customers'}
                 </p>
               </div>
-              <Button
-                type="button"
-                onClick={toggleStatus}
-                className={`px-6 py-2 rounded-full font-semibold transition-all duration-200 ${
-                  form.status === 'active' 
-                    ? "bg-green-500 hover:bg-green-600 text-white" 
-                    : "bg-red-500 hover:bg-red-600 text-white"
-                }`}
-              >
-                {form.status === 'active' ? 'Active' : 'Inactive'}
-              </Button>
+             
             </div>
 
             {/* Modal Footer */}

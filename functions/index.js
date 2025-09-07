@@ -226,3 +226,141 @@ exports.deleteManagerHttp = functions.https.onRequest((req, res) => {
     }
   });
 });
+
+
+exports.createSubAdmin = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    try {
+      // 🔹 Verify auth token
+      const idToken = req.headers.authorization?.split("Bearer ")[1];
+      if (!idToken) {
+        return res.status(401).json({ error: "No auth token provided" });
+      }
+
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const callerUid = decodedToken.uid;
+
+      // 🔹 Check if caller is admin
+      const callerDoc = await admin.firestore().collection('admins').doc(callerUid).get();
+      if (!callerDoc.exists) {
+        return res.status(403).json({ error: "Only admins can create sub-admins" });
+      }
+
+      // 🔹 Parse request body
+      const { username, email, password } = req.body;
+
+      if (!username || !email || !password) {
+        return res.status(400).json({ error: "Username, email, and password are required" });
+      }
+
+      if (password.length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters long" });
+      }
+
+      // 🔹 Create user in Firebase Auth
+      const userRecord = await admin.auth().createUser({
+        email,
+        password,
+        displayName: username,
+      });
+
+      // 🔹 Set custom claims
+      await admin.auth().setCustomUserClaims(userRecord.uid, { role: 'sub_admin' });
+
+      // 🔹 Add sub-admin document to Firestore
+      await admin.firestore().collection('sub-admin').doc(userRecord.uid).set({
+        username,
+        email,
+        uid: userRecord.uid,
+        role: 'sub_admin',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdBy: callerUid,
+        active: true,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Sub-admin created successfully",
+        subAdminId: userRecord.uid,
+      });
+
+    } catch (error) {
+      console.error("Error creating sub-admin:", error);
+
+      // Handle Firebase Auth errors
+      if (error.code === 'auth/email-already-exists') {
+        return res.status(409).json({ error: "A user with this email already exists" });
+      }
+
+      if (error.code === 'auth/invalid-email') {
+        return res.status(400).json({ error: "Invalid email address" });
+      }
+
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+});
+
+// Delete Sub-Admin Function
+
+exports.deleteSubAdmin = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    try {
+      // 🔹 Verify auth token
+      const idToken = req.headers.authorization?.split("Bearer ")[1];
+      if (!idToken) {
+        return res.status(401).json({ error: "No auth token provided" });
+      }
+
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const callerUid = decodedToken.uid;
+
+      // 🔹 Check if caller is admin
+      const callerDoc = await db.collection('admins').doc(callerUid).get();
+      if (!callerDoc.exists) {
+        return res.status(403).json({ error: "Only admins can delete sub-admins" });
+      }
+
+      // 🔹 Parse request body
+      const { subAdminId } = req.body;
+      if (!subAdminId) {
+        return res.status(400).json({ error: "Sub-admin ID is required" });
+      }
+
+      // 🔹 Check if sub-admin exists in Firestore
+      const subAdminDoc = await db.collection('sub-admin').doc(subAdminId).get();
+      if (!subAdminDoc.exists) {
+        return res.status(404).json({ error: "Sub-admin not found" });
+      }
+
+      // 🔹 Delete user from Firebase Auth
+      await admin.auth().deleteUser(subAdminId);
+
+      // 🔹 Delete sub-admin document from Firestore
+      await db.collection('sub-admin').doc(subAdminId).delete();
+
+      return res.status(200).json({
+        success: true,
+        message: "Sub-admin deleted successfully"
+      });
+
+    } catch (error) {
+      console.error("Error deleting sub-admin:", error);
+
+      // Handle auth/user errors
+      if (error.code === 'auth/user-not-found') {
+        try {
+          await db.collection('sub-admin').doc(req.body.subAdminId).delete();
+          return res.status(200).json({
+            success: true,
+            message: "Sub-admin deleted from database (user not found in auth)"
+          });
+        } catch (firestoreError) {
+          return res.status(500).json({ error: "Error cleaning up sub-admin data" });
+        }
+      }
+
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+});
