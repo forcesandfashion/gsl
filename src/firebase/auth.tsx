@@ -27,7 +27,8 @@ type UserRole =
   | "mental_trainer"
   | "franchise_owner"
   | "admin"
-  | "manager";
+  | "manager"
+  | "sub_admin";
 
 interface AuthContextType {
   user: User | null;
@@ -85,6 +86,8 @@ const createRoleBasedDocument = async (user: User, fullName: string, email: stri
       });
       break;
 
+    // Note: sub_admin documents are created by backend Cloud Function, not here
+
     case "technical_coach":
     case "dietician":
     case "mental_trainer":
@@ -126,12 +129,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (!role) {
           try {
             // Check different collections based on potential roles
-            const collections = ['shooters', 'range-owners', 'admins','manager', 'technical-coaches', 'dieticians', 'mental-trainers', 'franchise-owners'];
+            const collections = [
+              'shooters', 
+              'range-owners', 
+              'admins',
+              'sub-admin',  // Check for sub-admin documents created by backend
+              'manager', 
+              'technical-coaches', 
+              'dieticians', 
+              'mental-trainers', 
+              'franchise-owners'
+            ];
             
             for (const collection of collections) {
               const userDoc = await getDoc(doc(db, collection, user.uid));
               if (userDoc.exists()) {
-                role = userDoc.data().role as UserRole;
+                const userData = userDoc.data();
+                // Get role from document or infer from collection name
+                role = userData.role as UserRole || 
+                       (collection === 'shooters' ? 'shooter' : 
+                        collection === 'range-owners' ? 'range_owner' : 
+                        collection === 'admins' ? 'admin' :
+                        collection === 'sub-admin' ? 'sub_admin' :
+                        collection === 'manager' ? 'manager' :
+                        userData.role) as UserRole;
                 break;
               }
             }
@@ -164,7 +185,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         displayName: `${fullName}|${role}`
       });
 
-      // Create role-specific document
+      // Create role-specific document (sub_admin not created here)
       await createRoleBasedDocument(user, fullName, email, role);
 
       setUser(user);
@@ -209,13 +230,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (!isNewUser) {
         // Existing user - check if they have a role set
         // Check role-specific collections to find existing user
-        const collections = ['shooters', 'range-owners', 'admins', 'technical-coaches', 'dieticians', 'mental-trainers', 'franchise-owners'];
+        const collections = [
+          'shooters', 
+          'range-owners', 
+          'admins', 
+          'sub-admin',  // Include sub-admin collection
+          'technical-coaches', 
+          'dieticians', 
+          'mental-trainers', 
+          'franchise-owners'
+        ];
         let foundRole = null;
         
         for (const collection of collections) {
           const userDoc = await getDoc(doc(db, collection, user.uid));
           if (userDoc.exists()) {
-            foundRole = userDoc.data().role as UserRole;
+            const userData = userDoc.data();
+            foundRole = userData.role as UserRole || 
+                       (collection === 'shooters' ? 'shooter' : 
+                        collection === 'range-owners' ? 'range_owner' : 
+                        collection === 'admins' ? 'admin' :
+                        collection === 'sub-admin' ? 'sub_admin' :
+                        userData.role) as UserRole;
             break;
           }
         }
@@ -261,7 +297,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         displayName: `${fullName}|${role}`
       });
 
-      // Create role-specific document
+      // Create role-specific document (sub_admin not created here)
       if (user.email) {
         await createRoleBasedDocument(user, fullName, user.email, role);
       }
@@ -302,11 +338,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const user = userCredential.user;
       let role = user.displayName?.split('|')[1] as UserRole;
       
-      // If no role in displayName, check Firestore
+      // If no role in displayName, check Firestore collections
       if (!role) {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists()) {
-          role = userDoc.data().role as UserRole;
+        const collections = [
+          'shooters', 
+          'range-owners', 
+          'admins', 
+          'sub-admin',  // Include sub-admin collection
+          'manager', 
+          'technical-coaches', 
+          'dieticians', 
+          'mental-trainers', 
+          'franchise-owners'
+        ];
+        
+        for (const collection of collections) {
+          const userDoc = await getDoc(doc(db, collection, user.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            role = userData.role as UserRole || 
+                   (collection === 'shooters' ? 'shooter' : 
+                    collection === 'range-owners' ? 'range_owner' : 
+                    collection === 'admins' ? 'admin' :
+                    collection === 'sub-admin' ? 'sub_admin' :
+                    collection === 'manager' ? 'manager' :
+                    userData.role) as UserRole;
+            break;
+          }
         }
       }
       
