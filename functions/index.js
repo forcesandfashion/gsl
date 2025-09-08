@@ -261,7 +261,7 @@ exports.createSubAdmin = functions.https.onRequest((req, res) => {
       const userRecord = await admin.auth().createUser({
         email,
         password,
-        displayName: username,
+        displayName: `${username}|sub_admin`,
       });
 
       // 🔹 Set custom claims
