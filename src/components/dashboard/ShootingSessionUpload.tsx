@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Upload, FileText, AlertCircle, CheckCircle, Star, Eye, File } from "lucide-react";
+import { Upload, FileText, AlertCircle, CheckCircle, Star, Eye, File, MapPin } from "lucide-react";
 import { db, storage } from "@/firebase/config";
 import { 
   doc, 
@@ -29,6 +29,7 @@ const ShootingSessionUpload = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [sessionName, setSessionName] = useState("");
+  const [rangeName, setRangeName] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [rating, setRating] = useState(0);
   const [uploading, setUploading] = useState(false);
@@ -222,8 +223,8 @@ const ShootingSessionUpload = () => {
   };
 
   const handleUpload = async () => {
-    if (!file || !sessionName || !user || rating === 0) {
-      setError("Please provide a session name, rating (1-5 stars), and select a file.");
+    if (!file || !sessionName || !rangeName || !user || rating === 0) {
+      setError("Please provide a session name, range name, rating (1-5 stars), and select a file.");
       return;
     }
 
@@ -257,21 +258,23 @@ const ShootingSessionUpload = () => {
         return;
       }
 
-      // Update shooter's total points
+      // Get shooter profile info
       const shooterDocRef = doc(db, "shooters", user.uid);
       const shooterDoc = await getDoc(shooterDocRef);
       
-      if (shooterDoc.exists()) {
-        // Update existing profile with incremented points
-        await updateDoc(shooterDocRef, {
-          totalPoints: increment(totalPoints)
-        });
-      } else {
+      if (!shooterDoc.exists()) {
         setError("Shooter profile not found. Please create your profile first.");
         return;
       }
 
-      // Upload file to storage (free for all users now)
+      const shooterData = shooterDoc.data();
+
+      // Update shooter's total points
+      await updateDoc(shooterDocRef, {
+        totalPoints: increment(totalPoints)
+      });
+
+      // Upload file to storage
       const fileName = `${user.uid}/${Date.now()}_${file.name}`;
       const storageRef = ref(storage, `shooting-sessions/${fileName}`);
       await uploadBytes(storageRef, file);
@@ -280,12 +283,15 @@ const ShootingSessionUpload = () => {
       // Prepare session data
       const sessionDocData: any = {
         sessionName,
+        rangeName,
         rating,
         fileName: file.name,
         fileType: fileExtension,
         pointsEarned: totalPoints,
         uploadDate: new Date(),
-        fileUrl: fileDownloadURL, // Store file URL for all users
+        fileUrl: fileDownloadURL,
+        shooterId: user.uid,
+        shooterName: shooterData.name || 'Unknown Shooter',
         sessionStats: {
           totalScore: parsedSessionData.totalScore,
           innerTens: parsedSessionData.innerTens,
@@ -294,13 +300,22 @@ const ShootingSessionUpload = () => {
         }
       };
 
-      // Save session data to subcollection
-      const sessionsCollectionRef = collection(db, "shooters", user.uid, "shootingSessions");
-      await addDoc(sessionsCollectionRef, sessionDocData);
+      // Save session data to both collections
+      // 1. Save to main shootingSessions collection
+      const mainSessionsCollectionRef = collection(db, "shootingSessions");
+      const mainSessionDocRef = await addDoc(mainSessionsCollectionRef, sessionDocData);
+
+      // 2. Save to shooters/{id}/shootingSessions subcollection
+      const userSessionsCollectionRef = collection(db, "shooters", user.uid, "shootingSessions");
+      await addDoc(userSessionsCollectionRef, {
+        ...sessionDocData,
+        mainSessionId: mainSessionDocRef.id // Reference to the main collection document
+      });
 
       setParsedData({ totalPoints, sessionData: parsedSessionData, fileType: fileExtension });
       setSuccess(true);
       setSessionName("");
+      setRangeName("");
       setFile(null);
       setRating(0);
       
@@ -310,7 +325,7 @@ const ShootingSessionUpload = () => {
 
       toast({
         title: "Session Saved Successfully",
-        description: `Session "${sessionName}" saved with ${fileExtension.toUpperCase()} file and ${totalPoints} points added!`,
+        description: `Session "${sessionName}" at ${rangeName} saved with ${fileExtension.toUpperCase()} file and ${totalPoints} points added!`,
       });
 
     } catch (error: any) {
@@ -332,7 +347,7 @@ const ShootingSessionUpload = () => {
           <CardDescription>
             Upload your shooting session data from CSV or PDF files to add points to your profile.
             <span className="block mt-1 text-xs text-green-600 font-medium">
-              📁 File storage is free for all users - CSV and PDF supported
+              File storage is free for all users - CSV and PDF supported
             </span>
           </CardDescription>
         </CardHeader>
@@ -350,6 +365,22 @@ const ShootingSessionUpload = () => {
                 placeholder="e.g., Morning Session with 12mm"
                 value={sessionName}
                 onChange={(e) => setSessionName(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="range-name"
+                className="text-sm font-medium  mb-1 flex items-center gap-1"
+              >
+                <MapPin className="h-4 w-4" />
+                Range Name
+              </label>
+              <Input
+                id="range-name"
+                placeholder="e.g., City Shooting Range, Olympic Training Center"
+                value={rangeName}
+                onChange={(e) => setRangeName(e.target.value)}
               />
             </div>
 
@@ -398,7 +429,7 @@ const ShootingSessionUpload = () => {
                 />
                 <Button
                   onClick={handleUpload}
-                  disabled={!file || !sessionName || rating === 0 || uploading}
+                  disabled={!file || !sessionName || !rangeName || rating === 0 || uploading}
                   className="whitespace-nowrap"
                 >
                   {uploading ? (
@@ -444,6 +475,7 @@ const ShootingSessionUpload = () => {
                   <p><strong>File Type:</strong> {parsedData.fileType.toUpperCase()}</p>
                   <p><strong>Points Added:</strong> {parsedData.totalPoints}</p>
                   <p><strong>Rating:</strong> {rating}/5 stars</p>
+                  <p><strong>Range:</strong> {rangeName}</p>
                   {parsedData.sessionData.discipline && (
                     <p><strong>Discipline:</strong> {parsedData.sessionData.discipline}</p>
                   )}

@@ -545,16 +545,17 @@ export default function SubAdminDashboard(): JSX.Element {
       <div className="p-4 sm:p-6 space-y-8">
         {/* Management Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          <Card className="bg-white shadow-lg hover:shadow-xl transition-all duration-300 border-0 cursor-pointer transform hover:-translate-y-1">
+          <Card className="bg-white shadow-lg hover:shadow-xl transition-all duration-300 border-0 cursor-pointer transform hover:-translate-y-1"
+            onClick={() => handleNavigate('/dashboard/sub-admin/shooters-data')}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-semibold text-gray-800">Projects</CardTitle>
+                <CardTitle className="text-lg font-semibold text-gray-800">Shooters Data</CardTitle>
                 <Target className="h-6 w-6 text-blue-500" />
               </div>
-              <CardDescription className="text-gray-600">Manage your projects</CardDescription>
+              <CardDescription className="text-gray-600">Manage Shooters Data here</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-500">Project management interface</p>
+              <p className="text-sm text-gray-500">View and manage shooters data</p>
             </CardContent>
           </Card>
 

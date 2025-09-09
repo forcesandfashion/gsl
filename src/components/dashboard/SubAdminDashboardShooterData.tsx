@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Trash2, FileText, Target, Calendar, User, MapPin, Star, Trophy, Clock, AlertCircle } from 'lucide-react';
+import { Download, FileText, Target, Calendar, User, MapPin, Star, Trophy, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { db } from "@/firebase/config";
 
-import { getFirestore, collection, getDocs, doc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, doc, query, orderBy } from 'firebase/firestore';
 
 // TypeScript interfaces
 interface SessionStats {
@@ -54,7 +54,7 @@ interface RangeData {
 
 type DataItem = ShooterData | RangeData;
 
-const DashboardShooterData: React.FC = () => {
+const SubAdminShooterData: React.FC = () => {
   const [data, setData] = useState<DataItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
@@ -177,32 +177,6 @@ const DashboardShooterData: React.FC = () => {
     }
   };
 
-  // Delete from Firebase
-  const deleteFromFirebase = async (item: DataItem): Promise<void> => {
-    try {
-      if (item.type === 'range') {
-        // Delete from shootingData collection
-        await deleteDoc(doc(db, 'shootingData', item.id));
-      } else {
-        // Delete from shooters/{shooterId}/shootingSession subcollection
-        const shooterId = item.shooterId;
-        if (!shooterId) {
-          throw new Error('Shooter ID not found');
-        }
-        // Extract the session document ID from the composite ID
-        const sessionId = item.id.replace(`${shooterId}_`, '');
-        await deleteDoc(doc(db, `shooters/${shooterId}/shootingSession`, sessionId));
-      }
-      
-      // Remove from local state after successful deletion
-      setData(prev => prev.filter(d => d.id !== item.id));
-      
-    } catch (err) {
-      console.error('Error deleting document:', err);
-      throw new Error('Failed to delete data from Firebase');
-    }
-  };
-
   useEffect(() => {
     fetchFirebaseData();
   }, []);
@@ -243,35 +217,6 @@ const DashboardShooterData: React.FC = () => {
     } catch (error) {
       console.error('Download failed:', error);
       alert('Failed to open download link. Please try again.');
-    }
-  };
-
-  const handleDelete = async (item: DataItem): Promise<void> => {
-    if (window.confirm('Are you sure you want to delete this data? This action cannot be undone.')) {
-      try {
-        await deleteFromFirebase(item);
-        setSelectedItems(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(item.id);
-          return newSet;
-        });
-      } catch (error) {
-        alert('Failed to delete data. Please try again.');
-      }
-    }
-  };
-
-  const handleBulkDelete = async (): Promise<void> => {
-    if (selectedItems.size === 0) return;
-    
-    if (window.confirm(`Are you sure you want to delete ${selectedItems.size} selected items? This action cannot be undone.`)) {
-      try {
-        const itemsToDelete = data.filter(item => selectedItems.has(item.id));
-        await Promise.all(itemsToDelete.map(item => deleteFromFirebase(item)));
-        setSelectedItems(new Set());
-      } catch (error) {
-        alert('Failed to delete some items. Please try again.');
-      }
     }
   };
 
@@ -363,9 +308,9 @@ const DashboardShooterData: React.FC = () => {
             <div>
               <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
                 <Target className="text-blue-600" size={32} />
-                Shooter Data Dashboard
+                Sub-Admin Data Dashboard
               </h1>
-              <p className="text-gray-600 mt-2">Manage shooting session data from ranges and shooters</p>
+              <p className="text-gray-600 mt-2">View and download shooting session data from ranges and shooters</p>
             </div>
             
             <div className="flex flex-wrap gap-3">
@@ -388,22 +333,13 @@ const DashboardShooterData: React.FC = () => {
               </button>
               
               {selectedItems.size > 0 && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleBulkDownload}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
-                  >
-                    <Download size={16} />
-                    Open Selected ({selectedItems.size})
-                  </button>
-                  <button
-                    onClick={handleBulkDelete}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
-                  >
-                    <Trash2 size={16} />
-                    Delete Selected ({selectedItems.size})
-                  </button>
-                </div>
+                <button
+                  onClick={handleBulkDownload}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                >
+                  <Download size={16} />
+                  Open Selected ({selectedItems.size})
+                </button>
               )}
             </div>
           </div>
@@ -508,13 +444,6 @@ const DashboardShooterData: React.FC = () => {
                         >
                           <Download size={14} />
                           Open File
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item)}
-                          className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 text-sm"
-                        >
-                          <Trash2 size={14} />
-                          Delete
                         </button>
                       </div>
                     </div>
@@ -621,32 +550,6 @@ const DashboardShooterData: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                      <div className="space-y-3">
-                        <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                          <Clock size={16} />
-                          Additional Info
-                        </h3>
-                        <div className="space-y-2 text-sm">
-                          {item.type === 'shooter' && item.sessionName && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Session:</span>
-                              <span className="font-medium">{item.sessionName}</span>
-                            </div>
-                          )}
-                          {item.type === 'range' && item.rangeName && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Range:</span>
-                              <span className="font-medium">{item.rangeName}</span>
-                            </div>
-                          )}
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Date:</span>
-                            <span className="font-medium">
-                              {formatDate(item.type === 'shooter' ? item.uploadDate : item.createdAt)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
                     </div>
 
                     {item.type === 'range' && item.notes && (
@@ -667,4 +570,4 @@ const DashboardShooterData: React.FC = () => {
   );
 };
 
-export default DashboardShooterData;
+export default SubAdminShooterData;

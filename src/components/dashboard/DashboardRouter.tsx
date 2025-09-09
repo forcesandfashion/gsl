@@ -26,6 +26,9 @@ import SubAdminDashboard from "./SubAdminDasboard";
 import SubAdminRangeOwners from "./SubAdminRangeOwners";
 import SubAdminRanges from "./SubAdminRanges";
 import SubAdminEvent from "./SubAdminEvent";
+import SubAdminShooterData from "./SubAdminDashboardShooterData";
+
+
 const DashboardRouter = () => {
   const { userRole, loading } = useAuth();
   
@@ -76,6 +79,7 @@ const DashboardRouter = () => {
       <Route path ="sub-admin/range-owners" element={<SubAdminRangeOwners />} />
       <Route path="sub-admin/ranges" element={<SubAdminRanges />} />
       <Route path="sub-admin/events" element={<SubAdminEvent />} />
+      <Route path="sub-admin/shooters-data" element={<SubAdminShooterData />} />
 
       {/* Admin sub routes - Accessible by both admin and sub_admin */}
       <Route path="admin/range-owners" element={<RangeOwnerList />} />
