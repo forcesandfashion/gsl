@@ -27,7 +27,7 @@ import SubAdminRangeOwners from "./SubAdminRangeOwners";
 import SubAdminRanges from "./SubAdminRanges";
 import SubAdminEvent from "./SubAdminEvent";
 import SubAdminShooterData from "./SubAdminDashboardShooterData";
-
+import CmbDashboard from "./CmbDashboard";
 
 const DashboardRouter = () => {
   const { userRole, loading } = useAuth();
@@ -54,7 +54,9 @@ const DashboardRouter = () => {
             <Navigate to="/dashboard/range-owner" replace />
           ) : userRole === "manager" ? (
             <Navigate to="/dashboard/managers" replace />
-          ) : userRole === "technical_coach" ? (
+          ) : userRole === "cmb" ? (
+            <Navigate to="/dashboard/cmb" replace />
+          ): userRole === "technical_coach" ? (
             <Navigate to="/dashboard/managers" replace />
           ) : userRole === "dietician" ? (
             <Navigate to="/dashboard/managers" replace />
@@ -71,7 +73,7 @@ const DashboardRouter = () => {
       <Route path="range-owner" element={<RangeOwnerDashboard />} />
       <Route path="admin" element={<AdminDashboard />} />
       <Route path="managers" element={<ManagerDashboard />} />
-
+      <Route path="cmb" element={<CmbDashboard />} />
       <Route path= "sub-admin" element={<SubAdminDashboard/>} />
 
 
@@ -101,6 +103,11 @@ const DashboardRouter = () => {
       <Route path="range-owner/post-range-owner" element={<PostRangeOwner />} />
       <Route path="range-owner/assistant-accounts" element={<AssistantAccounts />} />
       <Route path="range-owner/subscription" element={<Payment />} />
+
+
+      {/* cmb sub path  */}
+      
+
       
       {/* Manager sub-routes */}
       {/* Add manager-specific routes here when needed:

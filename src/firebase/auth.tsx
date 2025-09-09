@@ -28,7 +28,8 @@ type UserRole =
   | "franchise_owner"
   | "admin"
   | "manager"
-  | "sub_admin";
+  | "sub_admin"
+  | "cmb";
 
 interface AuthContextType {
   user: User | null;
@@ -86,6 +87,8 @@ const createRoleBasedDocument = async (user: User, fullName: string, email: stri
       });
       break;
 
+
+
     // Note: sub_admin documents are created by backend Cloud Function, not here
 
     case "technical_coach":
@@ -138,7 +141,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               'technical-coaches', 
               'dieticians', 
               'mental-trainers', 
-              'franchise-owners'
+              'franchise-owners',
+              'cmbs'  // Added cmbs collection
             ];
             
             for (const collection of collections) {
@@ -152,6 +156,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         collection === 'admins' ? 'admin' :
                         collection === 'sub-admin' ? 'sub_admin' :
                         collection === 'manager' ? 'manager' :
+                        collection === 'cmbs' ? 'cmb' :
                         userData.role) as UserRole;
                 break;
               }
@@ -197,6 +202,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         roleMessage = "Your Shooter account has been created. You can log in using the link below.";
       } else if (role === "range_owner") {
         roleMessage = "Your Range Owner account has been created. Please wait until confirmation mail before logging in to your dashboard.";
+      } else if (role === "cmb") {
+        roleMessage = "Your CMB account has been created. You can log in using the link below.";
       } else {
         roleMessage = `Your ${role} account has been created. You can log in using the link below.`;
       }
@@ -238,7 +245,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           'technical-coaches', 
           'dieticians', 
           'mental-trainers', 
-          'franchise-owners'
+          'franchise-owners',
+          'cmbs'  // Added cmbs collection
         ];
         let foundRole = null;
         
@@ -251,6 +259,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         collection === 'range-owners' ? 'range_owner' : 
                         collection === 'admins' ? 'admin' :
                         collection === 'sub-admin' ? 'sub_admin' :
+                        collection === 'cmbs' ? 'cmb' :
                         userData.role) as UserRole;
             break;
           }
@@ -311,6 +320,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         roleMessage = "Your Shooter account has been created. You can log in using the link below.";
       } else if (role === "range_owner") {
         roleMessage = "Your Range Owner account has been created. Please wait until confirmation mail before logging in to your dashboard.";
+      } else if (role === "cmb") {
+        roleMessage = "Your CMB account has been created. You can log in using the link below.";
       } else {
         roleMessage = `Your ${role} account has been created. You can log in using the link below.`;
       }
@@ -349,7 +360,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           'technical-coaches', 
           'dieticians', 
           'mental-trainers', 
-          'franchise-owners'
+          'franchise-owners',
+          'cmbs'  // Added cmbs collection
         ];
         
         for (const collection of collections) {
@@ -362,6 +374,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     collection === 'admins' ? 'admin' :
                     collection === 'sub-admin' ? 'sub_admin' :
                     collection === 'manager' ? 'manager' :
+                    collection === 'cmbs' ? 'cmb' :
                     userData.role) as UserRole;
             break;
           }
