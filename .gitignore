@@ -36,3 +36,4 @@ core
 .env
 .env.local
 .env.*.local
+functions/serviceAccount.json
