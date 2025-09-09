@@ -364,3 +364,197 @@ exports.deleteSubAdmin = functions.https.onRequest((req, res) => {
     }
   });
 });
+
+exports.createCmbAccount = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    try {
+      // 🔹 Verify auth token
+      const idToken = req.headers.authorization?.split("Bearer ")[1];
+      if (!idToken) {
+        return res.status(401).json({ error: "No auth token provided" });
+      }
+
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const callerUid = decodedToken.uid;
+
+      // 🔹 Check if caller is admin or sub-admin
+      const [adminDoc, subAdminDoc] = await Promise.all([
+        admin.firestore().collection('admins').doc(callerUid).get(),
+        admin.firestore().collection('sub-admin').doc(callerUid).get()
+      ]);
+
+      if (!adminDoc.exists && !subAdminDoc.exists) {
+        return res.status(403).json({ error: "Only admins or sub-admins can create CMB accounts" });
+      }
+
+      // 🔹 Parse request body
+      const { username, email, password } = req.body;
+      
+      if (!username || !email || !password) {
+        return res.status(400).json({ error: "Username, email, and password are required" });
+      }
+
+      if (password.length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters long" });
+      }
+
+      // 🔹 Validate username format (no spaces, special chars)
+      if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+        return res.status(400).json({ error: "Username can only contain letters, numbers, and underscores" });
+      }
+
+      // 🔹 Check if username already exists in CMB collection
+      const existingUsername = await admin.firestore()
+        .collection('cmb')
+        .where('username', '==', username)
+        .get();
+
+      if (!existingUsername.empty) {
+        return res.status(409).json({ error: "Username already exists" });
+      }
+
+      // 🔹 Create user in Firebase Auth
+      const userRecord = await admin.auth().createUser({
+        email,
+        password,
+        displayName: `${username}|cmb`,
+      });
+
+      // 🔹 Set custom claims
+      await admin.auth().setCustomUserClaims(userRecord.uid, { role: 'cmb' });
+
+      // 🔹 Add CMB document to Firestore
+      const cmbData = {
+        username,
+        email,
+        uid: userRecord.uid,
+        role: 'cmb',
+        status: 'active',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdBy: callerUid,
+        createdByRole: adminDoc.exists ? 'admin' : 'sub_admin',
+        lastLogin: null,
+        loginCount: 0,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      };
+
+      await admin.firestore().collection('cmb').doc(userRecord.uid).set(cmbData);
+
+      return res.status(200).json({
+        success: true,
+        message: "CMB account created successfully",
+        cmbAccountId: userRecord.uid,
+        username,
+        email
+      });
+
+    } catch (error) {
+      console.error("Error creating CMB account:", error);
+      
+      // Handle Firebase Auth errors
+      if (error.code === 'auth/email-already-exists') {
+        return res.status(409).json({ error: "A user with this email already exists" });
+      }
+      if (error.code === 'auth/invalid-email') {
+        return res.status(400).json({ error: "Invalid email address" });
+      }
+      if (error.code === 'auth/weak-password') {
+        return res.status(400).json({ error: "Password is too weak" });
+      }
+
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+});
+
+// Delete CMB Account
+exports.deleteCmbAccount = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    try {
+      // 🔹 Verify auth token
+      const idToken = req.headers.authorization?.split("Bearer ")[1];
+      if (!idToken) {
+        return res.status(401).json({ error: "No auth token provided" });
+      }
+
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const callerUid = decodedToken.uid;
+
+      // 🔹 Check if caller is admin or sub-admin
+      const [adminDoc, subAdminDoc] = await Promise.all([
+        admin.firestore().collection('admins').doc(callerUid).get(),
+        admin.firestore().collection('sub-admin').doc(callerUid).get()
+      ]);
+
+      if (!adminDoc.exists && !subAdminDoc.exists) {
+        return res.status(403).json({ error: "Only admins or sub-admins can delete CMB accounts" });
+      }
+
+      // 🔹 Parse request body
+      const { cmbAccountId } = req.body;
+      
+      if (!cmbAccountId) {
+        return res.status(400).json({ error: "CMB account ID is required" });
+      }
+
+      // 🔹 Check if CMB account exists in Firestore
+      const cmbDoc = await admin.firestore().collection('cmb').doc(cmbAccountId).get();
+      if (!cmbDoc.exists) {
+        return res.status(404).json({ error: "CMB account not found" });
+      }
+
+      const cmbData = cmbDoc.data();
+      console.log("CMB Data found:", cmbData); // Debug log
+
+      // 🔹 Delete user from Firebase Auth using the correct UID
+      // The UID should be stored in the CMB document, not the document ID
+      if (cmbData.uid) {
+        try {
+          await admin.auth().deleteUser(cmbData.uid);
+          console.log("User deleted from Auth:", cmbData.uid);
+        } catch (authError) {
+          console.log("Auth deletion error:", authError);
+          // If user doesn't exist in Auth, continue with Firestore deletion
+          if (authError.code !== 'auth/user-not-found') {
+            throw authError;
+          }
+        }
+      } else {
+        console.log("No UID found in CMB document, skipping Auth deletion");
+      }
+
+      // 🔹 Update CMB document (soft delete - mark as deleted)
+      const updateResult = await admin.firestore().collection('cmb').doc(cmbAccountId).update({
+        status: 'deleted',
+        deletedAt: admin.firestore.FieldValue.serverTimestamp(),
+        deletedBy: callerUid,
+        deletedByRole: adminDoc.exists ? 'admin' : 'sub_admin',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      console.log("Firestore update result:", updateResult); // Debug log
+
+      return res.status(200).json({
+        success: true,
+        message: "CMB account deleted successfully",
+        deletedAccount: {
+          id: cmbAccountId,
+          username: cmbData.username,
+          email: cmbData.email
+        }
+      });
+
+    } catch (error) {
+      console.error("Error deleting CMB account:", error);
+      
+      if (error.code === 'auth/user-not-found') {
+        return res.status(404).json({ error: "User not found in authentication system" });
+      }
+
+      return res.status(500).json({ 
+        error: "Internal server error",
+        details: error.message // Include error details for debugging
+      });
+    }
+  });
+});
