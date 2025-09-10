@@ -87,6 +87,7 @@ interface CmbAccount {
 interface Counts {
   shooters: number;
   rangeOwners: number;
+  products: number;
   ranges: number;
   events: number;
   loading: boolean;
@@ -137,6 +138,7 @@ const AdminDashboard: React.FC = () => {
     shooters: 0,
     rangeOwners: 0,
     ranges: 0,
+    products:0,
     events: 0,
     loading: true
   });
@@ -219,6 +221,9 @@ const AdminDashboard: React.FC = () => {
         const rangeOwnersSnapshot = await getDocs(collection(db, "range-owners"));
         const rangeOwnersCount = rangeOwnersSnapshot.size;
 
+        const productsSnapshot = await getDocs(collection(db, "products"));
+        const productsCount = productsSnapshot.size;
+
         // Query ranges collection
         const rangesSnapshot = await getDocs(collection(db, "ranges"));
         const rangesCount = rangesSnapshot.size;
@@ -232,6 +237,7 @@ const AdminDashboard: React.FC = () => {
           shooters: shootersCount,
           rangeOwners: rangeOwnersCount,
           ranges: rangesCount,
+          products: productsCount,
           events: eventsCount,
           loading: false
         });
@@ -874,7 +880,7 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Main Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <Card
           onClick={() => navigate("/dashboard/admin/shooter-data")}
            className="cursor-pointer hover:shadow-md transition-shadow">
@@ -905,6 +911,21 @@ const AdminDashboard: React.FC = () => {
                 {counts.loading ? "..." : counts.rangeOwners}
               </div>
               <p className="text-xs text-gray-500">Registered owners</p>
+            </CardContent>
+          </Card>
+
+          <Card
+          onClick={() => navigate("/dashboard/admin/shop")}
+           className="cursor-pointer hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Products</CardTitle>
+              <Users className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {counts.loading ? "Loading..." : counts.products.toLocaleString()}
+              </div>
+              <p className="text-xs text-gray-500">Shooters + Range Owners</p>
             </CardContent>
           </Card>
 

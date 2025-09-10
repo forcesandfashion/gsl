@@ -146,7 +146,7 @@ export default function ShooterProfile() {
       const shootingSessions: ShootingSession[] = [];
       shootingSnapshot.forEach((doc) => {
         const data = doc.data();
-        // Parse CSV data and convert to analytics format
+        // Parse data and convert to analytics format
         const parsedData = parseShootingSessionData({ ...data, id: doc.id });
         if (parsedData) {
           shootingSessions.push(parsedData);
@@ -183,130 +183,31 @@ export default function ShooterProfile() {
     }
   };
 
-  // Parse CSV shooting session data with proper return type
+  // Parse shooting session data with proper return type
   const parseShootingSessionData = (sessionData: any): ShootingSession | null => {
     try {
       // Check if we have the necessary data
-      if (!sessionData.csvData && !sessionData.csvContent && !sessionData.totalScore) return null;
+      if (!sessionData.sessionStats && !sessionData.totalScore) return null;
       
       let totalScore = 0;
-      let accuracy = 0;
       let innerTens = 0;
       let series: any[] = [];
       let discipline = 'Air Pistol 60';
       let totalShots = 60;
-      let overallGroupSize = 0;
+      let overallGroupSize = 35; // Default average group size
       
-      // Parse CSV content based on the format you provided
-      const csvContent = sessionData.csvData || sessionData.csvContent || '';
-      
-      if (csvContent && typeof csvContent === 'string') {
-        const lines = csvContent.split('\n').map(line => line.trim()).filter(line => line);
+      // Use sessionStats if available (from your sample data)
+      if (sessionData.sessionStats) {
+        totalScore = sessionData.sessionStats.totalScore || 0;
+        innerTens = sessionData.sessionStats.innerTens || 0;
+        discipline = sessionData.sessionStats.discipline || 'Air Pistol 60';
         
-        // Extract discipline from header
-        const disciplineLine = lines.find(line => line.includes('Air Pistol') || line.includes('Rifle') || line.includes('Pistol'));
-        if (disciplineLine) {
-          if (disciplineLine.includes('Air Pistol 60')) {
-            discipline = 'Air Pistol 60';
-            totalShots = 60;
-          } else if (disciplineLine.includes('Air Pistol 40')) {
-            discipline = 'Air Pistol 40';
-            totalShots = 40;
-          } else if (disciplineLine.includes('Air Rifle')) {
-            discipline = 'Air Rifle 60';
-            totalShots = 60;
-          }
-        }
-        
-        // Extract total score
-        const totalLine = lines.find(line => line.includes('Total:'));
-        if (totalLine) {
-          const scoreMatch = totalLine.match(/Total:\s*(\d+)/);
-          if (scoreMatch) totalScore = parseInt(scoreMatch[1]);
-        }
-        
-        // Extract inner tens
-        const innerTensLine = lines.find(line => line.includes('Inner tens:'));
-        if (innerTensLine) {
-          const tensMatch = innerTensLine.match(/Inner tens:\s*(\d+)/);
-          if (tensMatch) innerTens = parseInt(tensMatch[1]);
-        }
-        
-        // Extract overall group size
-        const overallGroupLine = lines.find(line => line.includes('Group size:') && line.includes('Ø:'));
-        if (overallGroupLine) {
-          const groupMatch = overallGroupLine.match(/Ø:\s*([\d.]+)\s*mm/);
-          if (groupMatch) overallGroupSize = parseFloat(groupMatch[1]);
-        }
-        
-        // Extract series data
-        const seriesLines = lines.filter(line => 
-          line.includes('Series ') && 
-          line.includes(':') && 
-          !line.includes('total') && 
-          !line.includes('MPI') && 
-          !line.includes('Group size')
-        );
-        
-        seriesLines.forEach((line, index) => {
-          // Extract individual shot scores from series line
-          const shotScores = line.split(':')[1]?.trim().split(/[,\s]+/).filter(shot => {
-            const cleaned = shot.replace('x', '');
-            return !isNaN(parseInt(cleaned)) && cleaned !== '';
-          });
-          
-          if (shotScores && shotScores.length > 0) {
-            let seriesScore = 0;
-            shotScores.forEach(shot => {
-              const score = parseInt(shot.replace('x', ''));
-              if (!isNaN(score)) seriesScore += score;
-            });
-            
-            // Find corresponding group size for this series
-            let seriesGroupSize = overallGroupSize; // Default to overall
-            const seriesNumber = index + 1;
-            const groupSizeLine = lines.find(line => 
-              line.includes(`Series ${seriesNumber}`) && 
-              line.includes('Group size:') && 
-              line.includes('Ø:')
-            );
-            
-            if (groupSizeLine) {
-              const groupMatch = groupSizeLine.match(/Ø:\s*([\d.]+)\s*mm/);
-              if (groupMatch) seriesGroupSize = parseFloat(groupMatch[1]);
-            }
-            
-            series.push({
-              seriesNumber: seriesNumber,
-              score: seriesScore,
-              shots: shotScores,
-              groupSize: seriesGroupSize
-            });
-          }
-        });
-        
-        // If no series found, look for series totals line
-        if (series.length === 0) {
-          const seriesTotalsLine = lines.find(line => line.includes('Series totals:'));
-          if (seriesTotalsLine) {
-            const totalsMatch = seriesTotalsLine.match(/Series totals:\s*([\d\s]+)/);
-            if (totalsMatch) {
-              const seriesScores = totalsMatch[1].trim().split(/\s+/).map(s => parseInt(s)).filter(s => !isNaN(s));
-              seriesScores.forEach((score, index) => {
-                if (score > 0) {
-                  series.push({
-                    seriesNumber: index + 1,
-                    score: score,
-                    shots: [],
-                    groupSize: overallGroupSize
-                  });
-                }
-              });
-            }
-          }
-        }
-      } else {
-        // Fallback to direct values if available
+        // Set total shots based on discipline
+        if (discipline.includes('60')) totalShots = 60;
+        else if (discipline.includes('40')) totalShots = 40;
+      } 
+      // Otherwise use direct values if available
+      else {
         totalScore = sessionData.totalScore || 0;
         innerTens = sessionData.innerTens || 0;
         discipline = sessionData.discipline || 'Air Pistol 60';
@@ -315,22 +216,21 @@ export default function ShooterProfile() {
       // Calculate accuracy
       const maxScore = discipline.includes('60') ? 600 : 
                       discipline.includes('40') ? 400 : 600;
-      accuracy = totalScore > 0 ? (totalScore / maxScore * 100) : 0;
-      
-      // Calculate average group size
-      const avgGroupSize = series.length > 0 ? 
-        series.reduce((sum, s) => sum + (s.groupSize || overallGroupSize), 0) / series.length : 
-        overallGroupSize || 35;
+      const accuracy = totalScore > 0 ? (totalScore / maxScore * 100) : 0;
       
       // Get session date
       let sessionDate = '';
-      if (sessionData.createdAt) {
-        if (typeof sessionData.createdAt.toDate === 'function') {
-          sessionDate = sessionData.createdAt.toDate().toISOString().split('T')[0];
-        } else if (sessionData.createdAt instanceof Date) {
-          sessionDate = sessionData.createdAt.toISOString().split('T')[0];
+      if (sessionData.sessionStats && sessionData.sessionStats.date) {
+        // Parse date from format "DD-MM-YYYY"
+        const [day, month, year] = sessionData.sessionStats.date.split('-');
+        sessionDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      } else if (sessionData.uploadDate) {
+        if (typeof sessionData.uploadDate.toDate === 'function') {
+          sessionDate = sessionData.uploadDate.toDate().toISOString().split('T')[0];
+        } else if (sessionData.uploadDate instanceof Date) {
+          sessionDate = sessionData.uploadDate.toISOString().split('T')[0];
         } else {
-          sessionDate = new Date(sessionData.createdAt).toISOString().split('T')[0];
+          sessionDate = new Date(sessionData.uploadDate).toISOString().split('T')[0];
         }
       } else if (sessionData.date) {
         sessionDate = sessionData.date;
@@ -351,7 +251,7 @@ export default function ShooterProfile() {
         accuracy: accuracy.toFixed(1),
         innerTens,
         totalShots,
-        avgGroupSize: avgGroupSize.toFixed(1),
+        avgGroupSize: overallGroupSize.toFixed(1),
         series,
         weather: sessionData.weather || 'Indoor',
         timeOfDay: sessionData.timeOfDay || 'Unknown'
@@ -969,109 +869,6 @@ export default function ShooterProfile() {
                   </ResponsiveContainer>
                 </div>
 
-                {/* Series Performance Analysis */}
-                <div className="bg-white rounded-xl shadow-lg p-6">
-                  <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                    <Crosshair className="w-5 h-5 text-red-600" />
-                    Series Performance Breakdown
-                  </h3>
-                  {filteredData.some(session => session.series && session.series.length > 0) ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={
-                        filteredData.filter(session => session.series && session.series.length > 0).slice(-10).map((session, sessionIndex) => {
-                          const seriesData: any = { sessionName: `Session ${sessionIndex + 1}`, date: session.date };
-                          session.series.forEach((series, index) => {
-                            seriesData[`series${index + 1}`] = series.score;
-                          });
-                          return seriesData;
-                        })
-                      }>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="sessionName" />
-                        <YAxis />
-                        <Tooltip 
-                          labelFormatter={(label) => label}
-                          formatter={(value: number, name: string) => [
-                            value, 
-                            `Series ${name.replace('series', '')}`
-                          ]}
-                        />
-                        <Legend />
-                        <Bar dataKey="series1" fill="#8884d8" name="Series 1" />
-                        <Bar dataKey="series2" fill="#82ca9d" name="Series 2" />
-                        <Bar dataKey="series3" fill="#ffc658" name="Series 3" />
-                        <Bar dataKey="series4" fill="#ff7300" name="Series 4" />
-                        <Bar dataKey="series5" fill="#8dd1e1" name="Series 5" />
-                        <Bar dataKey="series6" fill="#d084d0" name="Series 6" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <Target className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                      <p>No detailed series data available</p>
-                      <p className="text-sm">Series breakdown will appear when CSV files contain detailed shot-by-shot data</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Group Size Analysis */}
-                <div className="bg-white rounded-xl shadow-lg p-6">
-                  <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                    <Target className="w-5 h-5 text-indigo-600" />
-                    Group Size Trends
-                  </h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={prepareAccuracyTrendData()}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="sessionNumber" />
-                      <YAxis />
-                      <Tooltip 
-                        labelFormatter={(value) => `Session ${value}`}
-                        formatter={(value: number, name: string) => [
-                          `${value}mm`,
-                          name === 'groupSize' ? 'Group Size' : name
-                        ]}
-                      />
-                      <Legend />
-                      <Line 
-                        type="monotone" 
-                        dataKey="groupSize" 
-                        stroke="#8884d8" 
-                        name="Group Size (mm)" 
-                        strokeWidth={3}
-                        dot={{ fill: '#8884d8', strokeWidth: 2, r: 4 }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="innerTens" 
-                        stroke="#82ca9d" 
-                        name="Inner Tens" 
-                        strokeWidth={2}
-                        dot={{ fill: '#82ca9d', strokeWidth: 2, r: 3 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Training Frequency Chart */}
-                <div className="bg-white rounded-xl shadow-lg p-6">
-                  <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-green-600" />
-                    Training Frequency
-                  </h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={prepareFrequencyData()}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="totalVisits" fill="#8884d8" name="Total Visits" />
-                      <Bar dataKey="shootingSessions" fill="#82ca9d" name="With CSV Data" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-
                 {/* Monthly Performance Analysis */}
                 <div className="bg-white rounded-xl shadow-lg p-6">
                   <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
@@ -1096,6 +893,25 @@ export default function ShooterProfile() {
                       <Area type="monotone" dataKey="avgAccuracy" stackId="2" stroke="#82ca9d" fill="#82ca9d" name="Avg Accuracy %" />
                       <Area type="monotone" dataKey="sessions" stackId="3" stroke="#ffc658" fill="#ffc658" name="Sessions" />
                     </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Training Frequency Chart */}
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-green-600" />
+                    Training Frequency
+                  </h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={prepareFrequencyData()}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="totalVisits" fill="#8884d8" name="Total Visits" />
+                      <Bar dataKey="shootingSessions" fill="#82ca9d" name="With CSV Data" />
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
 
@@ -1146,7 +962,7 @@ export default function ShooterProfile() {
                 )}
               </div>
 
-              {/* Enhanced Insights with Series Analysis */}
+              {/* Enhanced Insights */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                 <div className="bg-white p-6 rounded-xl shadow-lg">
                   <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -1181,19 +997,6 @@ export default function ShooterProfile() {
                             return coefficient < 5 ? 'Excellent' : coefficient < 10 ? 'Good' : coefficient < 15 ? 'Fair' : 'Needs work';
                           })()
                         }</p>
-                        {filteredData.some(s => s.series && s.series.length > 0) && (
-                          <p>• Series performance: {
-                            (() => {
-                              const allSeries = filteredData.flatMap(s => s.series || []);
-                              const seriesAvgs = [1,2,3,4,5,6].map(num => {
-                                const seriesScores = allSeries.filter(s => s.seriesNumber === num).map(s => s.score);
-                                return seriesScores.length > 0 ? seriesScores.reduce((sum, score) => sum + score, 0) / seriesScores.length : 0;
-                              });
-                              const bestSeries = seriesAvgs.indexOf(Math.max(...seriesAvgs)) + 1;
-                              return `Series ${bestSeries} strongest`;
-                            })()
-                          }</p>
-                        )}
                       </>
                     )}
                     {filteredData.length <= 5 && (
@@ -1222,27 +1025,6 @@ export default function ShooterProfile() {
                       filteredData.length > 0 ? 
                       Math.min(...filteredData.map(s => parseFloat(s.avgGroupSize))).toFixed(1) : 0
                     }mm</p>
-                    <p>• Sessions with detailed data: {
-                      filteredData.filter(s => s.series && s.series.length > 0).length
-                    }/{filteredData.length}</p>
-                    {filteredData.some(s => s.series && s.series.length > 0) && (
-                      <p>• Most consistent series: {
-                        (() => {
-                          const allSeries = filteredData.flatMap(s => s.series || []);
-                          const seriesConsistency = [1,2,3,4,5,6].map(num => {
-                            const seriesScores = allSeries.filter(s => s.seriesNumber === num).map(s => s.score);
-                            if (seriesScores.length < 2) return { series: num, consistency: 0 };
-                            const avg = seriesScores.reduce((sum, score) => sum + score, 0) / seriesScores.length;
-                            const variance = seriesScores.reduce((sum, score) => sum + Math.pow(score - avg, 2), 0) / seriesScores.length;
-                            return { series: num, consistency: Math.sqrt(variance) };
-                          });
-                          const mostConsistent = seriesConsistency.reduce((best, curr) => 
-                            curr.consistency < best.consistency && curr.consistency > 0 ? curr : best
-                          );
-                          return `Series ${mostConsistent.series}`;
-                        })()
-                      }</p>
-                    )}
                   </div>
                 </div>
               </div>

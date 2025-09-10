@@ -39,7 +39,7 @@ const RangeOwnerDashboard = () => {
     monthlyRevenue: 0,
     upcomingEvents: [],
     recentBookings: 0,
-    totalPosts: 0,
+    totalProducts: 0,
     activeAssistants: 0,
     loading: true
   });
@@ -120,15 +120,15 @@ const RangeOwnerDashboard = () => {
       const rangeIds = ranges.map(range => range.id);
 
       // Fetch posts data
-      let totalPosts = 0;
+      let totalProducts = 0;
       try {
         const postsQuery = query(
-          collection(db, "posts"),
-          where("authorId", "==", user.uid)
+          collection(db, "products"),
+          where("ownerId", "==", user.uid)
         );
         const postsSnapshot = await getDocs(postsQuery);
-        totalPosts = postsSnapshot.docs.length;
-        console.log("Total posts found:", totalPosts);
+        totalProducts = postsSnapshot.docs.length;
+        console.log("Total posts found:", totalProducts);
       } catch (error) {
         console.error("Error fetching posts:", error);
       }
@@ -371,7 +371,7 @@ const RangeOwnerDashboard = () => {
         monthlyRevenue,
         upcomingEvents: processedEvents.length,
         recentBookings,
-        totalPosts,
+        totalProducts,
         activeAssistants
       });
 
@@ -381,7 +381,7 @@ const RangeOwnerDashboard = () => {
         monthlyRevenue,
         upcomingEvents: processedEvents.slice(0, 5),
         recentBookings,
-        totalPosts,
+        totalProducts,
         activeAssistants,
         loading: false
       });
@@ -600,22 +600,22 @@ const RangeOwnerDashboard = () => {
 
           {/* Posts */}
           <Card 
-            onClick={() => navigate("/dashboard/range-owner/post-range-owner")}
+            onClick={() => navigate("/dashboard/range-owner/shop")}
             className="bg-gradient-to-br from-rose-50 to-rose-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 group"
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-semibold text-rose-900">My Posts</CardTitle>
+              <CardTitle className="text-sm font-semibold text-rose-900">My Prouducts</CardTitle>
               <div className="p-2 bg-rose-500 rounded-lg group-hover:bg-rose-600 transition-colors">
                 <FileText className="h-5 w-5 text-white" />
               </div>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-rose-900 mb-1">
-                {dashboardData.loading ? "..." : dashboardData.totalPosts}
+                {dashboardData.loading ? "..." : dashboardData.totalProducts}
               </div>
               <p className="text-xs text-rose-700 font-medium flex items-center gap-1">
                 <MessageSquare className="w-3 h-3" />
-                Published content
+                Published Products
               </p>
             </CardContent>
           </Card>

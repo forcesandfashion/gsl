@@ -32,6 +32,9 @@ import CmbShooterData from "./CmbShooterData";
 import CmbRanges from  "./CmbRanges";
 import CmbBookings from "./CmbBookings";
 import CmbEvents from "./CmbEvents";
+import RangeOwnerShop from "./RangeOwnerShop";
+import AdminProducts from "./AdminProducts";
+
 
 const DashboardRouter = () => {
   const { userRole, loading } = useAuth();
@@ -86,12 +89,14 @@ const DashboardRouter = () => {
       <Route path="sub-admin/ranges" element={<SubAdminRanges />} />
       <Route path="sub-admin/events" element={<SubAdminEvent />} />
       <Route path="sub-admin/shooters-data" element={<SubAdminShooterData />} />
+      
 
       {/* Admin sub routes - Accessible by both admin and sub_admin */}
       <Route path="admin/range-owners" element={<RangeOwnerList />} />
       <Route path="admin/ranges" element={<AdminActiveRanges />} />
       <Route path="admin/shooter-data" element={<DashboardShooterData />} />
       <Route path="admin/events" element={<AdminEventsPage />} />
+      <Route path="admin/shop" element={<AdminProducts />} />
       
       {/* Shooter sub-routes */}
       <Route path="shooter/bookings" element={<ShooterBooking />} />
@@ -107,6 +112,8 @@ const DashboardRouter = () => {
       <Route path="range-owner/post-range-owner" element={<PostRangeOwner />} />
       <Route path="range-owner/assistant-accounts" element={<AssistantAccounts />} />
       <Route path="range-owner/subscription" element={<Payment />} />
+      <Route path="range-owner/shop" element={<RangeOwnerShop />} />
+
 
 
       {/* cmb sub path  */}
