@@ -28,6 +28,10 @@ import SubAdminRanges from "./SubAdminRanges";
 import SubAdminEvent from "./SubAdminEvent";
 import SubAdminShooterData from "./SubAdminDashboardShooterData";
 import CmbDashboard from "./CmbDashboard";
+import CmbShooterData from "./CmbShooterData";
+import CmbRanges from  "./CmbRanges";
+import CmbBookings from "./CmbBookings";
+import CmbEvents from "./CmbEvents";
 
 const DashboardRouter = () => {
   const { userRole, loading } = useAuth();
@@ -106,8 +110,10 @@ const DashboardRouter = () => {
 
 
       {/* cmb sub path  */}
-      
-
+      <Route path="cmb/shooters-data" element={<CmbShooterData />} />
+      <Route path="cmb/ranges" element={<CmbRanges />} />
+      <Route path="cmb/cmb-bookings" element={<CmbBookings />} />
+      <Route path="cmb/events" element={<CmbEvents />} />
       
       {/* Manager sub-routes */}
       {/* Add manager-specific routes here when needed:
