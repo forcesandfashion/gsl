@@ -113,7 +113,7 @@ const DashboardRouter = () => {
       <Route path="cmb/shooters-data" element={<CmbShooterData />} />
       <Route path="cmb/ranges" element={<CmbRanges />} />
       <Route path="cmb/cmb-bookings" element={<CmbBookings />} />
-      <Route path="cmb/events" element={<CmbEvents />} />
+      <Route path="cmb/cmb-events" element={<CmbEvents />} />
       
       {/* Manager sub-routes */}
       {/* Add manager-specific routes here when needed:
