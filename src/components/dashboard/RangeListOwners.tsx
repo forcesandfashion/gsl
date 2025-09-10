@@ -8,6 +8,7 @@ import {
   where, 
   getDocs, 
   deleteDoc, 
+  getDoc,
   doc
 } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -73,7 +74,7 @@ export default function RangeListOwners() {
   const [createModal, setCreateModal] = useState(false);
   const [selectedRangeId, setSelectedRangeId] = useState<string | null>(null); // Add this state
   const weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-
+  const [userPremiumStatus, setUserPremiumStatus] = useState(false);
   // Get display time for range card
   const getDisplayTime = (range: Range) => {
     if (range.structuredOpeningHours) {
@@ -98,6 +99,23 @@ export default function RangeListOwners() {
     }
     return range.openingHours || "Hours not available";
   };
+
+  const fetchUserPremiumStatus = async () => {
+  if (!user) return;
+  
+  try {
+    // Replace this with your actual premium status fetching logic
+    const userDoc = await getDoc(doc(db, "range-owners", user.uid));
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      setUserPremiumStatus(userData.premium || false);
+    }
+  } catch (error) {
+    console.error("Error fetching user premium status:", error);
+    // Default to false if error
+    setUserPremiumStatus(false);
+  }
+};
 
   // Fetch ranges owned by current user
   const fetchRanges = async () => {
@@ -164,6 +182,8 @@ export default function RangeListOwners() {
     ));
   };
 
+
+
   // Handle modal close
   const handleModalClose = () => {
     setShowEditModal(false);
@@ -196,9 +216,12 @@ export default function RangeListOwners() {
     }
   };
 
-  useEffect(() => {
+useEffect(() => {
+  if (user) {
     fetchRanges();
-  }, [user]);
+    fetchUserPremiumStatus(); // Add this line
+  }
+}, [user]);
 
   if (loading) {
     return (
@@ -458,12 +481,13 @@ export default function RangeListOwners() {
       </div>
 
       {/* EditRange Modal */}
-      <EditRange 
-        range={editingRange}
-        isOpen={showEditModal}
-        onClose={handleModalClose}
-        onUpdate={handleRangeUpdate}
-      />
+<EditRange 
+  range={editingRange}
+  isOpen={showEditModal}
+  onClose={handleModalClose}
+  onUpdate={handleRangeUpdate}
+  isPremium={userPremiumStatus}
+/>
     </div>
   );
 }
