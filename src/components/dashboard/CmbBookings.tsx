@@ -34,7 +34,9 @@ const CmbBookings: React.FC = () => {
 
   // Fetch bookings from Firebase
   useEffect(() => {
-    const fetchBookings = async () => {
+    let unsubscribe: (() => void) | undefined;
+
+    const setupBookingsListener = () => {
       try {
         setLoading(true);
         setError(null);
@@ -46,7 +48,7 @@ const CmbBookings: React.FC = () => {
         );
 
         // Set up real-time listener
-        const unsubscribe = onSnapshot(
+        unsubscribe = onSnapshot(
           bookingsQuery,
           (querySnapshot) => {
             const bookingsData: Booking[] = [];
@@ -85,9 +87,6 @@ const CmbBookings: React.FC = () => {
             setLoading(false);
           }
         );
-
-        // Return cleanup function
-        return unsubscribe;
       } catch (error) {
         console.error('Error setting up bookings listener:', error);
         setError('Failed to fetch bookings. Please try again.');
@@ -95,11 +94,11 @@ const CmbBookings: React.FC = () => {
       }
     };
 
-    const unsubscribe = fetchBookings();
+    setupBookingsListener();
     
     // Cleanup subscription on unmount
     return () => {
-      if (typeof unsubscribe === 'function') {
+      if (unsubscribe) {
         unsubscribe();
       }
     };
