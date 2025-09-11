@@ -138,9 +138,9 @@ const RangeOwnerDashboard = () => {
       if (isPremium) {
         try {
           const assistantsQuery = query(
-            collection(db, "assistant-accounts"),
+            collection(db, "managers"),
             where("ownerId", "==", user.uid),
-            where("status", "==", "active")
+            
           );
           const assistantsSnapshot = await getDocs(assistantsQuery);
           activeAssistants = assistantsSnapshot.docs.length;

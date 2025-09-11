@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { MapPin, Info, List, Clock, Phone, Image as ImageIcon, Type, DollarSign, Navigation, Video, Crown, Map, RefreshCw } from "lucide-react";
+import { MapPin, Info, List, Clock, Phone, Image as ImageIcon, Type, DollarSign, Navigation, Video, Crown, Map, RefreshCw, Copy, X, CheckCircle, AlertTriangle } from "lucide-react";
 import { IndianRupee } from "lucide-react";
 
 // Add your Google Maps API key here
@@ -166,6 +166,12 @@ export default function RangeListingForm() {
   
   const [maxBookingsPerSlot, setMaxBookingsPerSlot] = useState<number>(5);
   const [geocodingError, setGeocodingError] = useState<string | null>(null);
+  
+  // Bulk timing states
+  const [bulkStartTime, setBulkStartTime] = useState("");
+  const [bulkEndTime, setBulkEndTime] = useState("");
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [showBulkOptions, setShowBulkOptions] = useState(false);
   
   const weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -365,6 +371,74 @@ export default function RangeListingForm() {
         [field]: value
       }
     }));
+  };
+
+  // Bulk timing operations
+  const handleDaySelection = (day: string) => {
+    setSelectedDays(prev => 
+      prev.includes(day) 
+        ? prev.filter(d => d !== day)
+        : [...prev, day]
+    );
+  };
+
+  const selectAllDays = () => {
+    setSelectedDays([...weekdays]);
+  };
+
+  const clearSelectedDays = () => {
+    setSelectedDays([]);
+  };
+
+  // FIXED: Apply bulk timing function
+  const applyBulkTiming = () => {
+    if (selectedDays.length === 0 || !bulkStartTime || !bulkEndTime) {
+      toast({
+        title: "Invalid Selection",
+        description: "Please select days and set both start and end times.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Use functional state update to ensure proper state mutation
+    setStructuredOpeningHours(prevHours => {
+      const updatedHours = { ...prevHours };
+      
+      // Apply bulk timing to selected days
+      selectedDays.forEach(day => {
+        updatedHours[day] = {
+          start: bulkStartTime,
+          end: bulkEndTime
+        };
+      });
+      
+      return updatedHours;
+    });
+    
+    toast({
+      title: "Timing Applied",
+      description: `Bulk timing applied to ${selectedDays.length} day(s).`,
+    });
+
+    // Reset bulk settings
+    setBulkStartTime("");
+    setBulkEndTime("");
+    setSelectedDays([]);
+  };
+
+  const closeAllDays = () => {
+    const closedHours = weekdays.reduce((acc, day) => {
+      acc[day] = { start: "", end: "" };
+      return acc;
+    }, {} as { [key: string]: { start: string; end: string } });
+
+    setStructuredOpeningHours(closedHours);
+    
+    toast({
+      title: "All Days Closed",
+      description: "All days have been set to closed.",
+    });
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -898,7 +972,7 @@ export default function RangeListingForm() {
             )}
           </div>
 
-          {/* Range Images Section - Enhanced */}
+          {/* Range Images Section - Enhanced with Content Guidelines */}
           <div className="p-6 bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl border border-orange-200">
             <Label htmlFor="rangeImages" className="flex items-center gap-2 font-semibold text-gray-700 mb-4">
               <ImageIcon className="w-5 h-5 text-orange-500" /> 
@@ -907,6 +981,35 @@ export default function RangeListingForm() {
                 {rangeImageFiles.length}/{isPremium ? '∞' : '9'} images
               </span>
             </Label>
+
+            {/* Content Guidelines for Images */}
+            <div className="mb-4 p-4 bg-white rounded-xl border-l-4 border-orange-400">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h4 className="font-semibold text-gray-700 mb-2">Image Content Guidelines</h4>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <p className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      Upload clear photos of your shooting range, facilities, and equipment
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      Show safety features, shooting lanes, and amenities
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <X className="w-4 h-4 text-red-500" />
+                      Do not upload inappropriate, violent, or explicit content
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <X className="w-4 h-4 text-red-500" />
+                      Avoid copyrighted images or content you don't own
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <Input
               id="rangeImages"
               type="file"
@@ -939,12 +1042,44 @@ export default function RangeListingForm() {
             )}
           </div>
 
-          {/* Enhanced Video Section */}
+          {/* Enhanced Video Section with Content Guidelines */}
           <div className="p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200">
             <Label className="flex items-center gap-2 text-lg font-semibold text-gray-700 mb-6">
               <Video className="w-6 h-6 text-purple-500" /> Video Content
               {!isPremium && <span className="text-sm font-normal text-gray-500">(Choose one option)</span>}
             </Label>
+
+            {/* Content Guidelines for Videos */}
+            <div className="mb-6 p-4 bg-white rounded-xl border-l-4 border-purple-400">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-purple-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h4 className="font-semibold text-gray-700 mb-2">Video Content Guidelines</h4>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <p className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      Upload professional range tours, facility overviews, or safety demonstrations
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      Show range features, equipment, and training programs
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <X className="w-4 h-4 text-red-500" />
+                      No explicit violence, inappropriate content, or harmful activities
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <X className="w-4 h-4 text-red-500" />
+                      Avoid copyrighted music or content without proper licensing
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <X className="w-4 h-4 text-red-500" />
+                      Do not upload content promoting unsafe gun handling
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
             
             <div className="grid md:grid-cols-2 gap-6">
               {/* YouTube URL Input */}
@@ -1014,12 +1149,125 @@ export default function RangeListingForm() {
             )}
           </div>
 
-          {/* Enhanced Opening Hours Section */}
+          {/* Enhanced Opening Hours Section with Bulk Operations */}
           <div className="p-6 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl border border-blue-200">
             <label className="text-lg font-semibold text-gray-700 mb-6 flex items-center gap-2">
               <Clock className="w-5 h-5 text-blue-500" />
               Weekly Opening Hours
             </label>
+
+            {/* Bulk Operations Section */}
+            <div className="mb-6 p-4 bg-white rounded-xl border shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-semibold text-gray-700 flex items-center gap-2">
+                  <Copy className="w-4 h-4 text-blue-500" />
+                  Bulk Operations
+                </h4>
+                <Button
+                  type="button"
+                  onClick={() => setShowBulkOptions(!showBulkOptions)}
+                  className="text-sm px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200"
+                >
+                  {showBulkOptions ? 'Hide' : 'Show'} Bulk Options
+                </Button>
+              </div>
+
+              {showBulkOptions && (
+                <div className="space-y-4">
+                  {/* Day Selection */}
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700 mb-2 block">Select Days:</Label>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {weekdays.map((day) => (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => handleDaySelection(day)}
+                          className={`px-3 py-1 text-xs rounded-full border transition-all duration-200 ${
+                            selectedDays.includes(day)
+                              ? 'bg-blue-500 text-white border-blue-500'
+                              : 'bg-white text-gray-600 border-gray-300 hover:border-blue-300'
+                          }`}
+                        >
+                          {day.slice(0, 3)}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex gap-2 mb-4">
+                      <Button
+                        type="button"
+                        onClick={selectAllDays}
+                        className="text-xs px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-all duration-200"
+                      >
+                        Select All
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={clearSelectedDays}
+                        className="text-xs px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 transition-all duration-200"
+                      >
+                        Clear Selection
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Bulk Timing Input */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs text-gray-500 mb-1 block">Bulk Start Time</Label>
+                      <select
+                        value={bulkStartTime}
+                        onChange={(e) => setBulkStartTime(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Select Time</option>
+                        {timeOptions.map((time) => (
+                          <option key={time.value} value={time.value}>
+                            {time.display}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500 mb-1 block">Bulk End Time</Label>
+                      <select
+                        value={bulkEndTime}
+                        onChange={(e) => setBulkEndTime(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Select Time</option>
+                        {timeOptions.map((time) => (
+                          <option key={time.value} value={time.value}>
+                            {time.display}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Bulk Action Buttons */}
+                  <div className="flex gap-3">
+                    <Button
+                      type="button"
+                      onClick={applyBulkTiming}
+                      disabled={selectedDays.length === 0 || !bulkStartTime || !bulkEndTime}
+                      className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all duration-200"
+                    >
+                      Apply to Selected Days ({selectedDays.length})
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={closeAllDays}
+                      className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all duration-200"
+                    >
+                      Close All Days
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Individual Day Schedule */}
             <div className="grid gap-4">
               {weekdays.map((day) => (
                 <div key={day} className="flex items-center gap-4 bg-white p-4 rounded-xl shadow-sm border hover:shadow-md transition-all duration-200">
@@ -1058,6 +1306,11 @@ export default function RangeListingForm() {
                       </select>
                     </div>
                   </div>
+                  {structuredOpeningHours[day]?.start && structuredOpeningHours[day]?.end && (
+                    <div className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+                      Open
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -1096,15 +1349,15 @@ export default function RangeListingForm() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-green-500">3.</span>
-                <span>Enhanced image gallery management</span>
+                <span>Enhanced image gallery with content guidelines</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-green-500">4.</span>
-                <span>Flexible video content options</span>
+                <span>Video content with safety guidelines</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-green-500">5.</span>
-                <span>Comprehensive opening hours setup</span>
+                <span>Bulk timing operations for efficient setup</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-green-500">6.</span>
@@ -1116,4 +1369,4 @@ export default function RangeListingForm() {
       </div>
     </div>
   );
-}
+};

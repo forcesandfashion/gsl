@@ -9,7 +9,8 @@ import {
   getDocs, 
   deleteDoc, 
   getDoc,
-  doc
+  doc,
+  updateDoc
 } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,11 +27,13 @@ import {
   Star,
   Building,
   Image as ImageIcon,
-  Calendar
+  Calendar,
+  Crown
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import EditRange from "../dashboard/EditRange";
 import CreateEventModal from "./CreateEventModal";
+import SubscriptionModal from "./SubscriptionModal";
 
 type WeeklyHours = {
   Monday: { start: string; end: string };
@@ -72,9 +75,13 @@ export default function RangeListOwners() {
   const [editingRange, setEditingRange] = useState<Range | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [createModal, setCreateModal] = useState(false);
-  const [selectedRangeId, setSelectedRangeId] = useState<string | null>(null); // Add this state
-  const weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const [selectedRangeId, setSelectedRangeId] = useState<string | null>(null);
+  const [subscriptionModal, setSubscriptionModal] = useState(false);
+  const [subscriptionRange, setSubscriptionRange] = useState<Range | null>(null);
   const [userPremiumStatus, setUserPremiumStatus] = useState(false);
+  
+  const weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
   // Get display time for range card
   const getDisplayTime = (range: Range) => {
     if (range.structuredOpeningHours) {
@@ -101,21 +108,21 @@ export default function RangeListOwners() {
   };
 
   const fetchUserPremiumStatus = async () => {
-  if (!user) return;
-  
-  try {
-    // Replace this with your actual premium status fetching logic
-    const userDoc = await getDoc(doc(db, "range-owners", user.uid));
-    if (userDoc.exists()) {
-      const userData = userDoc.data();
-      setUserPremiumStatus(userData.premium || false);
+    if (!user) return;
+    
+    try {
+      // Replace this with your actual premium status fetching logic
+      const userDoc = await getDoc(doc(db, "range-owners", user.uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setUserPremiumStatus(userData.premium || false);
+      }
+    } catch (error) {
+      console.error("Error fetching user premium status:", error);
+      // Default to false if error
+      setUserPremiumStatus(false);
     }
-  } catch (error) {
-    console.error("Error fetching user premium status:", error);
-    // Default to false if error
-    setUserPremiumStatus(false);
-  }
-};
+  };
 
   // Fetch ranges owned by current user
   const fetchRanges = async () => {
@@ -171,6 +178,18 @@ export default function RangeListOwners() {
     setShowEditModal(true);
   };
 
+  // Handle subscription button click
+  const handleSubscriptionClick = (range: Range) => {
+    setSubscriptionRange(range);
+    setSubscriptionModal(true);
+  };
+
+  // Handle subscription modal close
+  const handleSubscriptionModalClose = () => {
+    setSubscriptionModal(false);
+    setSubscriptionRange(null);
+  };
+
   // Handle range update from modal
   const handleRangeUpdate = (updatedData: Partial<Range>) => {
     if (!editingRange) return;
@@ -181,8 +200,6 @@ export default function RangeListOwners() {
         : range
     ));
   };
-
-
 
   // Handle modal close
   const handleModalClose = () => {
@@ -216,12 +233,12 @@ export default function RangeListOwners() {
     }
   };
 
-useEffect(() => {
-  if (user) {
-    fetchRanges();
-    fetchUserPremiumStatus(); // Add this line
-  }
-}, [user]);
+  useEffect(() => {
+    if (user) {
+      fetchRanges();
+      fetchUserPremiumStatus();
+    }
+  }, [user]);
 
   if (loading) {
     return (
@@ -241,6 +258,12 @@ useEffect(() => {
               <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
                 <Building className="w-8 h-8 text-blue-600" />
                 My Shooting Ranges
+                {userPremiumStatus && (
+                  <Badge className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-white">
+                    <Crown className="w-3 h-3 mr-1" />
+                    Premium
+                  </Badge>
+                )}
               </h1>
               <p className="text-gray-600 mt-1">
                 Manage your shooting range listings and facilities
@@ -262,7 +285,18 @@ useEffect(() => {
           isOpen={createModal}
           onClose={handleCreateEventModalClose}
           title="Create Event"
-          rangeId={selectedRangeId} // Pass the selected range ID
+          rangeId={selectedRangeId}
+        />
+      )}
+
+      {/* Subscription Modal */}
+      {subscriptionModal && subscriptionRange && (
+        <SubscriptionModal
+          isOpen={subscriptionModal}
+          onClose={handleSubscriptionModalClose}
+          rangeName={subscriptionRange.name}
+          rangeId={subscriptionRange.id}
+          ownerId={user?.uid || ""}
         />
       )}
 
@@ -292,7 +326,7 @@ useEffect(() => {
               <Card key={range.id} className="group hover:shadow-2xl transition-all duration-300 hover:scale-105 bg-white border border-gray-200 rounded-2xl overflow-hidden">
                 {/* Range Image */}
                 <div className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200">
-                  { (range.rangeImages && range.rangeImages.length > 0) ? (
+                  {(range.rangeImages && range.rangeImages.length > 0) ? (
                     <img
                       src={range.rangeImages[0]}
                       alt={range.name}
@@ -307,7 +341,7 @@ useEffect(() => {
                   
                   {/* Fallback when no image */}
                   <div className={`w-full h-full flex items-center justify-center ${
-                    ( (range.rangeImages && range.rangeImages.length > 0)) ? 'hidden' : ''
+                    ((range.rangeImages && range.rangeImages.length > 0)) ? 'hidden' : ''
                   }`}>
                     <div className="text-center">
                       <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
@@ -326,6 +360,14 @@ useEffect(() => {
                     {range.status?.charAt(0).toUpperCase() + range.status?.slice(1) || 'Active'}
                   </Badge>
 
+                  {/* Premium Badge */}
+                  {userPremiumStatus && (
+                    <Badge className="absolute top-3 left-3 bg-gradient-to-r from-yellow-400 to-yellow-600 text-white">
+                      <Crown className="w-3 h-3 mr-1" />
+                      Premium
+                    </Badge>
+                  )}
+
                   {/* Logo Overlay */}
                   {range.logoUrl && (
                     <div className="absolute bottom-3 left-3">
@@ -343,7 +385,7 @@ useEffect(() => {
 
                   {/* Image count indicator */}
                   {((range.rangeImages && range.rangeImages.length > 1)) && (
-                    <div className="absolute top-3 left-3 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded-full">
+                    <div className="absolute bottom-3 right-3 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded-full">
                       +{(range.rangeImages?.length || 1) - 1} more
                     </div>
                   )}
@@ -388,11 +430,11 @@ useEffect(() => {
                   )}
 
                   {/* Image Count */}
-                  {( (range.rangeImages && range.rangeImages.length > 0)) && (
+                  {((range.rangeImages && range.rangeImages.length > 0)) && (
                     <div className="flex items-center text-sm text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
                       <ImageIcon className="w-4 h-4 mr-2 text-blue-500" />
                       <span className="font-medium">{range.rangeImages?.length || 0}</span>
-                      <span className="ml-1">gallery image{( range.rangeImages?.length || 0) > 1 ? 's' : ''}</span>
+                      <span className="ml-1">gallery image{(range.rangeImages?.length || 0) > 1 ? 's' : ''}</span>
                     </div>
                   )}
 
@@ -402,7 +444,7 @@ useEffect(() => {
                       variant="outline"
                       size="sm"
                       className="flex-1 hover:bg-purple-50 hover:border-purple-300"
-                      onClick={() => handleCreateEventClick(range.id)} // Pass range.id here
+                      onClick={() => handleCreateEventClick(range.id)}
                     >
                       <Calendar className="w-4 h-4 mr-1" />
                       Create Event
@@ -430,6 +472,15 @@ useEffect(() => {
                     >
                       <Edit className="w-4 h-4 mr-1" />
                       Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 hover:bg-yellow-50 hover:border-yellow-300"
+                      onClick={() => handleSubscriptionClick(range)}
+                    >
+                      <Crown className="w-4 h-4 mr-1" />
+                      Subscription
                     </Button>
                     <Button
                       variant="outline"
@@ -471,7 +522,7 @@ useEffect(() => {
               </div>
               <div className="text-center p-4 bg-purple-50 rounded-xl">
                 <div className="text-2xl font-bold text-purple-600">
-                  {ranges.reduce((total, range) => total + ( range.rangeImages?.length || 0), 0)}
+                  {ranges.reduce((total, range) => total + (range.rangeImages?.length || 0), 0)}
                 </div>
                 <div className="text-sm text-purple-800">Total Images</div>
               </div>
@@ -481,13 +532,13 @@ useEffect(() => {
       </div>
 
       {/* EditRange Modal */}
-<EditRange 
-  range={editingRange}
-  isOpen={showEditModal}
-  onClose={handleModalClose}
-  onUpdate={handleRangeUpdate}
-  isPremium={userPremiumStatus}
-/>
+      <EditRange 
+        range={editingRange}
+        isOpen={showEditModal}
+        onClose={handleModalClose}
+        onUpdate={handleRangeUpdate}
+        premium={userPremiumStatus}
+      />
     </div>
   );
 }

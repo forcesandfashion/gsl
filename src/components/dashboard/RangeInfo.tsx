@@ -19,7 +19,8 @@ import {
   SkipForward, 
   SkipBack,
   Maximize,
-  ExternalLink
+  ExternalLink,
+  Crown
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -54,6 +55,18 @@ interface Range {
   videoUrl?: string;
   youtubeUrl?: string;
   ownerPremium?: boolean;
+  subscriptionSettings?: {
+    isActive: boolean;
+    plans: Array<{
+      duration: string;
+      months: number;
+      price: number;
+      enabled: boolean;
+    }>;
+    features: string[];
+    title: string;
+    description: string;
+  };
 }
 
 interface MediaItem {
@@ -166,6 +179,11 @@ export default function RangeInfo() {
         }
 
         const data = rangeSnap.data();
+        
+        // Debug logging
+        console.log('Raw Firebase data:', data);
+        console.log('Subscription settings:', data.subscriptionSettings);
+        
         const rangeData = {
           id: rangeSnap.id,
           name: data.name,
@@ -179,8 +197,12 @@ export default function RangeInfo() {
           status: data.status || "closed",
           videoUrl: data.videoUrl,
           youtubeUrl: data.youtubeUrl,
-          ownerPremium: data.ownerPremium || false
+          ownerPremium: data.ownerPremium || false,
+          subscriptionSettings: data.subscriptionSettings
         };
+
+        console.log('Processed range data:', rangeData);
+        console.log('Subscription active?', rangeData.subscriptionSettings?.isActive);
 
         setRange(rangeData);
         setMediaItems(organizeMediaItems(rangeData));
@@ -315,6 +337,7 @@ export default function RangeInfo() {
   const handleCarouselMouseLeave = () => {
     setIsCarouselPaused(false);
   };
+  
   const formatTime = (timeString: string) => {
     if (!timeString) return "";
     const [hours, minutes] = timeString.split(":");
@@ -378,6 +401,19 @@ export default function RangeInfo() {
       return;
     }
     navigate(`/book-range/${range?.id}`);
+  };
+
+  const handleSubscriptionClick = () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to subscribe to this range.",
+        variant: "destructive",
+      });
+      navigate(`/login?returnTo=/subscription/${range?.id}`);
+      return;
+    }
+    navigate(`/subscription/${range?.id}`);
   };
 
   if (loading) {
@@ -750,7 +786,8 @@ export default function RangeInfo() {
           </div>
         </div>
 
-        <div className="mt-8 flex justify-center">
+        {/* Action buttons */}
+        <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
           <Button 
             onClick={handleBookingClick}
             className="bg-blue-600 hover:bg-blue-700 text-white py-6 px-10 text-lg font-semibold shadow-lg transition-all hover:scale-105"
@@ -761,6 +798,21 @@ export default function RangeInfo() {
               : "Range Currently Closed"
             }
           </Button>
+
+          {range.subscriptionSettings?.isActive && (
+            <Button 
+              onClick={handleSubscriptionClick}
+              variant="outline"
+              className="border-2 border-yellow-500 text-yellow-600 hover:bg-yellow-50 py-6 px-10 text-lg font-semibold shadow-lg transition-all hover:scale-105"
+              disabled={range.status !== "active"}
+            >
+              <Crown className="w-5 h-5 mr-2" />
+              {range.status === "active" 
+                ? (user ? "Premium Subscription" : "Sign In for Premium")
+                : "Subscription Unavailable"
+              }
+            </Button>
+          )}
         </div>
 
         {!user && range.status === "active" && (
@@ -795,6 +847,39 @@ export default function RangeInfo() {
                 </p>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Premium Features Preview (if subscription available) */}
+      {range.subscriptionSettings?.isActive && (
+        <div className="bg-gradient-to-r from-yellow-50 to-amber-50 p-6 rounded-xl shadow-lg border-2 border-yellow-200 mt-6">
+          <div className="text-center mb-4">
+            <Crown className="w-12 h-12 mx-auto text-yellow-500 mb-2" />
+            <h3 className="text-xl font-bold text-yellow-700">Premium Subscription Available</h3>
+            <p className="text-yellow-600">{range.subscriptionSettings.description}</p>
+          </div>
+          
+          {range.subscriptionSettings.features && range.subscriptionSettings.features.length > 0 && (
+            <div className="grid md:grid-cols-2 gap-4">
+              {range.subscriptionSettings.features.slice(0, 6).map((feature, index) => (
+                <div key={index} className="flex items-center gap-2 text-yellow-700">
+                  <Star className="w-4 h-4 text-yellow-500 flex-shrink-0" />
+                  <span className="text-sm">{feature}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          <div className="text-center mt-4">
+            <Button 
+              onClick={handleSubscriptionClick}
+              className="bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white"
+              disabled={range.status !== "active"}
+            >
+              <Crown className="w-4 h-4 mr-2" />
+              View Subscription Plans
+            </Button>
           </div>
         </div>
       )}
