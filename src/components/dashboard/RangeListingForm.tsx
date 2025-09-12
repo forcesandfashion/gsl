@@ -1,15 +1,16 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useAuth } from "@/firebase/auth";
 import { db, storage } from "@/firebase/config";
-import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, getDoc, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { MapPin, Info, List, Clock, Phone, Image as ImageIcon, Type, DollarSign, Navigation, Video, Crown, Map, RefreshCw, Copy, X, CheckCircle, AlertTriangle } from "lucide-react";
+import { MapPin, Info, List, Clock, Phone, Image as ImageIcon, Type, DollarSign, Navigation, Video, Crown, Map, RefreshCw, Copy, X, CheckCircle, AlertTriangle, QrCode, Download } from "lucide-react";
 import { IndianRupee } from "lucide-react";
+import QRCode from "qrcode";
 
 // Add your Google Maps API key here
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API; // Replace with your actual API key
@@ -119,6 +120,63 @@ const InteractiveMap: React.FC<MapProps> = ({ latitude, longitude, onLocationCha
   );
 };
 
+// QR Code Modal Component
+const QRCodeModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  rangeId: string;
+  rangeName: string;
+  qrCodeUrl: string;
+}> = ({ isOpen, onClose, rangeId, rangeName, qrCodeUrl }) => {
+  if (!isOpen) return null;
+
+  const downloadQRCode = () => {
+    const link = document.createElement('a');
+    link.download = `qr-code-${rangeId}.png`;
+    link.href = qrCodeUrl;
+    link.click();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+        <div className="text-center">
+          <h3 className="text-xl font-bold mb-4 flex items-center justify-center gap-2">
+            <QrCode className="w-6 h-6" /> Range QR Code
+          </h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Shooters can scan this code to check in at your range
+          </p>
+          
+          <div className="flex justify-center mb-4">
+            <img src={qrCodeUrl} alt="Range QR Code" className="w-48 h-48" />
+          </div>
+          
+          <div className="text-left bg-gray-50 p-4 rounded-lg mb-4">
+            <p className="text-sm"><strong>Range:</strong> {rangeName}</p>
+            <p className="text-sm"><strong>ID:</strong> {rangeId}</p>
+          </div>
+          
+          <div className="flex gap-3 justify-center">
+            <Button
+              onClick={downloadQRCode}
+              className="flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" /> Download QR
+            </Button>
+            <Button
+              onClick={onClose}
+              variant="outline"
+            >
+              Close
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function RangeListingForm() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -173,6 +231,12 @@ export default function RangeListingForm() {
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [showBulkOptions, setShowBulkOptions] = useState(false);
   
+  // QR Code states
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [createdRangeId, setCreatedRangeId] = useState<string | null>(null);
+  const [createdRangeName, setCreatedRangeName] = useState<string | null>(null);
+  
   const weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
   // Time options for dropdown (every 30 minutes)
@@ -187,6 +251,84 @@ export default function RangeListingForm() {
     });
     return { value: time, display: displayTime };
   });
+
+  // Function to generate QR code
+  const generateQRCode = async (rangeId: string, rangeName: string, address: string, contactNumber: string): Promise<string> => {
+    try {
+      // Create QR code data with range information
+      const qrData = JSON.stringify({
+        rangeId,
+        rangeName,
+        address,
+        contactNumber,
+        type: 'shooting-range-attendance',
+        timestamp: new Date().toISOString()
+      });
+      
+      // Generate QR code as data URL
+      const qrCodeDataUrl = await QRCode.toDataURL(qrData, {
+        width: 300,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+      
+      return qrCodeDataUrl;
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+      throw new Error('Failed to generate QR code');
+    }
+  };
+
+  // Function to upload QR code to Firebase Storage
+  const uploadQRCode = async (rangeId: string, qrCodeDataUrl: string): Promise<string> => {
+    try {
+      // Convert data URL to blob
+      const response = await fetch(qrCodeDataUrl);
+      const blob = await response.blob();
+      
+      // Upload to Firebase Storage
+      const qrCodeRef = ref(storage, `qr-codes/${rangeId}/attendance-qr.png`);
+      const snapshot = await uploadBytes(qrCodeRef, blob);
+      
+      // Get download URL
+      return await getDownloadURL(snapshot.ref);
+    } catch (error) {
+      console.error('Error uploading QR code:', error);
+      throw new Error('Failed to upload QR code');
+    }
+  };
+
+  // Function to store QR code data in Firestore
+  const storeQRCodeData = async (rangeId: string, qrCodeUrl: string, rangeData: any) => {
+    try {
+      // Create a document in the qr-codes collection
+      const qrCodeDoc = {
+        rangeId,
+        rangeName: rangeData.name,
+        address: rangeData.address,
+        contactNumber: rangeData.contactNumber,
+        qrCodeUrl,
+        createdAt: serverTimestamp(),
+        attendance: []  // This will store attendance records
+      };
+      
+      await setDoc(doc(db, "qr-codes", rangeId), qrCodeDoc);
+      
+      // Also add a reference to the QR code in the range document
+      await setDoc(doc(db, "ranges", rangeId), {
+        qrCodeUrl,
+        qrCodeId: rangeId
+      }, { merge: true });
+      
+      return true;
+    } catch (error) {
+      console.error("Error storing QR code data:", error);
+      throw new Error('Failed to store QR code data');
+    }
+  };
 
   // Check if user is premium and fetch owner logo
   useEffect(() => {
@@ -655,6 +797,27 @@ export default function RangeListingForm() {
 
       const docRef = await addDoc(collection(db, "ranges"), rangeData);
 
+      // Generate and store QR code
+      try {
+        const qrCodeDataUrl = await generateQRCode(docRef.id, formData.name, formData.address, formData.contactNumber);
+        const qrCodeStorageUrl = await uploadQRCode(docRef.id, qrCodeDataUrl);
+        await storeQRCodeData(docRef.id, qrCodeStorageUrl, formData);
+        
+        // Set QR code data for display
+        setQrCodeUrl(qrCodeStorageUrl);
+        setCreatedRangeId(docRef.id);
+        setCreatedRangeName(formData.name);
+        setShowQrModal(true);
+      } catch (error) {
+        console.error("QR code generation failed:", error);
+        // Don't fail the whole form submission if QR code generation fails
+        toast({
+          title: "Warning",
+          description: "Range created successfully but QR code generation failed. You can generate it later.",
+          variant: "default"
+        });
+      }
+
       toast({
         title: "Success",
         description: `Range listing created successfully with ID: ${docRef.id}`,
@@ -707,6 +870,14 @@ export default function RangeListingForm() {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
+      <QRCodeModal 
+        isOpen={showQrModal}
+        onClose={() => setShowQrModal(false)}
+        rangeId={createdRangeId || ""}
+        rangeName={createdRangeName || ""}
+        qrCodeUrl={qrCodeUrl || ""}
+      />
+      
       <div className="rounded-3xl shadow-2xl bg-gradient-to-br from-white via-blue-50 to-purple-50 p-8 border border-blue-100">
         <div className="text-center mb-8">
           <h2 className="text-4xl font-extrabold mb-6 flex items-center justify-center gap-3 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
@@ -1362,6 +1533,10 @@ export default function RangeListingForm() {
               <div className="flex items-center gap-2">
                 <span className="text-green-500">6.</span>
                 <span>Real-time address geocoding</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-green-500">7.</span>
+                <span>QR Code generation for shooter attendance</span>
               </div>
             </div>
           </div>
