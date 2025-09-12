@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Users, Calendar, MapPin, BarChart, ArrowRightCircle, CheckCircle, AlertTriangle, XCircle, TrendingUp, Clock, Star, Crown, Zap, Shield, Camera, Video, HeartHandshake, X, FileText, Bot, MessageSquare, UserCheck } from "lucide-react";
+import { Users, Calendar, MapPin, BarChart, ArrowRightCircle, CheckCircle, AlertTriangle, XCircle, TrendingUp, Clock, Star, Crown, Zap, Shield, Camera, Video, HeartHandshake, X, FileText, Bot, MessageSquare, UserCheck, CreditCard, Receipt } from "lucide-react";
 import RangeListingForm from "./RangeListingForm";
 import { db } from "@/firebase/config";
 import { collection, query, where, getDocs, orderBy, limit, doc, getDoc } from "firebase/firestore";
@@ -407,34 +407,38 @@ const RangeOwnerDashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50">
       <header className="bg-white/90 shadow-sm backdrop-blur-md sticky top-0 z-10 border-b border-slate-200/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 tracking-tight mb-2 flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
-                  <span className="text-white text-lg">🎯</span>
-                </div>
-                Welcome, {(user?.displayName?.split('|')[0]) || user?.email?.split('@')[0] || "Range Owner"}!
-                {isPremium && (
-                  <div className="bg-gradient-to-r from-yellow-400 to-yellow-600 px-3 py-1 rounded-full flex items-center gap-1">
-                    <Crown className="w-4 h-4 text-white" />
-                    <span className="text-white text-sm font-semibold">Premium</span>
-                  </div>
-                )}
-              </h1>
-              <p className="text-slate-600 font-medium">Range Owner Dashboard</p>
-            </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                <span className="text-white text-lg">🎯</span>
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3 flex-wrap">
+                  Welcome, {(user?.displayName?.split('|')[0]) || user?.email?.split('@')[0] || "Range Owner"}!
+                  {isPremium && (
+                    <div className="bg-gradient-to-r from-yellow-400 to-yellow-600 px-3 py-1 rounded-full flex items-center gap-1 mt-1 md:mt-0">
+                      <Crown className="w-4 h-4 text-white" />
+                      <span className="text-white text-sm font-semibold">Premium</span>
+                    </div>
+                  )}
+                </h1>
+                <p className="text-slate-600 font-medium text-sm md:text-base">Range Owner Dashboard</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto justify-end">
               <Button
                 onClick={() => navigate("/")}
                 variant="outline"
-                className="font-semibold px-6 py-2 border-slate-200 hover:bg-slate-50 transition-all duration-200"
+                className="font-semibold px-4 md:px-6 py-2 border-slate-200 hover:bg-slate-50 transition-all duration-200 text-xs md:text-sm"
+                size="sm"
               >
                 Home
               </Button>
               <Button
                 onClick={handleSignOut}
-                className="font-semibold px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                className="font-semibold px-4 md:px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 text-xs md:text-sm"
+                size="sm"
               >
                 Sign Out
               </Button>
@@ -443,63 +447,64 @@ const RangeOwnerDashboard = () => {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
         {/* Premium Banner - Only show if user is not premium and banner not dismissed */}
         {!isPremium && !premiumBannerDismissed && (
-          <div className="mb-8">
-            <div className="relative bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 rounded-2xl p-6 shadow-2xl border border-yellow-300">
+          <div className="mb-6 md:mb-8">
+            <div className="relative bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 rounded-xl md:rounded-2xl p-4 md:p-6 shadow-xl md:shadow-2xl border border-yellow-300">
               {/* Background Pattern */}
-              <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-yellow-600/20 rounded-2xl"></div>
-              <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-yellow-300/30 rounded-full blur-2xl"></div>
-              <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-24 h-24 bg-yellow-200/40 rounded-full blur-xl"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-yellow-600/20 rounded-xl md:rounded-2xl"></div>
+              <div className="absolute top-0 right-0 -mt-2 md:-mt-4 -mr-2 md:-mr-4 w-16 md:w-32 h-16 md:h-32 bg-yellow-300/30 rounded-full blur-xl md:blur-2xl"></div>
+              <div className="absolute bottom-0 left-0 -mb-2 md:-mb-4 -ml-2 md:-ml-4 w-12 md:w-24 h-12 md:h-24 bg-yellow-200/40 rounded-full blur-lg md:blur-xl"></div>
               
-              <div className="relative flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-white/30">
-                    <Crown className="w-8 h-8 text-white" />
+              <div className="relative flex flex-col md:flex-row items-center justify-between gap-4 md:gap-0">
+                <div className="flex items-center gap-3 md:gap-4">
+                  <div className="w-12 h-12 md:w-16 md:h-16 bg-white/20 backdrop-blur-sm rounded-xl md:rounded-2xl flex items-center justify-center border border-white/30">
+                    <Crown className="w-6 h-6 md:w-8 md:h-8 text-white" />
                   </div>
                   <div className="text-white">
-                    <h3 className="text-2xl font-bold mb-2 flex items-center gap-2">
+                    <h3 className="text-lg md:text-2xl font-bold mb-1 md:mb-2 flex items-center gap-2">
                       Unlock GSL Premium Features
-                      <Zap className="w-6 h-6 text-yellow-200" />
+                      <Zap className="w-4 h-4 md:w-6 md:h-6 text-yellow-200" />
                     </h3>
-                    <p className="text-yellow-100 text-lg font-medium mb-1">
+                    <p className="text-yellow-100 text-sm md:text-lg font-medium mb-1">
                       Get premium support, video uploads, enhanced visibility, and more!
                     </p>
-                    <div className="flex items-center gap-4 text-sm text-yellow-100">
+                    <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 text-xs md:text-sm text-yellow-100">
                       <div className="flex items-center gap-1">
-                        <CheckCircle className="w-4 h-4" />
+                        <CheckCircle className="w-3 h-3 md:w-4 md:h-4" />
                         <span>24/7 Support</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Video className="w-4 h-4" />
+                        <Video className="w-3 h-3 md:w-4 md:h-4" />
                         <span>Video Hosting</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <TrendingUp className="w-4 h-4" />
+                        <TrendingUp className="w-3 h-3 md:w-4 md:h-4" />
                         <span>Featured Listings</span>
                       </div>
                     </div>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-3">
-                  <div className="text-right text-white mr-4">
-                    <div className="text-3xl font-bold">₹1,000</div>
-                    <div className="text-sm text-yellow-100">per month</div>
+                <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto justify-end">
+                  <div className="text-right text-white mr-2 md:mr-4">
+                    <div className="text-xl md:text-3xl font-bold">₹1,000</div>
+                    <div className="text-xs md:text-sm text-yellow-100">per month</div>
                   </div>
                   <Button
                     onClick={() => setShowPremiumModal(true)}
-                    className="bg-white text-yellow-600 hover:bg-yellow-50 font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                    className="bg-white text-yellow-600 hover:bg-yellow-50 font-bold py-2 md:py-3 px-4 md:px-6 rounded-lg md:rounded-xl shadow-md md:shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 text-xs md:text-sm"
+                    size="sm"
                   >
-                    <Crown className="w-5 h-5 mr-2" />
+                    <Crown className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2" />
                     Upgrade Now
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setPremiumBannerDismissed(true)}
-                    className="text-white/80 hover:text-white hover:bg-white/10 rounded-lg"
+                    className="text-white/80 hover:text-white hover:bg-white/10 rounded-lg h-8 w-8 md:h-10 md:w-10 p-0"
                   >
                     <X className="w-4 h-4" />
                   </Button>
@@ -510,21 +515,21 @@ const RangeOwnerDashboard = () => {
         )}
 
         {/* Stats Cards - Now with 6 cards in 2 rows */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
           {/* Row 1 */}
           {/* Total Ranges */}
           <Card 
             onClick={() => navigate("/dashboard/range-owner/my-ranges")}
             className="bg-gradient-to-br from-blue-50 to-blue-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 group"
           >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 md:p-6">
               <CardTitle className="text-sm font-semibold text-blue-900">My Ranges</CardTitle>
               <div className="p-2 bg-blue-500 rounded-lg group-hover:bg-blue-600 transition-colors">
-                <MapPin className="h-5 w-5 text-white" />
+                <MapPin className="h-4 w-4 md:h-5 md:w-5 text-white" />
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-blue-900 mb-1">
+            <CardContent className="p-4 md:p-6 pt-0">
+              <div className="text-2xl md:text-3xl font-bold text-blue-900 mb-1">
                 {dashboardData.loading ? "..." : dashboardData.totalRanges}
               </div>
               <p className="text-xs text-blue-700 font-medium flex items-center gap-1">
@@ -539,14 +544,14 @@ const RangeOwnerDashboard = () => {
             onClick={() => navigate("/dashboard/range-owner/bookings")}
             className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 group"
           >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 md:p-6">
               <CardTitle className="text-sm font-semibold text-emerald-900">Total Members</CardTitle>
               <div className="p-2 bg-emerald-500 rounded-lg group-hover:bg-emerald-600 transition-colors">
-                <Users className="h-5 w-5 text-white" />
+                <Users className="h-4 w-4 md:h-5 md:w-5 text-white" />
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-emerald-900 mb-1">
+            <CardContent className="p-4 md:p-6 pt-0">
+              <div className="text-2xl md:text-3xl font-bold text-emerald-900 mb-1">
                 {dashboardData.loading ? "..." : dashboardData.totalMembers}
               </div>
               <p className="text-xs text-emerald-700 font-medium flex items-center gap-1">
@@ -556,21 +561,24 @@ const RangeOwnerDashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Monthly Revenue */}
-          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-semibold text-purple-900">Monthly Revenue</CardTitle>
+          {/* Bills & Subscriptions */}
+          <Card 
+            onClick={() => navigate("/dashboard/range-owner/billsAndsubscriptions")}
+            className="bg-gradient-to-br from-purple-50 to-purple-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 group"
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 md:p-6">
+              <CardTitle className="text-sm font-semibold text-purple-900">Bills & Subscriptions</CardTitle>
               <div className="p-2 bg-purple-500 rounded-lg group-hover:bg-purple-600 transition-colors">
-                <BarChart className="h-5 w-5 text-white" />
+                <CreditCard className="h-4 w-4 md:h-5 md:w-5 text-white" />
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-purple-900 mb-1">
-                {dashboardData.loading ? "..." : formatCurrency(dashboardData.monthlyRevenue)}
+            <CardContent className="p-4 md:p-6 pt-0">
+              <div className="text-2xl md:text-3xl font-bold text-purple-900 mb-1">
+                {isPremium ? "Active" : "View"}
               </div>
               <p className="text-xs text-purple-700 font-medium flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" />
-                Current month
+                <Receipt className="w-3 h-3" />
+                Manage payments
               </p>
             </CardContent>
           </Card>
@@ -581,14 +589,14 @@ const RangeOwnerDashboard = () => {
             onClick={() => navigate("/dashboard/range-owner/events")}
             className="bg-gradient-to-br from-amber-50 to-amber-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 group"
           >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 md:p-6">
               <CardTitle className="text-sm font-semibold text-amber-900">Upcoming Events</CardTitle>
               <div className="p-2 bg-amber-500 rounded-lg group-hover:bg-amber-600 transition-colors">
-                <Calendar className="h-5 w-5 text-white" />
+                <Calendar className="h-4 w-4 md:h-5 md:w-5 text-white" />
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-amber-900 mb-1">
+            <CardContent className="p-4 md:p-6 pt-0">
+              <div className="text-2xl md:text-3xl font-bold text-amber-900 mb-1">
                 {dashboardData.loading ? "..." : dashboardData.upcomingEvents.length}
               </div>
               <p className="text-xs text-amber-700 font-medium flex items-center gap-1">
@@ -598,19 +606,19 @@ const RangeOwnerDashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Posts */}
+          {/* Products */}
           <Card 
             onClick={() => navigate("/dashboard/range-owner/shop")}
             className="bg-gradient-to-br from-rose-50 to-rose-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 group"
           >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-semibold text-rose-900">My Prouducts</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 md:p-6">
+              <CardTitle className="text-sm font-semibold text-rose-900">My Products</CardTitle>
               <div className="p-2 bg-rose-500 rounded-lg group-hover:bg-rose-600 transition-colors">
-                <FileText className="h-5 w-5 text-white" />
+                <FileText className="h-4 w-4 md:h-5 md:w-5 text-white" />
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-rose-900 mb-1">
+            <CardContent className="p-4 md:p-6 pt-0">
+              <div className="text-2xl md:text-3xl font-bold text-rose-900 mb-1">
                 {dashboardData.loading ? "..." : dashboardData.totalProducts}
               </div>
               <p className="text-xs text-rose-700 font-medium flex items-center gap-1">
@@ -626,14 +634,14 @@ const RangeOwnerDashboard = () => {
               onClick={() => navigate("/dashboard/range-owner/assistant-accounts")}
               className="bg-gradient-to-br from-cyan-50 to-cyan-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 group"
             >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 md:p-6">
                 <CardTitle className="text-sm font-semibold text-cyan-900">Assistant Accounts</CardTitle>
                 <div className="p-2 bg-cyan-500 rounded-lg group-hover:bg-cyan-600 transition-colors">
-                  <Bot className="h-5 w-5 text-white" />
+                  <Bot className="h-4 w-4 md:h-5 md:w-5 text-white" />
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-cyan-900 mb-1">
+              <CardContent className="p-4 md:p-6 pt-0">
+                <div className="text-2xl md:text-3xl font-bold text-cyan-900 mb-1">
                   {dashboardData.loading ? "..." : dashboardData.activeAssistants}
                 </div>
                 <p className="text-xs text-cyan-700 font-medium flex items-center gap-1">
@@ -648,18 +656,18 @@ const RangeOwnerDashboard = () => {
               className="bg-gradient-to-br from-slate-50 to-slate-100 border-2 border-dashed border-slate-300 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 group relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/10 to-yellow-600/10"></div>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 md:p-6 relative">
                 <CardTitle className="text-sm font-semibold text-slate-600 flex items-center gap-2">
                   Assistant Accounts
-                  <Crown className="w-4 h-4 text-yellow-500" />
+                  <Crown className="w-3 h-3 md:w-4 md:h-4 text-yellow-500" />
                 </CardTitle>
                 <div className="p-2 bg-slate-400 rounded-lg group-hover:bg-yellow-500 transition-colors">
-                  <Bot className="h-5 w-5 text-white" />
+                  <Bot className="h-4 w-4 md:h-5 md:w-5 text-white" />
                 </div>
               </CardHeader>
-              <CardContent className="relative">
-                <div className="text-3xl font-bold text-slate-600 mb-1 flex items-center gap-2">
-                  <Shield className="w-8 h-8 text-yellow-500" />
+              <CardContent className="p-4 md:p-6 pt-0 relative">
+                <div className="text-2xl md:text-3xl font-bold text-slate-600 mb-1 flex items-center gap-2">
+                  <Shield className="w-6 h-6 md:w-8 md:h-8 text-yellow-500" />
                   Premium
                 </div>
                 <p className="text-xs text-slate-500 font-medium flex items-center gap-1">
@@ -673,10 +681,10 @@ const RangeOwnerDashboard = () => {
 
         {/* Scheduled Events Table */}
         {dashboardData.upcomingEvents.length > 0 && (
-          <div className="mb-8">
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-              <CardHeader className="border-b border-slate-100">
-                <CardTitle className="text-xl font-bold text-gray-900">Scheduled Events</CardTitle>
+          <div className="mb-6 md:mb-8">
+            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm overflow-hidden">
+              <CardHeader className="border-b border-slate-100 p-4 md:p-6">
+                <CardTitle className="text-lg md:text-xl font-bold text-gray-900">Scheduled Events</CardTitle>
                 <CardDescription className="text-slate-600">Upcoming events at your ranges</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
@@ -684,24 +692,24 @@ const RangeOwnerDashboard = () => {
                   <table className="w-full text-sm">
                     <thead className="bg-slate-50">
                       <tr>
-                        <th className="text-left py-4 px-6 font-semibold text-slate-700">Event Name</th>
-                        <th className="text-left py-4 px-6 font-semibold text-slate-700">Date</th>
-                        <th className="text-left py-4 px-6 font-semibold text-slate-700">Location</th>
-                        <th className="text-left py-4 px-6 font-semibold text-slate-700">Registrations</th>
-                        <th className="text-left py-4 px-6 font-semibold text-slate-700">Status</th>
-                        <th className="text-left py-4 px-6 font-semibold text-slate-700"></th>
+                        <th className="text-left py-3 px-4 md:py-4 md:px-6 font-semibold text-slate-700">Event Name</th>
+                        <th className="text-left py-3 px-4 md:py-4 md:px-6 font-semibold text-slate-700 hidden sm:table-cell">Date</th>
+                        <th className="text-left py-3 px-4 md:py-4 md:px-6 font-semibold text-slate-700 hidden md:table-cell">Location</th>
+                        <th className="text-left py-3 px-4 md:py-4 md:px-6 font-semibold text-slate-700">Registrations</th>
+                        <th className="text-left py-3 px-4 md:py-4 md:px-6 font-semibold text-slate-700">Status</th>
+                        <th className="text-left py-3 px-4 md:py-4 md:px-6 font-semibold text-slate-700"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {dashboardData.upcomingEvents.map((event) => (
                         <tr key={event.id} className="border-b border-slate-100 hover:bg-blue-50/50 transition-colors">
-                          <td className="py-4 px-6 font-medium text-gray-900">{event.name}</td>
-                          <td className="py-4 px-6 text-slate-600">{event.date}</td>
-                          <td className="py-4 px-6 text-slate-600">{event.location}</td>
-                          <td className="py-4 px-6">
-                            <div className="flex items-center gap-3">
-                              <span className="text-slate-700 font-medium">{event.registrations}/{event.capacity}</span>
-                              <div className="w-20 bg-slate-200 rounded-full h-2">
+                          <td className="py-3 px-4 md:py-4 md:px-6 font-medium text-gray-900">{event.name}</td>
+                          <td className="py-3 px-4 md:py-4 md:px-6 text-slate-600 hidden sm:table-cell">{event.date}</td>
+                          <td className="py-3 px-4 md:py-4 md:px-6 text-slate-600 hidden md:table-cell">{event.location}</td>
+                          <td className="py-3 px-4 md:py-4 md:px-6">
+                            <div className="flex items-center gap-2 md:gap-3">
+                              <span className="text-slate-700 font-medium text-xs md:text-sm">{event.registrations}/{event.capacity}</span>
+                              <div className="w-16 md:w-20 bg-slate-200 rounded-full h-2">
                                 <div
                                   className="h-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500"
                                   style={{ width: `${Math.min((event.registrations / event.capacity) * 100, 100)}%` }}
@@ -709,15 +717,15 @@ const RangeOwnerDashboard = () => {
                               </div>
                             </div>
                           </td>
-                          <td className="py-4 px-6">
-                            <span className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 w-fit ${eventStatus[event.status as keyof typeof eventStatus].color}`}>
+                          <td className="py-3 px-4 md:py-4 md:px-6">
+                            <span className={`px-2 py-1 md:px-3 md:py-1 rounded-full text-xs font-semibold flex items-center gap-1 w-fit ${eventStatus[event.status as keyof typeof eventStatus].color}`}>
                               {eventStatus[event.status as keyof typeof eventStatus].icon}
-                              {event.status}
+                              <span className="hidden xs:inline">{event.status}</span>
                             </span>
                           </td>
-                          <td className="py-4 px-6">
-                            <Button size="sm" variant="ghost" className="text-blue-600 hover:bg-blue-100 flex items-center gap-2 font-medium">
-                              View Details <ArrowRightCircle className="w-4 h-4" />
+                          <td className="py-3 px-4 md:py-4 md:px-6">
+                            <Button size="sm" variant="ghost" className="text-blue-600 hover:bg-blue-100 flex items-center gap-1 md:gap-2 font-medium text-xs md:text-sm">
+                              View <ArrowRightCircle className="w-3 h-3 md:w-4 md:h-4" />
                             </Button>
                           </td>
                         </tr>
@@ -730,15 +738,15 @@ const RangeOwnerDashboard = () => {
           </div>
         )}
 
-        {/* Charts Section - Keeping original UI as requested */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-6 md:mb-8">
           <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-            <CardHeader className="border-b border-slate-100">
+            <CardHeader className="border-b border-slate-100 p-4 md:p-6">
               <CardTitle className="font-bold text-gray-900">Range Usage</CardTitle>
               <CardDescription className="text-slate-600">Last 7 days activity</CardDescription>
             </CardHeader>
-            <CardContent className="pt-6">
-              <div className="h-[200px] flex items-end justify-between gap-2">
+            <CardContent className="pt-6 p-4 md:p-6">
+              <div className="h-[160px] md:h-[200px] flex items-end justify-between gap-1 md:gap-2">
                 {[
                   { label: "Mon", value: 30 },
                   { label: "Tue", value: 45 },
@@ -748,12 +756,12 @@ const RangeOwnerDashboard = () => {
                   { label: "Sat", value: 80 },
                   { label: "Sun", value: 70 },
                 ].map((day) => (
-                  <div key={day.label} className="flex flex-col items-center gap-2 flex-1">
+                  <div key={day.label} className="flex flex-col items-center gap-1 md:gap-2 flex-1">
                     <div
-                      className="w-full max-w-8 rounded-t-lg bg-gradient-to-t from-blue-400 to-blue-600 relative group transition-all duration-300 hover:from-blue-500 hover:to-blue-700"
+                      className="w-full max-w-6 md:max-w-8 rounded-t-lg bg-gradient-to-t from-blue-400 to-blue-600 relative group transition-all duration-300 hover:from-blue-500 hover:to-blue-700"
                       style={{ height: `${day.value}%` }}
                     >
-                      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                      <div className="absolute bottom-full mb-1 md:mb-2 left-1/2 -translate-x-1/2 bg-gray-900 text-white  px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap text-xs">
                         {day.value}% usage
                       </div>
                     </div>
@@ -765,25 +773,25 @@ const RangeOwnerDashboard = () => {
           </Card>
 
           <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-            <CardHeader className="border-b border-slate-100">
+            <CardHeader className="border-b border-slate-100 p-4 md:p-6">
               <CardTitle className="font-bold text-gray-900">Member Distribution</CardTitle>
               <CardDescription className="text-slate-600">By membership type</CardDescription>
             </CardHeader>
-            <CardContent className="pt-6">
-              <div className="space-y-6">
+            <CardContent className="pt-6 p-4 md:p-6">
+              <div className="space-y-4 md:space-y-6">
                 {[
                   { label: "Standard", value: 65, color: "from-blue-400 to-blue-600" },
                   { label: "Premium", value: 25, color: "from-emerald-400 to-emerald-600" },
                   { label: "VIP", value: 10, color: "from-purple-400 to-purple-600" },
                 ].map((type) => (
-                  <div key={type.label} className="space-y-3">
+                  <div key={type.label} className="space-y-2 md:space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-semibold text-slate-700">{type.label}</span>
                       <span className="text-sm font-bold text-slate-900">{type.value}%</span>
                     </div>
-                    <div className="w-full bg-slate-200 rounded-full h-3">
+                    <div className="w-full bg-slate-200 rounded-full h-2 md:h-3">
                       <div
-                        className={`h-3 rounded-full bg-gradient-to-r ${type.color} transition-all duration-500`}
+                        className={`h-2 md:h-3 rounded-full bg-gradient-to-r ${type.color} transition-all duration-500`}
                         style={{ width: `${type.value}%` }}
                       ></div>
                     </div>

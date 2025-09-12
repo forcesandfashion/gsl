@@ -14,7 +14,9 @@ import {
   Trash2, 
   Image as ImageIcon,
   ArrowLeft,
-  Ticket
+  Ticket,
+  Ban,
+  AlertTriangle
 } from "lucide-react";
 import { useAuth } from '@/firebase/auth';
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -26,7 +28,10 @@ import {
   where, 
   orderBy, 
   deleteDoc,
-  doc 
+  doc,
+  updateDoc,
+  addDoc,
+  serverTimestamp
 } from "firebase/firestore";
 import { useParams } from 'react-router-dom';
 import EditEventModal from './EditEventModal';
@@ -58,29 +63,30 @@ export default function EventDisplay() {
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const { user } = useAuth();
+
   const fetchEvents = async () => {
     try {
-  const rangesQuery = query(
-      collection(db, "ranges"),
-      where("ownerId", "==", user.uid)
-    );
-    const rangesSnapshot = await getDocs(rangesQuery);
-    const rangeIds = rangesSnapshot.docs.map(doc => doc.id);
+      const rangesQuery = query(
+        collection(db, "ranges"),
+        where("ownerId", "==", user.uid)
+      );
+      const rangesSnapshot = await getDocs(rangesQuery);
+      const rangeIds = rangesSnapshot.docs.map(doc => doc.id);
 
-    console.log("Found ranges:", rangeIds);
+      console.log("Found ranges:", rangeIds);
 
-    if (rangeIds.length === 0) {
-      console.log("No ranges found for this owner");
-      setEvents([]);
-      setLoading(false);
-      return;
-    }
+      if (rangeIds.length === 0) {
+        console.log("No ranges found for this owner");
+        setEvents([]);
+        setLoading(false);
+        return;
+      }
 
-    // 2️⃣ Get all bookings for these ranges
-    const eventsQuery = query(
-      collection(db, "events"),
-      where("rangeId", "in", rangeIds)
-    );
+      // Get all events for these ranges
+      const eventsQuery = query(
+        collection(db, "events"),
+        where("rangeId", "in", rangeIds)
+      );
 
       const querySnapshot = await getDocs(eventsQuery);
 
@@ -133,29 +139,134 @@ export default function EventDisplay() {
     fetchEvents();
   };
 
-  // Delete event
-  const handleDelete = async (eventId: string, eventName: string) => {
-    if (!confirm(`Are you sure you want to delete "${eventName}"? This action cannot be undone.`)) {
-      return;
-    }
-
-    setDeleteLoading(eventId);
+  // Create delete request in actions collection
+  const createDeleteRequest = async (eventId: string, eventName: string, rangeId: string) => {
     try {
-      await deleteDoc(doc(db, "events", eventId));
-      setEvents(events.filter(event => event.id !== eventId));
-      toast({
-        title: "Success",
-        description: "Event deleted successfully"
+      await addDoc(collection(db, "actions"), {
+        type: "delete_event_request",
+        eventId,
+        eventName,
+        rangeId,
+        ownerId: user?.uid,
+        ownerEmail: user?.email,
+        completed: false,
+        createdAt: serverTimestamp(),
+        status: "pending",
+        message: "Request to delete event"
       });
+      
+      return true;
     } catch (error) {
-      console.error("Error deleting event:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete event. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setDeleteLoading(null);
+      console.error("Error creating delete request:", error);
+      return false;
+    }
+  };
+
+  // Delete event or create delete request based on status
+  const handleDelete = async (eventId: string, eventName: string, status: string, rangeId: string) => {
+    if (status === "pending") {
+      // Directly delete if status is pending
+      if (!confirm(`Are you sure you want to delete "${eventName}"? This action cannot be undone.`)) {
+        return;
+      }
+
+      setDeleteLoading(eventId);
+      try {
+        await deleteDoc(doc(db, "events", eventId));
+        setEvents(events.filter(event => event.id !== eventId));
+        toast({
+          title: "Success",
+          description: "Event deleted successfully"
+        });
+      } catch (error) {
+        console.error("Error deleting event:", error);
+        toast({
+          title: "Error",
+          description: "Failed to delete event. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setDeleteLoading(null);
+      }
+    } else if (status === "active") {
+      // For active events, block them and create delete request
+      if (!confirm(`Are you sure you want to request deletion for "${eventName}"? The event will be blocked until admin approval.`)) {
+        return;
+      }
+
+      setDeleteLoading(eventId);
+      try {
+        // Update status to blocked
+        await updateDoc(doc(db, "events", eventId), {
+          status: "blocked",
+          updatedAt: serverTimestamp()
+        });
+        
+        // Create delete request
+        const requestCreated = await createDeleteRequest(eventId, eventName, rangeId);
+        
+        if (requestCreated) {
+          // Update local state
+          setEvents(prev => prev.map(event => 
+            event.id === eventId 
+              ? { ...event, status: "blocked" }
+              : event
+          ));
+          
+          toast({
+            title: "Success",
+            description: "Delete request submitted. Event has been blocked pending admin approval."
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to create delete request. Please try again.",
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error("Error blocking event:", error);
+        toast({
+          title: "Error",
+          description: "Failed to process delete request. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setDeleteLoading(null);
+      }
+    } else if (status === "blocked") {
+      // For already blocked events, just create a delete request
+      if (!confirm(`Are you sure you want to request deletion for "${eventName}"? This event is already blocked.`)) {
+        return;
+      }
+
+      setDeleteLoading(eventId);
+      try {
+        // Create delete request
+        const requestCreated = await createDeleteRequest(eventId, eventName, rangeId);
+        
+        if (requestCreated) {
+          toast({
+            title: "Success",
+            description: "Delete request submitted. Admin will review your request."
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to create delete request. Please try again.",
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error("Error creating delete request:", error);
+        toast({
+          title: "Error",
+          description: "Failed to process delete request. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setDeleteLoading(null);
+      }
     }
   };
 
@@ -297,7 +408,9 @@ export default function EventDisplay() {
                         ? 'bg-green-500 hover:bg-green-600' 
                         : event.status === 'completed'
                         ? 'bg-blue-500 hover:bg-blue-600'
-                        : 'bg-gray-500 hover:bg-gray-600'
+                        : event.status === 'pending'
+                        ? 'bg-yellow-500 hover:bg-yellow-600'
+                        : 'bg-red-500 hover:bg-red-600'
                     } text-white`}
                   >
                     {event.status?.charAt(0).toUpperCase() + event.status?.slice(1) || 'Active'}
@@ -306,7 +419,6 @@ export default function EventDisplay() {
                   {/* Date Badge */}
                   <div className="absolute bottom-3 left-3 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded-full">
                     {formatDate(event.date)}
-        
                   </div>
                 </div>
 
@@ -356,17 +468,36 @@ export default function EventDisplay() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="hover:bg-red-50 hover:border-red-300 hover:text-red-600"
-                      onClick={() => handleDelete(event.id, event.name)}
+                      className={`flex-1 ${
+                        event.status === "pending" 
+                          ? "hover:bg-red-50 hover:border-red-300 hover:text-red-600" 
+                          : "hover:bg-orange-50 hover:border-orange-300 hover:text-orange-600"
+                      }`}
+                      onClick={() => handleDelete(event.id, event.name, event.status, event.rangeId)}
                       disabled={deleteLoading === event.id}
                     >
                       {deleteLoading === event.id ? (
                         <LoadingSpinner />
                       ) : (
-                        <Trash2 className="w-4 h-4" />
+                        <>
+                          {event.status === "pending" ? (
+                            <Trash2 className="w-4 h-4 mr-1" />
+                          ) : (
+                            <Ban className="w-4 h-4 mr-1" />
+                          )}
+                          {event.status === "pending" ? "Delete" : "Request Deletion"}
+                        </>
                       )}
                     </Button>
                   </div>
+                  
+                  {/* Delete Info */}
+                  {event.status !== "pending" && (
+                    <p className="text-xs text-gray-500 mt-1 text-center">
+                      <AlertTriangle className="w-3 h-3 inline mr-1" />
+                      Admin approval required for deletion
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             ))}

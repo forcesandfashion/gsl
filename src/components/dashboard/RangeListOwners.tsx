@@ -10,7 +10,9 @@ import {
   deleteDoc, 
   getDoc,
   doc,
-  updateDoc
+  updateDoc,
+  addDoc,
+  serverTimestamp
 } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,7 +30,11 @@ import {
   Building,
   Image as ImageIcon,
   Calendar,
-  Crown
+  Crown,
+  QrCode,
+  Download,
+  Ban,
+  AlertTriangle
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import EditRange from "../dashboard/EditRange";
@@ -64,6 +70,7 @@ interface Range {
   price?: string;
   rating?: number;
   maxBookingsPerSlot?: number;
+  qrCodeUrl?: string;
 }
 
 export default function RangeListOwners() {
@@ -79,6 +86,9 @@ export default function RangeListOwners() {
   const [subscriptionModal, setSubscriptionModal] = useState(false);
   const [subscriptionRange, setSubscriptionRange] = useState<Range | null>(null);
   const [userPremiumStatus, setUserPremiumStatus] = useState(false);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [selectedQrCode, setSelectedQrCode] = useState<string | null>(null);
+  const [selectedRangeName, setSelectedRangeName] = useState<string | null>(null);
   
   const weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -111,7 +121,6 @@ export default function RangeListOwners() {
     if (!user) return;
     
     try {
-      // Replace this with your actual premium status fetching logic
       const userDoc = await getDoc(doc(db, "range-owners", user.uid));
       if (userDoc.exists()) {
         const userData = userDoc.data();
@@ -119,7 +128,6 @@ export default function RangeListOwners() {
       }
     } catch (error) {
       console.error("Error fetching user premium status:", error);
-      // Default to false if error
       setUserPremiumStatus(false);
     }
   };
@@ -190,6 +198,30 @@ export default function RangeListOwners() {
     setSubscriptionRange(null);
   };
 
+  // Handle QR code button click
+  const handleQrCodeClick = (range: Range) => {
+    setSelectedQrCode(range.qrCodeUrl || null);
+    setSelectedRangeName(range.name);
+    setQrModalOpen(true);
+  };
+
+  // Handle QR code modal close
+  const handleQrModalClose = () => {
+    setQrModalOpen(false);
+    setSelectedQrCode(null);
+    setSelectedRangeName(null);
+  };
+
+  // Download QR code
+  const downloadQRCode = () => {
+    if (!selectedQrCode) return;
+    
+    const link = document.createElement('a');
+    link.download = `qr-code-${selectedRangeName?.replace(/\s+/g, '-').toLowerCase()}.png`;
+    link.href = selectedQrCode;
+    link.click();
+  };
+
   // Handle range update from modal
   const handleRangeUpdate = (updatedData: Partial<Range>) => {
     if (!editingRange) return;
@@ -207,29 +239,133 @@ export default function RangeListOwners() {
     setEditingRange(null);
   };
 
-  // Delete range
-  const handleDelete = async (rangeId: string, rangeName: string) => {
-    if (!confirm(`Are you sure you want to delete "${rangeName}"? This action cannot be undone.`)) {
-      return;
-    }
-
-    setDeleteLoading(rangeId);
+  // Create delete request in actions collection
+  const createDeleteRequest = async (rangeId: string, rangeName: string) => {
     try {
-      await deleteDoc(doc(db, "ranges", rangeId));
-      setRanges(ranges.filter(range => range.id !== rangeId));
-      toast({
-        title: "Success",
-        description: "Range deleted successfully"
+      await addDoc(collection(db, "actions"), {
+        type: "delete_range_request",
+        rangeId,
+        rangeName,
+        ownerId: user?.uid,
+        ownerEmail: user?.email,
+        completed: false,
+        createdAt: serverTimestamp(),
+        status: "pending",
+        message: "Request to delete range"
       });
+      
+      return true;
     } catch (error) {
-      console.error("Error deleting range:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete range. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setDeleteLoading(null);
+      console.error("Error creating delete request:", error);
+      return false;
+    }
+  };
+
+  // Delete range or create delete request based on status
+  const handleDelete = async (rangeId: string, rangeName: string, status: string) => {
+    if (status === "pending") {
+      // Directly delete if status is pending
+      if (!confirm(`Are you sure you want to delete "${rangeName}"? This action cannot be undone.`)) {
+        return;
+      }
+
+      setDeleteLoading(rangeId);
+      try {
+        await deleteDoc(doc(db, "ranges", rangeId));
+        setRanges(ranges.filter(range => range.id !== rangeId));
+        toast({
+          title: "Success",
+          description: "Range deleted successfully"
+        });
+      } catch (error) {
+        console.error("Error deleting range:", error);
+        toast({
+          title: "Error",
+          description: "Failed to delete range. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setDeleteLoading(null);
+      }
+    } else if (status === "active") {
+      // For active ranges, block them and create delete request
+      if (!confirm(`Are you sure you want to request deletion for "${rangeName}"? The range will be blocked until admin approval.`)) {
+        return;
+      }
+
+      setDeleteLoading(rangeId);
+      try {
+        // Update status to blocked
+        await updateDoc(doc(db, "ranges", rangeId), {
+          status: "blocked",
+          updatedAt: serverTimestamp()
+        });
+        
+        // Create delete request
+        const requestCreated = await createDeleteRequest(rangeId, rangeName);
+        
+        if (requestCreated) {
+          // Update local state
+          setRanges(prev => prev.map(range => 
+            range.id === rangeId 
+              ? { ...range, status: "blocked" }
+              : range
+          ));
+          
+          toast({
+            title: "Success",
+            description: "Delete request submitted. Range has been blocked pending admin approval."
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to create delete request. Please try again.",
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error("Error blocking range:", error);
+        toast({
+          title: "Error",
+          description: "Failed to process delete request. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setDeleteLoading(null);
+      }
+    } else if (status === "blocked") {
+      // For already blocked ranges, just create a delete request
+      if (!confirm(`Are you sure you want to request deletion for "${rangeName}"? This range is already blocked.`)) {
+        return;
+      }
+
+      setDeleteLoading(rangeId);
+      try {
+        // Create delete request
+        const requestCreated = await createDeleteRequest(rangeId, rangeName);
+        
+        if (requestCreated) {
+          toast({
+            title: "Success",
+            description: "Delete request submitted. Admin will review your request."
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to create delete request. Please try again.",
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error("Error creating delete request:", error);
+        toast({
+          title: "Error",
+          description: "Failed to process delete request. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setDeleteLoading(null);
+      }
     }
   };
 
@@ -300,6 +436,45 @@ export default function RangeListOwners() {
         />
       )}
 
+      {/* QR Code Modal */}
+      {qrModalOpen && selectedQrCode && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+            <div className="text-center">
+              <h3 className="text-xl font-bold mb-4 flex items-center justify-center gap-2">
+                <QrCode className="w-6 h-6" /> Range QR Code
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Shooters can scan this code to check in at your range
+              </p>
+              
+              <div className="flex justify-center mb-4">
+                <img src={selectedQrCode} alt="Range QR Code" className="w-48 h-48" />
+              </div>
+              
+              <div className="text-left bg-gray-50 p-4 rounded-lg mb-4">
+                <p className="text-sm"><strong>Range:</strong> {selectedRangeName}</p>
+              </div>
+              
+              <div className="flex gap-3 justify-center">
+                <Button
+                  onClick={downloadQRCode}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" /> Download QR
+                </Button>
+                <Button
+                  onClick={handleQrModalClose}
+                  variant="outline"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {ranges.length === 0 ? (
@@ -307,7 +482,7 @@ export default function RangeListOwners() {
           <div className="text-center py-16">
             <div className="bg-white rounded-2xl shadow-xl p-12 max-w-md mx-auto">
               <Building className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No Ranges Yet</h3>
+              <h3 className="text-xl font-semibold text-gray-909 mb-2">No Ranges Yet</h3>
               <p className="text-gray-500 mb-6">
                 Start by adding your first shooting range to begin managing your facilities.
               </p>
@@ -354,7 +529,9 @@ export default function RangeListOwners() {
                     className={`absolute top-3 right-3 ${
                       range.status === 'active' 
                         ? 'bg-green-500 hover:bg-green-600' 
-                        : 'bg-gray-500 hover:bg-gray-600'
+                        : range.status === 'pending'
+                        ? 'bg-yellow-500 hover:bg-yellow-600'
+                        : 'bg-red-500 hover:bg-red-600'
                     } text-white`}
                   >
                     {range.status?.charAt(0).toUpperCase() + range.status?.slice(1) || 'Active'}
@@ -438,6 +615,19 @@ export default function RangeListOwners() {
                     </div>
                   )}
 
+                  {/* QR Code Button */}
+                  {range.qrCodeUrl && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full hover:bg-blue-50 hover:border-blue-300"
+                      onClick={() => handleQrCodeClick(range)}
+                    >
+                      <QrCode className="w-4 h-4 mr-2" />
+                      View QR Code
+                    </Button>
+                  )}
+
                   {/* Action Buttons */}
                   <div className="flex gap-2 pt-2">
                     <Button
@@ -463,11 +653,11 @@ export default function RangeListOwners() {
                   </div>
                   
                   {/* Secondary Action Buttons */}
-                  <div className="flex gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 hover:bg-green-50 hover:border-green-300"
+                      className="hover:bg-green-50 hover:border-green-300"
                       onClick={() => handleEditClick(range)}
                     >
                       <Edit className="w-4 h-4 mr-1" />
@@ -476,25 +666,57 @@ export default function RangeListOwners() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 hover:bg-yellow-50 hover:border-yellow-300"
+                      className="hover:bg-yellow-50 hover:border-yellow-300"
                       onClick={() => handleSubscriptionClick(range)}
                     >
                       <Crown className="w-4 h-4 mr-1" />
                       Subscription
                     </Button>
+                    {range.qrCodeUrl && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="hover:bg-indigo-50 hover:border-indigo-300 col-span-2"
+                        onClick={() => handleQrCodeClick(range)}
+                      >
+                        <QrCode className="w-4 h-4 mr-1" />
+                        QR Code
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Delete Button */}
+                  <div className="pt-2 border-t border-gray-200">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="hover:bg-red-50 hover:border-red-300 hover:text-red-600"
-                      onClick={() => handleDelete(range.id, range.name)}
+                      className={`w-full ${
+                        range.status === "pending" 
+                          ? "hover:bg-red-50 hover:border-red-300 hover:text-red-600" 
+                          : "hover:bg-orange-50 hover:border-orange-300 hover:text-orange-600"
+                      }`}
+                      onClick={() => handleDelete(range.id, range.name, range.status)}
                       disabled={deleteLoading === range.id}
                     >
                       {deleteLoading === range.id ? (
                         <LoadingSpinner />
                       ) : (
-                        <Trash2 className="w-4 h-4" />
+                        <>
+                          {range.status === "pending" ? (
+                            <Trash2 className="w-4 h-4 mr-1" />
+                          ) : (
+                            <Ban className="w-4 h-4 mr-1" />
+                          )}
+                          {range.status === "pending" ? "Delete" : "Request Deletion"}
+                        </>
                       )}
                     </Button>
+                    {range.status !== "pending" && (
+                      <p className="text-xs text-gray-500 mt-1 text-center">
+                        <AlertTriangle className="w-3 h-3 inline mr-1" />
+                        Admin approval required
+                      </p>
+                    )}
                   </div>
                 </CardContent>
               </Card>

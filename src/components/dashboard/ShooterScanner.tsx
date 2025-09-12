@@ -85,6 +85,8 @@ export default function ShooterScanner() {
   useEffect(() => {
     if (scanning) {
       startQRDetection();
+    } else {
+      stopCamera();
     }
     return () => {
       stopCamera();
@@ -219,11 +221,10 @@ export default function ShooterScanner() {
         
         if (code) {
           // QR code detected!
+          console.log('QR Code detected:', code.data);
           handleScanRange(code.data);
-          stopCamera();
-          if (animationFrameId.current) {
-            cancelAnimationFrame(animationFrameId.current);
-          }
+          setScanning(false); // This will trigger useEffect to stop camera
+          return;
         }
       }
       
@@ -232,36 +233,97 @@ export default function ShooterScanner() {
       }
     };
 
+    // Start detection loop
     animationFrameId.current = requestAnimationFrame(detectQR);
   };
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } 
-      });
+      // Stop any existing stream first
+      stopCamera();
+      
+      // Request camera access with better constraints
+      const constraints = {
+        video: {
+          facingMode: 'environment', // Use back camera on mobile
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
-        setScanning(true);
+        
+        // Wait for video to be ready
+        videoRef.current.onloadedmetadata = () => {
+          if (videoRef.current) {
+            videoRef.current.play().then(() => {
+              console.log('Video playing successfully');
+              setScanning(true);
+            }).catch((error) => {
+              console.error('Error playing video:', error);
+              toast({
+                title: "Camera Error",
+                description: "Could not start video playback",
+                variant: "destructive"
+              });
+            });
+          }
+        };
+        
+        // Handle video errors
+        videoRef.current.onerror = (error) => {
+          console.error('Video element error:', error);
+          toast({
+            title: "Camera Error",
+            description: "Error with video element",
+            variant: "destructive"
+          });
+        };
       }
     } catch (error) {
-      console.error("Camera access denied:", error);
+      console.error("Camera access error:", error);
+      let errorMessage = "Please allow camera access to scan QR codes";
+      
+      if (error.name === 'NotAllowedError') {
+        errorMessage = "Camera access was denied. Please enable camera permissions and try again.";
+      } else if (error.name === 'NotFoundError') {
+        errorMessage = "No camera found on this device.";
+      } else if (error.name === 'NotSupportedError') {
+        errorMessage = "Camera is not supported in this browser.";
+      }
+      
       toast({
-        title: "Camera Access Denied",
-        description: "Please allow camera access to scan QR codes",
+        title: "Camera Access Error",
+        description: errorMessage,
         variant: "destructive"
       });
     }
   };
 
   const stopCamera = () => {
+    // Stop animation frame
+    if (animationFrameId.current) {
+      cancelAnimationFrame(animationFrameId.current);
+      animationFrameId.current = null;
+    }
+
+    // Stop video stream
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach(track => {
+        track.stop();
+        console.log('Camera track stopped:', track.kind);
+      });
       streamRef.current = null;
     }
-    setScanning(false);
+
+    // Clear video element
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
   };
 
   const validateSubscriptionAndMarkAttendance = async (rangeId: string): Promise<ValidationResult> => {
@@ -482,11 +544,6 @@ export default function ShooterScanner() {
         duration: 6000
       });
     }
-
-    // Stop camera after scan
-    if (scanning) {
-      stopCamera();
-    }
     
     // Clear manual input
     setManualRangeId('');
@@ -647,24 +704,54 @@ export default function ShooterScanner() {
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="relative max-w-md mx-auto">
+              <div className="relative max-w-md mx-auto bg-black rounded-lg overflow-hidden">
                 <video
                   ref={videoRef}
                   autoPlay
                   playsInline
-                  className="w-full rounded-lg border-2 border-blue-500"
+                  muted
+                  webkit-playsinline="true"
+                  className="w-full h-auto rounded-lg"
+                  style={{ 
+                    minHeight: '300px',
+                    maxHeight: '400px',
+                    objectFit: 'cover'
+                  }}
                 />
                 <canvas ref={canvasRef} className="hidden" />
+                
+                {/* Loading indicator */}
+                {scanning && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                    <div className="text-white text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
+                      <p className="text-sm">Starting camera...</p>
+                    </div>
+                  </div>
+                )}
+                
+                {/* QR Scanner Overlay */}
                 <div className="absolute inset-0 border-4 border-transparent rounded-lg pointer-events-none">
-                  <div className="absolute top-4 left-4 w-8 h-8 border-l-4 border-t-4 border-blue-500"></div>
-                  <div className="absolute top-4 right-4 w-8 h-8 border-r-4 border-t-4 border-blue-500"></div>
-                  <div className="absolute bottom-4 left-4 w-8 h-8 border-l-4 border-b-4 border-blue-500"></div>
-                  <div className="absolute bottom-4 right-4 w-8 h-8 border-r-4 border-b-4 border-blue-500"></div>
+                  {/* Scanner corners */}
+                  <div className="absolute top-4 left-4 w-8 h-8 border-l-4 border-t-4 border-white"></div>
+                  <div className="absolute top-4 right-4 w-8 h-8 border-r-4 border-t-4 border-white"></div>
+                  <div className="absolute bottom-4 left-4 w-8 h-8 border-l-4 border-b-4 border-white"></div>
+                  <div className="absolute bottom-4 right-4 w-8 h-8 border-r-4 border-b-4 border-white"></div>
+                  
+                  {/* Center targeting square */}
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48 border-2 border-white border-dashed opacity-50 rounded-lg"></div>
+                </div>
+                
+                {/* Instructions overlay */}
+                <div className="absolute bottom-8 left-0 right-0 text-center">
+                  <p className="text-white text-sm bg-black bg-opacity-50 px-4 py-2 rounded-full mx-auto inline-block">
+                    Position QR code within the frame
+                  </p>
                 </div>
               </div>
               
               <div className="flex gap-2 justify-center">
-                <Button variant="outline" onClick={stopCamera}>
+                <Button variant="outline" onClick={() => setScanning(false)}>
                   <X className="w-4 h-4 mr-2" />
                   Cancel
                 </Button>

@@ -34,7 +34,7 @@ import CmbBookings from "./CmbBookings";
 import CmbEvents from "./CmbEvents";
 import RangeOwnerShop from "./RangeOwnerShop";
 import AdminProducts from "./AdminProducts";
-
+import BillsAndSubscriptions from "./BillsAndSubscriptions";
 
 const DashboardRouter = () => {
   const { userRole, loading } = useAuth();
@@ -107,6 +107,7 @@ const DashboardRouter = () => {
       <Route path="range-owner/my-ranges" element={<RangeListOwners />} />
       <Route path="range-owner/profile" element={<RangeOwnerProfile />} />
       <Route path="range-owner/events" element={<EventDisplay />} />
+      <Route path="range-owner/billsAndsubscriptions" element={<BillsAndSubscriptions />} />
       <Route path="range-owner/bookings" element={<RangeOwnerBookings />} />
       <Route path="range-owner/bookings/:bookingId" element={<BookingDetailsPage />} />
       <Route path="range-owner/post-range-owner" element={<PostRangeOwner />} />
