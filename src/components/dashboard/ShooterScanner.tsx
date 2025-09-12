@@ -99,30 +99,50 @@ export default function ShooterScanner() {
 
     try {
       const attendanceRef = collection(db, "attendance");
-      const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-      const endOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
       
+      // Modified query: Remove orderBy to avoid composite index requirement
+      // We'll sort the data after fetching
       const q = query(
         attendanceRef,
-        where("userId", "==", user.uid),
-        where("date", ">=", startOfMonth.toISOString().split('T')[0]),
-        where("date", "<=", endOfMonth.toISOString().split('T')[0]),
-        orderBy("timestamp", "desc")
+        where("userId", "==", user.uid)
       );
       
       const querySnapshot = await getDocs(q);
       const attendanceData: Attendance[] = [];
       
+      // Filter and process data in memory
+      const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+      const endOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+      const startDateString = startOfMonth.toISOString().split('T')[0];
+      const endDateString = endOfMonth.toISOString().split('T')[0];
+      
       querySnapshot.forEach((doc) => {
-        attendanceData.push({
-          ...doc.data(),
-          id: doc.id
-        } as Attendance);
+        const data = doc.data() as Attendance;
+        
+        // Filter by date range in memory
+        if (data.date >= startDateString && data.date <= endDateString) {
+          attendanceData.push({
+            ...data,
+            id: doc.id
+          });
+        }
+      });
+      
+      // Sort by timestamp in memory
+      attendanceData.sort((a, b) => {
+        const aTimestamp = a.timestamp?.toMillis?.() || new Date(a.timestamp).getTime();
+        const bTimestamp = b.timestamp?.toMillis?.() || new Date(b.timestamp).getTime();
+        return bTimestamp - aTimestamp;
       });
       
       setAttendance(attendanceData);
     } catch (error) {
       console.error("Error loading attendance:", error);
+      toast({
+        title: "Error Loading Attendance",
+        description: "Could not load attendance data. Please try refreshing the page.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -133,27 +153,51 @@ export default function ShooterScanner() {
       const today = new Date().toISOString().split('T')[0];
       const attendanceRef = collection(db, "attendance");
       
+      // Simple query that works even if collection doesn't exist
       const q = query(
         attendanceRef,
         where("userId", "==", user.uid),
-        where("date", "==", today),
-        orderBy("timestamp", "desc"),
-        limit(1)
+        where("date", "==", today)
       );
       
       const querySnapshot = await getDocs(q);
       
-      if (!querySnapshot.empty) {
-        const latestAttendance = querySnapshot.docs[0];
-        setTodaysAttendance({
-          ...latestAttendance.data(),
-          id: latestAttendance.id
-        } as Attendance);
-      } else {
+      // Handle empty collection gracefully
+      if (querySnapshot.empty) {
+        console.log("No attendance found for today - this is normal for new users or days without check-ins");
         setTodaysAttendance(null);
+        return;
       }
+      
+      // Get the latest attendance for today by sorting in memory
+      const todaysRecords: Attendance[] = [];
+      querySnapshot.forEach((doc) => {
+        todaysRecords.push({
+          ...doc.data(),
+          id: doc.id
+        } as Attendance);
+      });
+      
+      // Sort by timestamp and get the latest
+      todaysRecords.sort((a, b) => {
+        const aTimestamp = a.timestamp?.toMillis?.() || new Date(a.timestamp).getTime();
+        const bTimestamp = b.timestamp?.toMillis?.() || new Date(b.timestamp).getTime();
+        return bTimestamp - aTimestamp;
+      });
+      
+      setTodaysAttendance(todaysRecords[0]);
     } catch (error) {
       console.error("Error checking today's attendance:", error);
+      // Don't show error toast for empty collection - this is expected
+      if (error.code !== 'not-found' && !error.message.includes('index')) {
+        toast({
+          title: "Error Checking Today's Attendance",
+          description: "Could not check today's attendance status.",
+          variant: "destructive"
+        });
+      }
+      // Set null as fallback
+      setTodaysAttendance(null);
     }
   };
 
