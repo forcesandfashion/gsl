@@ -62,7 +62,6 @@ export default function ShooterScanner() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [scanning, setScanning] = useState(false);
-  const [cameraReady, setCameraReady] = useState(false);
   const [currentRange, setCurrentRange] = useState<Range | null>(null);
   const [currentSubscription, setCurrentSubscription] = useState<Subscription | null>(null);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
@@ -71,6 +70,7 @@ export default function ShooterScanner() {
   const [manualRangeId, setManualRangeId] = useState('');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [todaysAttendance, setTodaysAttendance] = useState<Attendance | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -84,22 +84,18 @@ export default function ShooterScanner() {
   }, [user, currentMonth]);
 
   useEffect(() => {
-    if (scanning && cameraReady) {
+    if (scanning) {
       startQRDetection();
     } else {
-      stopQRDetection();
+      stopCamera();
     }
     return () => {
-      stopQRDetection();
-    };
-  }, [scanning, cameraReady]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
       stopCamera();
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+      }
     };
-  }, []);
+  }, [scanning]);
 
   const loadAttendance = async () => {
     if (!user) return;
@@ -107,6 +103,8 @@ export default function ShooterScanner() {
     try {
       const attendanceRef = collection(db, "attendance");
       
+      // Modified query: Remove orderBy to avoid composite index requirement
+      // We'll sort the data after fetching
       const q = query(
         attendanceRef,
         where("userId", "==", user.uid)
@@ -115,6 +113,7 @@ export default function ShooterScanner() {
       const querySnapshot = await getDocs(q);
       const attendanceData: Attendance[] = [];
       
+      // Filter and process data in memory
       const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
       const endOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
       const startDateString = startOfMonth.toISOString().split('T')[0];
@@ -123,6 +122,7 @@ export default function ShooterScanner() {
       querySnapshot.forEach((doc) => {
         const data = doc.data() as Attendance;
         
+        // Filter by date range in memory
         if (data.date >= startDateString && data.date <= endDateString) {
           attendanceData.push({
             ...data,
@@ -131,6 +131,7 @@ export default function ShooterScanner() {
         }
       });
       
+      // Sort by timestamp in memory
       attendanceData.sort((a, b) => {
         const aTimestamp = a.timestamp?.toMillis?.() || new Date(a.timestamp).getTime();
         const bTimestamp = b.timestamp?.toMillis?.() || new Date(b.timestamp).getTime();
@@ -155,6 +156,7 @@ export default function ShooterScanner() {
       const today = new Date().toISOString().split('T')[0];
       const attendanceRef = collection(db, "attendance");
       
+      // Simple query that works even if collection doesn't exist
       const q = query(
         attendanceRef,
         where("userId", "==", user.uid),
@@ -163,12 +165,14 @@ export default function ShooterScanner() {
       
       const querySnapshot = await getDocs(q);
       
+      // Handle empty collection gracefully
       if (querySnapshot.empty) {
-        console.log("No attendance found for today");
+        console.log("No attendance found for today - this is normal for new users or days without check-ins");
         setTodaysAttendance(null);
         return;
       }
       
+      // Get the latest attendance for today by sorting in memory
       const todaysRecords: Attendance[] = [];
       querySnapshot.forEach((doc) => {
         todaysRecords.push({
@@ -177,6 +181,7 @@ export default function ShooterScanner() {
         } as Attendance);
       });
       
+      // Sort by timestamp and get the latest
       todaysRecords.sort((a, b) => {
         const aTimestamp = a.timestamp?.toMillis?.() || new Date(a.timestamp).getTime();
         const bTimestamp = b.timestamp?.toMillis?.() || new Date(b.timestamp).getTime();
@@ -184,8 +189,17 @@ export default function ShooterScanner() {
       });
       
       setTodaysAttendance(todaysRecords[0]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error checking today's attendance:", error);
+      // Don't show error toast for empty collection - this is expected
+      if (error.code !== 'not-found' && !error.message?.includes('index')) {
+        toast({
+          title: "Error Checking Today's Attendance",
+          description: "Could not check today's attendance status.",
+          variant: "destructive"
+        });
+      }
+      // Set null as fallback
       setTodaysAttendance(null);
     }
   };
@@ -198,11 +212,7 @@ export default function ShooterScanner() {
     if (!context) return;
 
     const detectQR = () => {
-      if (videoRef.current && 
-          videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA &&
-          videoRef.current.videoWidth > 0 && 
-          videoRef.current.videoHeight > 0) {
-        
+      if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
         canvas.width = videoRef.current.videoWidth;
         canvas.height = videoRef.current.videoHeight;
         
@@ -211,9 +221,10 @@ export default function ShooterScanner() {
         const code = jsQR(imageData.data, imageData.width, imageData.height);
         
         if (code) {
+          // QR code detected!
           console.log('QR Code detected:', code.data);
           handleScanRange(code.data);
-          setScanning(false);
+          setScanning(false); // This will trigger useEffect to stop camera
           return;
         }
       }
@@ -223,90 +234,67 @@ export default function ShooterScanner() {
       }
     };
 
-    detectQR();
-  };
-
-  const stopQRDetection = () => {
-    if (animationFrameId.current) {
-      cancelAnimationFrame(animationFrameId.current);
-      animationFrameId.current = null;
-    }
+    // Start detection loop
+    animationFrameId.current = requestAnimationFrame(detectQR);
   };
 
   const startCamera = async () => {
     try {
-      stopCamera(); // Clean up any existing stream
+      // Stop any existing stream first
+      stopCamera();
+      setCameraError(null);
       
-      console.log('Requesting camera access...');
-      
+      // Request camera access with better constraints
       const constraints = {
         video: {
-          facingMode: 'environment',
-          width: { ideal: 1280, max: 1920 },
-          height: { ideal: 720, max: 1080 }
+          facingMode: 'environment', // Use back camera on mobile
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
         }
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      console.log('Camera stream obtained:', stream);
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
         
-        // Handle video loaded
-        const handleLoadedMetadata = () => {
-          console.log('Video metadata loaded');
+        // Wait for video to be ready
+        const onLoadedMetadata = () => {
           if (videoRef.current) {
-            videoRef.current.play()
-              .then(() => {
-                console.log('Video playing successfully');
-                setCameraReady(true);
-                setScanning(true);
-              })
-              .catch((error) => {
-                console.error('Error playing video:', error);
-                toast({
-                  title: "Camera Error",
-                  description: "Could not start video playback",
-                  variant: "destructive"
-                });
+            videoRef.current.play().then(() => {
+              console.log('Video playing successfully');
+              setScanning(true);
+              
+              // Remove the event listener after it's called
+              videoRef.current?.removeEventListener('loadedmetadata', onLoadedMetadata);
+            }).catch((error) => {
+              console.error('Error playing video:', error);
+              setCameraError('Could not start video playback');
+              toast({
+                title: "Camera Error",
+                description: "Could not start video playback",
+                variant: "destructive"
               });
+            });
           }
         };
-
-        const handleCanPlay = () => {
-          console.log('Video can play');
-          setCameraReady(true);
-        };
-
-        const handleError = (error: any) => {
+        
+        // Add event listener for when metadata is loaded
+        videoRef.current.addEventListener('loadedmetadata', onLoadedMetadata);
+        
+        // Handle video errors
+        videoRef.current.onerror = (error) => {
           console.error('Video element error:', error);
+          setCameraError('Error with video element');
           toast({
             title: "Camera Error",
             description: "Error with video element",
             variant: "destructive"
           });
         };
-
-        // Add event listeners
-        videoRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
-        videoRef.current.addEventListener('canplay', handleCanPlay);
-        videoRef.current.addEventListener('error', handleError);
-        
-        // Store cleanup function
-        const cleanup = () => {
-          if (videoRef.current) {
-            videoRef.current.removeEventListener('loadedmetadata', handleLoadedMetadata);
-            videoRef.current.removeEventListener('canplay', handleCanPlay);
-            videoRef.current.removeEventListener('error', handleError);
-          }
-        };
-
-        // Clean up on component unmount or when starting new camera
-        return cleanup;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Camera access error:", error);
       let errorMessage = "Please allow camera access to scan QR codes";
       
@@ -316,24 +304,37 @@ export default function ShooterScanner() {
         errorMessage = "No camera found on this device.";
       } else if (error.name === 'NotSupportedError') {
         errorMessage = "Camera is not supported in this browser.";
+      } else if (error.name === 'OverconstrainedError') {
+        errorMessage = "Cannot find camera with the requested constraints. Trying with default settings.";
+        // Fallback to simpler constraints
+        try {
+          const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          if (videoRef.current) {
+            videoRef.current.srcObject = fallbackStream;
+            streamRef.current = fallbackStream;
+            setScanning(true);
+          }
+          return;
+        } catch (fallbackError) {
+          errorMessage = "Could not access any camera on this device.";
+        }
       }
       
+      setCameraError(errorMessage);
       toast({
         title: "Camera Access Error",
         description: errorMessage,
         variant: "destructive"
       });
-      
-      setScanning(false);
-      setCameraReady(false);
     }
   };
 
   const stopCamera = () => {
-    console.log('Stopping camera...');
-    
-    // Stop QR detection
-    stopQRDetection();
+    // Stop animation frame
+    if (animationFrameId.current) {
+      cancelAnimationFrame(animationFrameId.current);
+      animationFrameId.current = null;
+    }
 
     // Stop video stream
     if (streamRef.current) {
@@ -348,8 +349,6 @@ export default function ShooterScanner() {
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-
-    setCameraReady(false);
   };
 
   const validateSubscriptionAndMarkAttendance = async (rangeId: string): Promise<ValidationResult> => {
@@ -365,6 +364,7 @@ export default function ShooterScanner() {
     setLoading(true);
     
     try {
+      // 1. Load range details first
       const range = await loadRangeDetails(rangeId);
       if (!range) {
         return {
@@ -375,6 +375,7 @@ export default function ShooterScanner() {
         };
       }
 
+      // 2. Check for active subscription
       const subscriptionsRef = collection(db, "subscriptions");
       const subscriptionQuery = query(
         subscriptionsRef,
@@ -394,6 +395,7 @@ export default function ShooterScanner() {
         };
       }
 
+      // 3. Validate subscription timing
       const subscriptionDoc = subscriptionSnapshot.docs[0];
       const subscriptionData = subscriptionDoc.data() as Subscription;
       const subscription = { ...subscriptionData, id: subscriptionDoc.id };
@@ -402,6 +404,7 @@ export default function ShooterScanner() {
       const endDate = subscription.endDate?.toDate ? subscription.endDate.toDate() : new Date(subscription.endDate);
       const startDate = subscription.startDate?.toDate ? subscription.startDate.toDate() : new Date(subscription.startDate);
       
+      // Check if subscription is within valid period
       if (now < startDate) {
         const daysUntilStart = Math.ceil((startDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
         return {
@@ -421,6 +424,7 @@ export default function ShooterScanner() {
         };
       }
 
+      // 4. Check payment status
       if (subscription.paymentStatus === 'pending') {
         return {
           isValid: false,
@@ -430,6 +434,7 @@ export default function ShooterScanner() {
         };
       }
 
+      // 5. Check if already marked today
       const today = new Date().toISOString().split('T')[0];
       const existingAttendance = attendance.find(
         a => a.rangeId === rangeId && a.date === today
@@ -444,8 +449,10 @@ export default function ShooterScanner() {
         };
       }
 
+      // 6. Mark attendance
       await markAttendance(rangeId, subscription.id, range.name);
 
+      // Calculate remaining days
       const remainingDays = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
       return {
@@ -515,6 +522,7 @@ export default function ShooterScanner() {
       const attendanceRef = collection(db, "attendance");
       await addDoc(attendanceRef, attendanceData);
 
+      // Refresh attendance data
       await loadAttendance();
       await checkTodaysAttendance();
 
@@ -534,16 +542,19 @@ export default function ShooterScanner() {
       return;
     }
 
+    // Reset previous state
     setCurrentRange(null);
     setCurrentSubscription(null);
     setValidationResult(null);
 
+    // Validate subscription and mark attendance
     const result = await validateSubscriptionAndMarkAttendance(rangeId.trim());
     
     setValidationResult(result);
     setCurrentRange(result.range);
     setCurrentSubscription(result.subscription);
 
+    // Show appropriate toast message
     if (result.isValid) {
       toast({
         title: "Success!",
@@ -559,6 +570,7 @@ export default function ShooterScanner() {
       });
     }
     
+    // Clear manual input
     setManualRangeId('');
   };
 
@@ -572,10 +584,12 @@ export default function ShooterScanner() {
 
     const days = [];
     
+    // Empty cells for days before the first day of month
     for (let i = 0; i < startingDayOfWeek; i++) {
       days.push(null);
     }
     
+    // Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const dateString = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
       const attendanceRecord = attendance.find(a => a.date === dateString);
@@ -723,68 +737,85 @@ export default function ShooterScanner() {
                   muted
                   className="w-full h-auto rounded-lg"
                   style={{ 
-                    minHeight: '300px',
-                    maxHeight: '400px',
+                    width: '100%',
+                    height: '300px',
                     objectFit: 'cover',
-                    display: 'block'
+                    display: 'block',
+                    backgroundColor: '#000'
                   }}
                 />
-                <canvas ref={canvasRef} className="hidden" />
+                <canvas 
+                  ref={canvasRef} 
+                  className="hidden" 
+                  style={{ display: 'none' }}
+                />
                 
-                {/* Loading indicator */}
-                {!cameraReady && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75">
-                    <div className="text-white text-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
-                      <p className="text-sm">Starting camera...</p>
+                {/* Camera error message */}
+                {cameraError && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-80">
+                    <div className="text-white text-center p-4">
+                      <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-2" />
+                      <p className="text-sm">{cameraError}</p>
+                      <Button 
+                        variant="outline" 
+                        className="mt-3 text-white border-white hover:bg-white hover:text-black"
+                        onClick={() => setScanning(false)}
+                      >
+                        Close
+                      </Button>
                     </div>
                   </div>
                 )}
                 
-                {/* QR Scanner Overlay - only show when camera is ready */}
-                {cameraReady && (
-                  <>
-                    <div className="absolute inset-0 border-4 border-transparent rounded-lg pointer-events-none">
-                      {/* Scanner corners */}
-                      <div className="absolute top-4 left-4 w-8 h-8 border-l-4 border-t-4 border-white"></div>
-                      <div className="absolute top-4 right-4 w-8 h-8 border-r-4 border-t-4 border-white"></div>
-                      <div className="absolute bottom-4 left-4 w-8 h-8 border-l-4 border-b-4 border-white"></div>
-                      <div className="absolute bottom-4 right-4 w-8 h-8 border-r-4 border-b-4 border-white"></div>
-                      
-                      {/* Center targeting square */}
-                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48 border-2 border-white border-dashed opacity-50 rounded-lg"></div>
-                    </div>
-                    
-                    {/* Instructions overlay */}
-                    <div className="absolute bottom-8 left-0 right-0 text-center">
-                      <p className="text-white text-sm bg-black bg-opacity-50 px-4 py-2 rounded-full mx-auto inline-block">
-                        Position QR code within the frame
-                      </p>
-                    </div>
-                  </>
-                )}
+                {/* Scanner overlay with improved visibility */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  {/* Scanner frame */}
+                  <div className="relative w-48 h-48 border-4 border-white border-dashed rounded-lg opacity-70">
+                    {/* Corner markers */}
+                    <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-white"></div>
+                    <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-white"></div>
+                    <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-white"></div>
+                    <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-white"></div>
+                  </div>
+                </div>
+                
+                {/* Scanning animation */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-1 bg-green-500 opacity-60 animate-pulse"></div>
+                
+                {/* Instructions */}
+                <div className="absolute bottom-4 left-0 right-0 text-center">
+                  <p className="text-white text-sm bg-black bg-opacity-70 px-4 py-2 rounded-full mx-auto inline-block">
+                    📍 Position QR code within the frame
+                  </p>
+                </div>
               </div>
               
               <div className="flex gap-2 justify-center">
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setScanning(false);
-                    stopCamera();
-                  }}
-                >
+                <Button variant="outline" onClick={() => setScanning(false)}>
                   <X className="w-4 h-4 mr-2" />
-                  Cancel
+                  Cancel Scan
                 </Button>
+              </div>
+
+              {/* Camera troubleshooting tips */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h4 className="font-semibold text-yellow-800 mb-2">Camera not working?</h4>
+                <ul className="text-sm text-yellow-700 space-y-1">
+                  <li>• Ensure camera permissions are granted</li>
+                  <li>• Try refreshing the page</li>
+                  <li>• Check if your browser supports camera access</li>
+                  <li>• Make sure you're using HTTPS in production</li>
+                </ul>
               </div>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Rest of the component remains the same... */}
+      {/* Validation Result */}
       {getValidationStatusCard()}
 
+      {/* Current Range Info */}
       {currentRange && (
         <Card>
           <CardHeader>
@@ -836,7 +867,7 @@ export default function ShooterScanner() {
         </Card>
       )}
 
-      {/* Calendar and other components remain the same... */}
+      {/* Attendance Calendar */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

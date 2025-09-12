@@ -18,8 +18,13 @@ interface Event {
   name: string;
   rangeId: string;
   description: string;
-  date: string;
-  time: string;
+  // Support both old and new format
+  date?: string; // Legacy field
+  time?: string; // Legacy field
+  startDate?: string;
+  endDate?: string;
+  startTime?: string;
+  endTime?: string;
   location: string;
   entryfees: string;
   availableseats: string;
@@ -37,8 +42,10 @@ interface FormData {
   entryfees: string;
   availableseats: string;
   location: string;
-  date: string;
-  time: string;
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
   existingImages: string[]; // URLs of images already uploaded
   newImages: File[]; // New files to upload
   newImageUrls: string[]; // Preview URLs for new images
@@ -60,8 +67,10 @@ export default function EditEventModal({ isOpen, onClose, event }: EditEventModa
     entryfees: "",
     availableseats: "",
     location: "",
-    date: "",
-    time: "",
+    startDate: "",
+    endDate: "",
+    startTime: "",
+    endTime: "",
     existingImages: [],
     newImages: [],
     newImageUrls: [],
@@ -75,14 +84,22 @@ export default function EditEventModal({ isOpen, onClose, event }: EditEventModa
   // Initialize form data when event changes
   useEffect(() => {
     if (event && isOpen) {
+      // Handle both old and new date formats
+      const startDate = event.startDate || event.date || "";
+      const endDate = event.endDate || event.date || "";
+      const startTime = event.startTime || event.time || "";
+      const endTime = event.endTime || "";
+
       setFormData({
         name: event.name || "",
         description: event.description || "",
         entryfees: event.entryfees || "",
         availableseats: event.availableseats || "",
         location: event.location || "",
-        date: event.date || "",
-        time: event.time || "",
+        startDate,
+        endDate,
+        startTime,
+        endTime,
         existingImages: event.images || (event.image ? [event.image] : []),
         newImages: [],
         newImageUrls: [],
@@ -110,8 +127,9 @@ export default function EditEventModal({ isOpen, onClose, event }: EditEventModa
     if (!formData.entryfees.trim()) newErrors.entryfees = "Entry fees is required";
     if (!formData.availableseats.trim()) newErrors.availableseats = "Available seats is required";
     if (!formData.location.trim()) newErrors.location = "Location is required";
-    if (!formData.date) newErrors.date = "Date is required";
-    if (!formData.time) newErrors.time = "Time is required";
+    if (!formData.startDate) newErrors.startDate = "Start date is required";
+    if (!formData.endDate) newErrors.endDate = "End date is required";
+    if (!formData.startTime) newErrors.startTime = "Start time is required";
     
     // Validate numeric fields
     if (formData.entryfees && isNaN(Number(formData.entryfees))) {
@@ -121,16 +139,34 @@ export default function EditEventModal({ isOpen, onClose, event }: EditEventModa
       newErrors.availableseats = "Available seats must be a valid number";
     }
     
-    // For editing, allow past dates if the event was already in the past
-    const eventDate = new Date(formData.date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Start of today
+    // Validate dates
+    if (formData.startDate && formData.endDate) {
+      const startDate = new Date(formData.startDate);
+      const endDate = new Date(formData.endDate);
+      
+      if (endDate < startDate) {
+        newErrors.endDate = "End date cannot be before start date";
+      }
+    }
     
-    if (eventDate < today) {
-      // Only show warning if this is a new date change
-      const originalDate = new Date(event.date);
-      if (eventDate.getTime() !== originalDate.getTime()) {
-        newErrors.date = "Event date should not be changed to a past date";
+    // Validate times for same day events
+    if (formData.startDate && formData.endDate && formData.startTime && formData.endTime) {
+      const isSameDay = formData.startDate === formData.endDate;
+      if (isSameDay && formData.endTime <= formData.startTime) {
+        newErrors.endTime = "End time must be after start time for same-day events";
+      }
+    }
+    
+    // For editing, allow past dates if the event was already in the past (more lenient validation)
+    const eventStartDate = new Date(formData.startDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (eventStartDate < today) {
+      // Check if this is a significant change from original
+      const originalStartDate = new Date(event.startDate || event.date || "");
+      if (Math.abs(eventStartDate.getTime() - originalStartDate.getTime()) > 24 * 60 * 60 * 1000) {
+        newErrors.startDate = "Event start date should not be changed to a significantly different past date";
       }
     }
     
@@ -150,6 +186,18 @@ export default function EditEventModal({ isOpen, onClose, event }: EditEventModa
         ...prev,
         [field]: ""
       }));
+    }
+
+    // Auto-adjust end date if start date changes and end date is before new start date
+    if (field === 'startDate' && value && formData.endDate) {
+      const newStartDate = new Date(value);
+      const currentEndDate = new Date(formData.endDate);
+      if (currentEndDate < newStartDate) {
+        setFormData(prev => ({
+          ...prev,
+          endDate: value
+        }));
+      }
     }
   };
 
@@ -327,12 +375,18 @@ export default function EditEventModal({ isOpen, onClose, event }: EditEventModa
       // Combine existing images and new image URLs
       const allImageUrls = [...formData.existingImages, ...newImageUrls];
 
-      // Prepare updated event data
+      // Prepare updated event data with both old and new format support
       const updatedEventData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
-        date: formData.date,
-        time: formData.time,
+        // New format
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        startTime: formData.startTime,
+        endTime: formData.endTime || formData.startTime, // Default to start time if not provided
+        // Legacy format for backward compatibility
+        date: formData.startDate,
+        time: formData.startTime,
         location: formData.location.trim(),
         entryfees: formData.entryfees,
         availableseats: formData.availableseats,
@@ -370,6 +424,18 @@ export default function EditEventModal({ isOpen, onClose, event }: EditEventModa
 
   const getTodayDate = () => {
     return format(new Date(), "yyyy-MM-dd");
+  };
+
+  const calculateEventDuration = () => {
+    if (!formData.startDate || !formData.endDate) return "";
+    
+    const start = new Date(formData.startDate);
+    const end = new Date(formData.endDate);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    
+    if (diffDays === 1) return "Single day event";
+    return `${diffDays} days event`;
   };
 
   const totalImages = formData.existingImages.length + formData.newImages.length;
@@ -437,41 +503,93 @@ export default function EditEventModal({ isOpen, onClose, event }: EditEventModa
             {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
           </div>
 
-          {/* Date and Time Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Calendar className="inline w-4 h-4 mr-1" />
-                Event Date *
-              </label>
-              <input
-                type="date"
-                value={formData.date}
-                onChange={(e) => handleInputChange("date", e.target.value)}
-                className={`w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  errors.date ? "border-red-500" : "border-gray-300"
-                }`}
-                disabled={isLoading}
-              />
-              {errors.date && <p className="text-red-500 text-sm mt-1">{errors.date}</p>}
+          {/* Date Range Section */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-blue-800 mb-3 flex items-center">
+              <Calendar className="w-5 h-5 mr-2" />
+              Event Schedule
+            </h3>
+            
+            {/* Start and End Date Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Start Date *
+                </label>
+                <input
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) => handleInputChange("startDate", e.target.value)}
+                  className={`w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.startDate ? "border-red-500" : "border-gray-300"
+                  }`}
+                  disabled={isLoading}
+                />
+                {errors.startDate && <p className="text-red-500 text-sm mt-1">{errors.startDate}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  End Date *
+                </label>
+                <input
+                  type="date"
+                  value={formData.endDate}
+                  onChange={(e) => handleInputChange("endDate", e.target.value)}
+                  min={formData.startDate || getTodayDate()}
+                  className={`w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.endDate ? "border-red-500" : "border-gray-300"
+                  }`}
+                  disabled={isLoading}
+                />
+                {errors.endDate && <p className="text-red-500 text-sm mt-1">{errors.endDate}</p>}
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Clock className="inline w-4 h-4 mr-1" />
-                Event Time *
-              </label>
-              <input
-                type="time"
-                value={formData.time}
-                onChange={(e) => handleInputChange("time", e.target.value)}
-                className={`w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  errors.time ? "border-red-500" : "border-gray-300"
-                }`}
-                disabled={isLoading}
-              />
-              {errors.time && <p className="text-red-500 text-sm mt-1">{errors.time}</p>}
+            {/* Time Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Clock className="inline w-4 h-4 mr-1" />
+                  Start Time *
+                </label>
+                <input
+                  type="time"
+                  value={formData.startTime}
+                  onChange={(e) => handleInputChange("startTime", e.target.value)}
+                  className={`w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.startTime ? "border-red-500" : "border-gray-300"
+                  }`}
+                  disabled={isLoading}
+                />
+                {errors.startTime && <p className="text-red-500 text-sm mt-1">{errors.startTime}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Clock className="inline w-4 h-4 mr-1" />
+                  End Time (Optional)
+                </label>
+                <input
+                  type="time"
+                  value={formData.endTime}
+                  onChange={(e) => handleInputChange("endTime", e.target.value)}
+                  className={`w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.endTime ? "border-red-500" : "border-gray-300"
+                  }`}
+                  disabled={isLoading}
+                />
+                {errors.endTime && <p className="text-red-500 text-sm mt-1">{errors.endTime}</p>}
+                <p className="text-xs text-gray-500 mt-1">Leave empty if event runs all day or time is flexible</p>
+              </div>
             </div>
+
+            {/* Event Duration Display */}
+            {formData.startDate && formData.endDate && (
+              <div className="mt-3 p-2 bg-blue-100 rounded text-sm text-blue-700">
+                <strong>Duration:</strong> {calculateEventDuration()}
+              </div>
+            )}
           </div>
 
           {/* Location */}

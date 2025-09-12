@@ -20,8 +20,10 @@ interface Event {
   name: string;
   rangeId: string;
   description: string;
-  date: string;
-  time: string;
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
   location: string;
   entryfees: string;
   availableseats: string;
@@ -39,8 +41,10 @@ interface FormData {
   availableseats: string;
   currentParticipants: number;
   location: string;
-  date: string;
-  time: string;
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
   images: File[];
   imageUrls: string[]; // Preview URLs for display
 }
@@ -61,8 +65,10 @@ export default function CreateEventModal({ isOpen, onClose, title, rangeId }: Cr
     availableseats: "",
     currentParticipants: 0,
     location: "",
-    date: "",
-    time: "",
+    startDate: "",
+    endDate: "",
+    startTime: "",
+    endTime: "",
     images: [],
     imageUrls: []
   });
@@ -81,8 +87,9 @@ export default function CreateEventModal({ isOpen, onClose, title, rangeId }: Cr
     if (!formData.entryfees.trim()) newErrors.entryfees = "Entry fees is required";
     if (!formData.availableseats.trim()) newErrors.availableseats = "Available seats is required";
     if (!formData.location.trim()) newErrors.location = "Location is required";
-    if (!formData.date) newErrors.date = "Date is required";
-    if (!formData.time) newErrors.time = "Time is required";
+    if (!formData.startDate) newErrors.startDate = "Start date is required";
+    if (!formData.endDate) newErrors.endDate = "End date is required";
+    if (!formData.startTime) newErrors.startTime = "Start time is required";
     
     // Validate numeric fields
     if (formData.entryfees && isNaN(Number(formData.entryfees))) {
@@ -92,9 +99,26 @@ export default function CreateEventModal({ isOpen, onClose, title, rangeId }: Cr
       newErrors.availableseats = "Available seats must be a valid number";
     }
     
-    // Validate date (should be in future)
-    if (formData.date && new Date(formData.date) < new Date()) {
-      newErrors.date = "Event date should be in the future";
+    // Validate dates
+    if (formData.startDate && new Date(formData.startDate) < new Date()) {
+      newErrors.startDate = "Start date should be in the future";
+    }
+    
+    if (formData.startDate && formData.endDate) {
+      const startDate = new Date(formData.startDate);
+      const endDate = new Date(formData.endDate);
+      
+      if (endDate < startDate) {
+        newErrors.endDate = "End date cannot be before start date";
+      }
+    }
+    
+    // Validate times for same day events
+    if (formData.startDate && formData.endDate && formData.startTime && formData.endTime) {
+      const isSameDay = formData.startDate === formData.endDate;
+      if (isSameDay && formData.endTime <= formData.startTime) {
+        newErrors.endTime = "End time must be after start time for same-day events";
+      }
     }
     
     setErrors(newErrors);
@@ -114,6 +138,14 @@ export default function CreateEventModal({ isOpen, onClose, title, rangeId }: Cr
         [field]: ""
       }));
     }
+
+    // Auto-set end date if start date is selected and end date is empty
+    if (field === 'startDate' && value && !formData.endDate) {
+      setFormData(prev => ({
+        ...prev,
+        endDate: value
+      }));
+    }
   };
 
   // Generate unique filename
@@ -130,13 +162,8 @@ export default function CreateEventModal({ isOpen, onClose, title, rangeId }: Cr
     const storageRef = ref(storage, fileName);
     
     try {
-      // Upload file with progress tracking
       const uploadTask = uploadBytes(storageRef, file);
-      
-      // You can add progress tracking here if needed
       const snapshot = await uploadTask;
-      
-      // Get download URL
       const downloadURL = await getDownloadURL(snapshot.ref);
       return downloadURL;
     } catch (error) {
@@ -175,8 +202,6 @@ export default function CreateEventModal({ isOpen, onClose, title, rangeId }: Cr
 
     Array.from(files).forEach(file => {
       if (file.type.startsWith('image/')) {
-        // Optional: Check file size (Firebase Storage supports up to 32GB)
-        // You can set a reasonable limit if needed, e.g., 50MB for better UX
         if (file.size > 50 * 1024 * 1024) {
           toast({
             title: "File Too Large",
@@ -187,8 +212,6 @@ export default function CreateEventModal({ isOpen, onClose, title, rangeId }: Cr
         }
 
         validFiles.push(file);
-        
-        // Create preview URL
         const previewUrl = URL.createObjectURL(file);
         newImageUrls.push(previewUrl);
       } else {
@@ -208,14 +231,12 @@ export default function CreateEventModal({ isOpen, onClose, title, rangeId }: Cr
       }));
     }
     
-    // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
   const removeImage = (index: number) => {
-    // Revoke the object URL to prevent memory leaks
     URL.revokeObjectURL(formData.imageUrls[index]);
     
     setFormData(prev => ({
@@ -251,7 +272,6 @@ export default function CreateEventModal({ isOpen, onClose, title, rangeId }: Cr
     try {
       let imageUrls: string[] = [];
       
-      // Upload images to storage if any
       if (formData.images.length > 0) {
         toast({
           title: "Uploading Images",
@@ -274,20 +294,24 @@ export default function CreateEventModal({ isOpen, onClose, title, rangeId }: Cr
         userId: user.uid,
         userEmail: user.email || "",
         userName: user.displayName || user.email?.split('@')[0] || "Unknown",
-        date: formData.date,
-        time: formData.time,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        startTime: formData.startTime,
+        endTime: formData.endTime || formData.startTime, // Default to start time if not provided
         location: formData.location.trim(),
         entryfees: formData.entryfees,
         availableseats: formData.availableseats,
-        participants:0,
+        participants: 0,
         image: imageUrls[0] || "", // Primary image URL
         images: imageUrls, // All image URLs
         status: "pending",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        // Legacy fields for backward compatibility
+        date: formData.startDate,
+        time: formData.startTime,
       };
 
-      // Save to Firestore
       const docRef = await addDoc(collection(db, "events"), eventData);
       
       toast({
@@ -307,8 +331,10 @@ export default function CreateEventModal({ isOpen, onClose, title, rangeId }: Cr
         availableseats: "",
         currentParticipants: 0,
         location: "",
-        date: "",
-        time: "",
+        startDate: "",
+        endDate: "",
+        startTime: "",
+        endTime: "",
         images: [],
         imageUrls: []
       });
@@ -330,6 +356,18 @@ export default function CreateEventModal({ isOpen, onClose, title, rangeId }: Cr
 
   const getTodayDate = () => {
     return format(new Date(), "yyyy-MM-dd");
+  };
+
+  const calculateEventDuration = () => {
+    if (!formData.startDate || !formData.endDate) return "";
+    
+    const start = new Date(formData.startDate);
+    const end = new Date(formData.endDate);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end days
+    
+    if (diffDays === 1) return "Single day event";
+    return `${diffDays} days event`;
   };
 
   // Clean up preview URLs on unmount
@@ -399,42 +437,94 @@ export default function CreateEventModal({ isOpen, onClose, title, rangeId }: Cr
             {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
           </div>
 
-          {/* Date and Time Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Calendar className="inline w-4 h-4 mr-1" />
-                Event Date *
-              </label>
-              <input
-                type="date"
-                value={formData.date}
-                onChange={(e) => handleInputChange("date", e.target.value)}
-                min={getTodayDate()}
-                className={`w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  errors.date ? "border-red-500" : "border-gray-300"
-                }`}
-                disabled={isLoading}
-              />
-              {errors.date && <p className="text-red-500 text-sm mt-1">{errors.date}</p>}
+          {/* Date Range Section */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-blue-800 mb-3 flex items-center">
+              <Calendar className="w-5 h-5 mr-2" />
+              Event Schedule
+            </h3>
+            
+            {/* Start and End Date Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Start Date *
+                </label>
+                <input
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) => handleInputChange("startDate", e.target.value)}
+                  min={getTodayDate()}
+                  className={`w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.startDate ? "border-red-500" : "border-gray-300"
+                  }`}
+                  disabled={isLoading}
+                />
+                {errors.startDate && <p className="text-red-500 text-sm mt-1">{errors.startDate}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  End Date *
+                </label>
+                <input
+                  type="date"
+                  value={formData.endDate}
+                  onChange={(e) => handleInputChange("endDate", e.target.value)}
+                  min={formData.startDate || getTodayDate()}
+                  className={`w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.endDate ? "border-red-500" : "border-gray-300"
+                  }`}
+                  disabled={isLoading}
+                />
+                {errors.endDate && <p className="text-red-500 text-sm mt-1">{errors.endDate}</p>}
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Clock className="inline w-4 h-4 mr-1" />
-                Event Time *
-              </label>
-              <input
-                type="time"
-                value={formData.time}
-                onChange={(e) => handleInputChange("time", e.target.value)}
-                className={`w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  errors.time ? "border-red-500" : "border-gray-300"
-                }`}
-                disabled={isLoading}
-              />
-              {errors.time && <p className="text-red-500 text-sm mt-1">{errors.time}</p>}
+            {/* Time Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Clock className="inline w-4 h-4 mr-1" />
+                  Start Time *
+                </label>
+                <input
+                  type="time"
+                  value={formData.startTime}
+                  onChange={(e) => handleInputChange("startTime", e.target.value)}
+                  className={`w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.startTime ? "border-red-500" : "border-gray-300"
+                  }`}
+                  disabled={isLoading}
+                />
+                {errors.startTime && <p className="text-red-500 text-sm mt-1">{errors.startTime}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Clock className="inline w-4 h-4 mr-1" />
+                  End Time (Optional)
+                </label>
+                <input
+                  type="time"
+                  value={formData.endTime}
+                  onChange={(e) => handleInputChange("endTime", e.target.value)}
+                  className={`w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.endTime ? "border-red-500" : "border-gray-300"
+                  }`}
+                  disabled={isLoading}
+                />
+                {errors.endTime && <p className="text-red-500 text-sm mt-1">{errors.endTime}</p>}
+                <p className="text-xs text-gray-500 mt-1">Leave empty if event runs all day or time is flexible</p>
+              </div>
             </div>
+
+            {/* Event Duration Display */}
+            {formData.startDate && formData.endDate && (
+              <div className="mt-3 p-2 bg-blue-100 rounded text-sm text-blue-700">
+                <strong>Duration:</strong> {calculateEventDuration()}
+              </div>
+            )}
           </div>
 
           {/* Location */}
