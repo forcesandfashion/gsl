@@ -4,11 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { User, Calendar, Award, Star, Briefcase, Target, Crosshair, Package, BarChart3, TrendingUp, Filter, Clock } from "lucide-react";
+import { User, Calendar, Award, Star, Briefcase, Target, Crosshair, Package, BarChart3, TrendingUp, Filter, Clock, FileText, ScanLine, Receipt } from "lucide-react";
 import { db, storage } from "@/firebase/config";
 import { collection, doc, getDocs, query, setDoc, where, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
+
+// Import the new components
+import ShooterScanner from "@/components/dashboard/ShooterScanner";
+import ShooterBills from "@/components/dashboard/ShootersBills";
 
 interface ShooterProfile {
   fullName: string;
@@ -493,7 +497,9 @@ export default function ShooterProfile() {
           <nav className="-mb-px flex space-x-8">
             {[
               { id: 'profile', label: 'Profile', icon: User },
-              { id: 'analytics', label: 'Analytics', icon: BarChart3 }
+              { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+              { id: 'bills', label: 'Bills', icon: Receipt },
+              { id: 'scanner', label: 'Scanner', icon: ScanLine }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -1030,6 +1036,24 @@ export default function ShooterProfile() {
               </div>
             </>
           )}
+        </>
+      )}
+
+      {activeTab === 'bills' && (
+        <>
+          <h2 className="text-2xl font-extrabold text-blue-700 mb-4 flex items-center gap-2 justify-center">
+            <Receipt className="w-7 h-7 text-blue-400" /> Bills Management
+          </h2>
+          <ShooterBills />
+        </>
+      )}
+
+      {activeTab === 'scanner' && (
+        <>
+          <h2 className="text-2xl font-extrabold text-blue-700 mb-4 flex items-center gap-2 justify-center">
+            <ScanLine className="w-7 h-7 text-blue-400" /> Document Scanner
+          </h2>
+          <ShooterScanner />
         </>
       )}
     </div>
