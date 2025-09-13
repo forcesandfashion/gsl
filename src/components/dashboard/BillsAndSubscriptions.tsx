@@ -8,8 +8,8 @@ import {
   getDocs, 
   updateDoc,
   doc,
-  orderBy,
-  Timestamp
+  Timestamp,
+  addDoc
 } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,9 +31,9 @@ import {
   CalendarDays,
   RefreshCw,
   Users,
-  Target,
   Upload,
-  Eye
+  Eye,
+  X
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Input } from "@/components/ui/input";
@@ -106,61 +106,163 @@ interface AttendanceRecord {
   userName: string;
   rangeId: string;
   rangeName: string;
-  date: any;
+  date: string;
+  checkInTime: string;
   status: string;
-  score?: string;
-  notes?: string;
-  createdAt: any;
+  subscriptionId: string;
+  timestamp: any;
+  userEmail: string;
 }
 
-// Attendance and Data Upload Component
-const ShooterAttendanceAndData = ({ shooter, onClose }: { shooter: Shooter; onClose: () => void }) => {
+interface Range {
+  id: string;
+  name: string;
+  ownerId: string;
+}
+
+// Enhanced Attendance and Data Upload Component
+const ShooterAttendanceAndData = ({ shooter, onClose, ranges }: { 
+  shooter: Shooter; 
+  onClose: () => void; 
+  ranges: Range[];
+}) => {
+  const { user } = useAuth();
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
+  const [todayAttendance, setTodayAttendance] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
+  const [selectedAttendanceForUpload, setSelectedAttendanceForUpload] = useState<AttendanceRecord | null>(null);
+  const [csvData, setCsvData] = useState<any[]>([]);
+  const [showRangeSelection, setShowRangeSelection] = useState(false);
   const { toast } = useToast();
 
+  // Get today's date in YYYY-MM-DD format
+  const getTodayDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  };
+
   // Format date for display
-  const formatDate = (timestamp: any) => {
-    if (!timestamp) return "N/A";
-    
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "N/A";
     try {
-      const date = timestamp.toDate();
+      const date = new Date(dateString);
       return date.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        day: 'numeric'
       });
     } catch {
       return "Invalid date";
     }
   };
 
+  // Parse CSV data
+  const parseCSV = (csvText: string) => {
+    const lines = csvText.split('\n').filter(line => line.trim());
+    if (lines.length === 0) return [];
+
+    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+    const data = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+      if (values.length === headers.length) {
+        const row = {};
+        headers.forEach((header, index) => {
+          row[header] = values[index];
+        });
+        data.push(row);
+      }
+    }
+
+    return data;
+  };
+
+  // Upload CSV data to selected attendance
+  const uploadCsvToAttendance = async (attendanceRecord: AttendanceRecord, csvData: any[]) => {
+    setUploading(true);
+    try {
+      // Store CSV data in a subcollection under the attendance document
+      const attendanceRef = doc(db, "attendance", attendanceRecord.id);
+      const csvDataRef = collection(attendanceRef, "shootingData");
+      
+      // Upload each row of CSV data
+      for (const row of csvData) {
+        await addDoc(csvDataRef, {
+          ...row,
+          uploadedAt: Timestamp.now(),
+          uploadedBy: user?.uid,
+          attendanceId: attendanceRecord.id,
+          shooterId: attendanceRecord.userId,
+          rangeId: attendanceRecord.rangeId
+        });
+      }
+
+      toast({
+        title: "Success",
+        description: `CSV data uploaded to ${attendanceRecord.rangeName} attendance for ${formatDate(attendanceRecord.date)}`
+      });
+
+      setSelectedAttendanceForUpload(null);
+      setCsvData([]);
+      setShowRangeSelection(false);
+    } catch (error) {
+      console.error("Error uploading CSV:", error);
+      toast({
+        title: "Error",
+        description: "Failed to upload CSV data",
+        variant: "destructive"
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Fetch attendance data for the shooter from all ranges owned by the current user
   const fetchAttendanceData = async () => {
     setLoading(true);
     try {
-      // Fetch real attendance data from Firestore
+      const rangeIds = ranges.map(range => range.id);
+      
+      if (rangeIds.length === 0) {
+        setAttendanceData([]);
+        setTodayAttendance([]);
+        return;
+      }
+
       const attendanceRef = collection(db, "attendance");
       const attendanceQuery = query(
         attendanceRef,
         where("userId", "==", shooter.userId),
-        where("rangeId", "==", shooter.rangeId),
-        orderBy("date", "desc")
+        where("rangeId", "in", rangeIds) // Only get attendance from user's ranges
       );
       
       const attendanceSnapshot = await getDocs(attendanceQuery);
-      const attendanceData: AttendanceRecord[] = [];
+      const allAttendance: AttendanceRecord[] = [];
+      const today = getTodayDate();
+      const todayRecords: AttendanceRecord[] = [];
       
       attendanceSnapshot.forEach((doc) => {
-        attendanceData.push({
+        const record = {
           id: doc.id,
           ...doc.data()
-        } as AttendanceRecord);
+        } as AttendanceRecord;
+        
+        allAttendance.push(record);
+        
+        // Check if this is today's attendance
+        if (record.date === today) {
+          todayRecords.push(record);
+        }
       });
       
-      setAttendanceData(attendanceData);
+      // Sort by date in descending order
+      allAttendance.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      setAttendanceData(allAttendance);
+      setTodayAttendance(todayRecords);
     } catch (error) {
       console.error("Error fetching attendance data:", error);
       toast({
@@ -173,116 +275,283 @@ const ShooterAttendanceAndData = ({ shooter, onClose }: { shooter: Shooter; onCl
     }
   };
 
+  // Handle CSV file upload
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setUploading(true);
-    try {
-      // Simulate file upload (you can implement actual file upload logic here)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      toast({
-        title: "Success",
-        description: "Shooting data uploaded successfully"
-      });
-    } catch (error) {
+    if (!file.name.endsWith('.csv')) {
       toast({
         title: "Error",
-        description: "Failed to upload file",
+        description: "Please select a CSV file",
         variant: "destructive"
       });
-    } finally {
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const text = await file.text();
+      const parsed = parseCSV(text);
+      
+      if (parsed.length === 0) {
+        toast({
+          title: "Error",
+          description: "CSV file appears to be empty or invalid",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setCsvData(parsed);
+      
+      // If there are multiple attendance records for today, show selection
+      if (todayAttendance.length > 1) {
+        setUploading(false);
+        setShowRangeSelection(true);
+      } else if (todayAttendance.length === 1) {
+        // Directly upload to the single attendance record
+        await uploadCsvToAttendance(todayAttendance[0], parsed);
+      } else {
+        setUploading(false);
+        toast({
+          title: "No Attendance Found",
+          description: "No attendance record found for today. Please ensure the shooter has checked in.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error processing CSV:", error);
+      toast({
+        title: "Error",
+        description: "Failed to process CSV file",
+        variant: "destructive"
+      });
       setUploading(false);
-      event.target.value = ""; // Reset file input
+    } finally {
+      event.target.value = "";
     }
   };
 
   useEffect(() => {
     fetchAttendanceData();
-  }, [shooter]);
+  }, [shooter, ranges]);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold">Shooter Details</h2>
-            <Button variant="outline" onClick={onClose}>Close</Button>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Shooter Information</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <p><strong>Name:</strong> {shooter.userName}</p>
-                  <p><strong>Email:</strong> {shooter.userEmail}</p>
-                  <p><strong>Range:</strong> {shooter.rangeName}</p>
-                  <p>
-                    <strong>Status:</strong>{" "}
-                    <Badge className={
-                      shooter.subscriptionStatus === "active" 
-                        ? "bg-green-100 text-green-800" 
-                        : "bg-red-100 text-red-800"
-                    }>
-                      {shooter.subscriptionStatus.toUpperCase()}
-                    </Badge>
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Upload Shooting Data</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <p className="text-sm text-gray-600">
-                    Upload CSV or PDF files containing shooting data from digital targets
-                  </p>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <input
-                      type="file"
-                      accept=".csv,.pdf"
-                      onChange={handleFileUpload}
-                      disabled={uploading}
-                      className="hidden"
-                      id="file-upload"
-                    />
-                    <label htmlFor="file-upload">
-                      <Button variant="outline" disabled={uploading} asChild>
-                        <span>
-                          {uploading ? (
-                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                          ) : (
-                            <Upload className="w-4 h-4 mr-2" />
-                          )}
-                          {uploading ? "Uploading..." : "Choose File"}
-                        </span>
-                      </Button>
-                    </label>
-                    <p className="text-xs text-gray-500 mt-2">CSV or PDF files only</p>
+    <>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+        <div className="bg-white rounded-lg w-full max-w-6xl max-h-[95vh] overflow-y-auto">
+          <div className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold">Shooter Details</h2>
+              <Button variant="outline" onClick={onClose} size="sm">
+                <X className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Close</span>
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Shooter Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="font-medium text-gray-600">Name</p>
+                      <p className="font-semibold">{shooter.userName}</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-600">Email</p>
+                      <p className="font-semibold break-all">{shooter.userEmail}</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-600">Range</p>
+                      <p className="font-semibold">{shooter.rangeName}</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-600">Status</p>
+                      <Badge className={
+                        shooter.subscriptionStatus === "active" 
+                          ? "bg-green-100 text-green-800" 
+                          : "bg-red-100 text-red-800"
+                      }>
+                        {shooter.subscriptionStatus.toUpperCase()}
+                      </Badge>
+                    </div>
                   </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Upload Shooting Data</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <p className="text-sm text-gray-600">
+                      Upload CSV files containing shooting data for today's attendance
+                    </p>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center">
+                      <Upload className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-4" />
+                      <input
+                        type="file"
+                        accept=".csv"
+                        onChange={handleFileUpload}
+                        disabled={uploading}
+                        className="hidden"
+                        id="file-upload"
+                      />
+                      <label htmlFor="file-upload">
+                        <Button variant="outline" disabled={uploading} asChild size="sm">
+                          <span>
+                            {uploading ? (
+                              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Upload className="w-4 h-4 mr-2" />
+                            )}
+                            {uploading ? "Processing..." : "Choose CSV File"}
+                          </span>
+                        </Button>
+                      </label>
+                      <p className="text-xs text-gray-500 mt-2">CSV files only</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Today's Attendance */}
+            {todayAttendance.length > 0 && (
+              <Card className="mb-6">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Today's Attendance</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {todayAttendance.map((record) => (
+                      <div key={record.id} className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                        <div>
+                          <p className="font-medium text-green-800">{record.rangeName}</p>
+                          <p className="text-sm text-green-600">Check-in: {record.checkInTime}</p>
+                        </div>
+                        <Badge className="bg-green-100 text-green-800">
+                          {record.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-lg">Attendance History</CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAttendanceModal(true)}
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    View All
+                  </Button>
                 </div>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="text-center py-8">
+                    <LoadingSpinner />
+                  </div>
+                ) : attendanceData.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    No attendance records found
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {attendanceData.slice(0, 5).map((record) => (
+                      <div key={record.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="font-medium">{record.rangeName}</p>
+                          <p className="text-sm text-gray-600">{formatDate(record.date)} - {record.checkInTime}</p>
+                        </div>
+                        <Badge className={
+                          record.status === "present" 
+                            ? "bg-green-100 text-green-800" 
+                            : "bg-red-100 text-red-800"
+                        }>
+                          {record.status}
+                        </Badge>
+                      </div>
+                    ))}
+                    {attendanceData.length > 5 && (
+                      <p className="text-sm text-gray-500 text-center mt-3">
+                        And {attendanceData.length - 5} more records...
+                      </p>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
+        </div>
+      </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Attendance History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="text-center py-8">
-                  <LoadingSpinner />
-                </div>
-              ) : attendanceData.length === 0 ? (
+      {/* Range Selection Modal for CSV Upload */}
+      {showRangeSelection && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md">
+            <div className="p-6">
+              <h3 className="text-lg font-bold mb-4">Select Attendance Record</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Multiple attendance records found for today. Please select which one to upload the CSV data to:
+              </p>
+              <div className="space-y-3">
+                {todayAttendance.map((record) => (
+                  <div
+                    key={record.id}
+                    className="p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-300"
+                    onClick={() => {
+                      setSelectedAttendanceForUpload(record);
+                      uploadCsvToAttendance(record, csvData);
+                    }}
+                  >
+                    <p className="font-medium">{record.rangeName}</p>
+                    <p className="text-sm text-gray-600">Check-in: {record.checkInTime}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2 mt-6">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowRangeSelection(false);
+                    setCsvData([]);
+                  }}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full Attendance History Modal */}
+      {showAttendanceModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60 p-2 sm:p-4">
+          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="p-4 sm:p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold">Complete Attendance History</h3>
+                <Button variant="outline" onClick={() => setShowAttendanceModal(false)} size="sm">
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              
+              {attendanceData.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   No attendance records found
                 </div>
@@ -291,17 +560,19 @@ const ShooterAttendanceAndData = ({ shooter, onClose }: { shooter: Shooter; onCl
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-2">Date</th>
-                        <th className="text-left py-2">Status</th>
-                        <th className="text-left py-2">Score</th>
-                        <th className="text-left py-2">Notes</th>
+                        <th className="text-left py-3 px-2">Date</th>
+                        <th className="text-left py-3 px-2">Range</th>
+                        <th className="text-left py-3 px-2">Check-in Time</th>
+                        <th className="text-left py-3 px-2">Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {attendanceData.map((record) => (
-                        <tr key={record.id} className="border-b">
-                          <td className="py-2">{formatDate(record.date)}</td>
-                          <td className="py-2">
+                        <tr key={record.id} className="border-b hover:bg-gray-50">
+                          <td className="py-3 px-2">{formatDate(record.date)}</td>
+                          <td className="py-3 px-2">{record.rangeName}</td>
+                          <td className="py-3 px-2">{record.checkInTime || "-"}</td>
+                          <td className="py-3 px-2">
                             <Badge className={
                               record.status === "present" 
                                 ? "bg-green-100 text-green-800" 
@@ -310,19 +581,17 @@ const ShooterAttendanceAndData = ({ shooter, onClose }: { shooter: Shooter; onCl
                               {record.status}
                             </Badge>
                           </td>
-                          <td className="py-2">{record.score || "-"}</td>
-                          <td className="py-2">{record.notes || "-"}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </>
   );
 };
 
@@ -333,6 +602,7 @@ export default function BillsAndSubscriptions() {
   const [bills, setBills] = useState<Bill[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [shooters, setShooters] = useState<Shooter[]>([]);
+  const [ranges, setRanges] = useState<Range[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingPayment, setUpdatingPayment] = useState<string | null>(null);
   const [selectedShooter, setSelectedShooter] = useState<Shooter | null>(null);
@@ -385,17 +655,37 @@ export default function BillsAndSubscriptions() {
     }).format(amount);
   };
 
+  // Fetch ranges owned by user
+  const fetchRanges = async () => {
+    if (!user) return;
+    
+    try {
+      const rangesRef = collection(db, "ranges");
+      const q = query(rangesRef, where("ownerId", "==", user.uid));
+      const querySnapshot = await getDocs(q);
+      
+      const rangesData: Range[] = [];
+      querySnapshot.forEach((doc) => {
+        rangesData.push({
+          id: doc.id,
+          name: doc.data().name,
+          ownerId: doc.data().ownerId
+        });
+      });
+      
+      setRanges(rangesData);
+    } catch (error) {
+      console.error("Error fetching ranges:", error);
+    }
+  };
+
   // Fetch bills for the current range owner
   const fetchBills = async () => {
     if (!user) return;
     
     try {
       const billsRef = collection(db, "bills");
-      const q = query(
-        billsRef, 
-        where("rangeOwnerId", "==", user.uid),
-        orderBy("createdAt", "desc")
-      );
+      const q = query(billsRef, where("rangeOwnerId", "==", user.uid));
       const querySnapshot = await getDocs(q);
       
       const billsData: Bill[] = [];
@@ -404,6 +694,13 @@ export default function BillsAndSubscriptions() {
           id: doc.id,
           ...doc.data()
         } as Bill);
+      });
+      
+      // Sort by creation date (newest first)
+      billsData.sort((a, b) => {
+        const dateA = a.createdAt ? a.createdAt.toDate().getTime() : 0;
+        const dateB = b.createdAt ? b.createdAt.toDate().getTime() : 0;
+        return dateB - dateA;
       });
       
       setBills(billsData);
@@ -422,26 +719,17 @@ export default function BillsAndSubscriptions() {
     if (!user) return;
     
     try {
-      // First get all ranges owned by this user
-      const rangesRef = collection(db, "ranges");
-      const rangesQuery = query(
-        rangesRef, 
-        where("ownerId", "==", user.uid)
-      );
-      const rangesSnapshot = await getDocs(rangesQuery);
-      const rangeIds = rangesSnapshot.docs.map(doc => doc.id);
+      const rangeIds = ranges.map(range => range.id);
 
       if (rangeIds.length === 0) {
         setSubscriptions([]);
         return;
       }
 
-      // Then get all subscriptions for these ranges
       const subscriptionsRef = collection(db, "subscriptions");
       const subscriptionsQuery = query(
         subscriptionsRef, 
-        where("rangeId", "in", rangeIds),
-        orderBy("createdAt", "desc")
+        where("rangeId", "in", rangeIds)
       );
       const subscriptionsSnapshot = await getDocs(subscriptionsQuery);
       
@@ -451,6 +739,13 @@ export default function BillsAndSubscriptions() {
           id: doc.id,
           ...doc.data()
         } as Subscription);
+      });
+      
+      // Sort by creation date (newest first)
+      subscriptionsData.sort((a, b) => {
+        const dateA = a.createdAt ? a.createdAt.toDate().getTime() : 0;
+        const dateB = b.createdAt ? b.createdAt.toDate().getTime() : 0;
+        return dateB - dateA;
       });
       
       setSubscriptions(subscriptionsData);
@@ -469,21 +764,13 @@ export default function BillsAndSubscriptions() {
     if (!user) return;
     
     try {
-      // Get all ranges owned by this user
-      const rangesRef = collection(db, "ranges");
-      const rangesQuery = query(
-        rangesRef, 
-        where("ownerId", "==", user.uid)
-      );
-      const rangesSnapshot = await getDocs(rangesQuery);
-      const rangeIds = rangesSnapshot.docs.map(doc => doc.id);
+      const rangeIds = ranges.map(range => range.id);
 
       if (rangeIds.length === 0) {
         setShooters([]);
         return;
       }
 
-      // Get all subscriptions for these ranges
       const subscriptionsRef = collection(db, "subscriptions");
       const subscriptionsQuery = query(
         subscriptionsRef, 
@@ -506,6 +793,13 @@ export default function BillsAndSubscriptions() {
           subscriptionType: sub.planDuration,
           createdAt: sub.createdAt
         });
+      });
+      
+      // Sort by creation date (newest first)
+      shootersData.sort((a, b) => {
+        const dateA = a.createdAt ? a.createdAt.toDate().getTime() : 0;
+        const dateB = b.createdAt ? b.createdAt.toDate().getTime() : 0;
+        return dateB - dateA;
       });
       
       setShooters(shootersData);
@@ -562,7 +856,6 @@ export default function BillsAndSubscriptions() {
         }
 
         if (subscriptionId) {
-          // Update subscription payment status to paid and set status to active
           await updateDoc(doc(db, "subscriptions", subscriptionId), {
             subscriptionStatus: "active",
             paymentStatus: "paid",
@@ -696,13 +989,6 @@ export default function BillsAndSubscriptions() {
     return true;
   });
 
-  // Get unique range names for filter dropdowns
-  const uniqueRangeNames = {
-    bills: Array.from(new Set(bills.map(bill => bill.rangeName))),
-    subscriptions: Array.from(new Set(subscriptions.map(sub => sub.rangeName))),
-    shooters: Array.from(new Set(shooters.map(shooter => shooter.rangeName)))
-  };
-
   // Print bill
   const printBill = (bill: Bill) => {
     const printWindow = window.open('', '_blank');
@@ -753,14 +1039,24 @@ export default function BillsAndSubscriptions() {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchBills(), fetchSubscriptions(), fetchShooters()]);
-      setLoading(false);
+      await fetchRanges();
     };
 
     if (user) {
       loadData();
     }
   }, [user]);
+
+  useEffect(() => {
+    const loadOtherData = async () => {
+      if (ranges.length > 0) {
+        await Promise.all([fetchBills(), fetchSubscriptions(), fetchShooters()]);
+      }
+      setLoading(false);
+    };
+
+    loadOtherData();
+  }, [ranges]);
 
   if (loading) {
     return (
@@ -774,11 +1070,11 @@ export default function BillsAndSubscriptions() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Header */}
       <div className="bg-white shadow-lg border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">
-                <CreditCard className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+                <CreditCard className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-blue-600" />
                 Bills & Subscriptions
               </h1>
               <p className="text-gray-600 mt-1 text-sm md:text-base">
@@ -790,36 +1086,42 @@ export default function BillsAndSubscriptions() {
       </div>
 
       {/* Tabs */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
-          <TabsList className="grid grid-cols-3 w-full">
-            <TabsTrigger value="bills" className="flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              <span className="hidden sm:inline">Bills</span> ({bills.length})
+          <TabsList className="grid grid-cols-3 w-full mb-6">
+            <TabsTrigger value="bills" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden xs:inline">Bills</span>
+              <span className="sm:hidden">({bills.length})</span>
+              <span className="hidden sm:inline">({bills.length})</span>
             </TabsTrigger>
-            <TabsTrigger value="subscriptions" className="flex items-center gap-2">
-              <Crown className="w-4 h-4" />
-              <span className="hidden sm:inline">Subscriptions</span> ({subscriptions.length})
+            <TabsTrigger value="subscriptions" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <Crown className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden xs:inline">Subs</span>
+              <span className="sm:hidden">({subscriptions.length})</span>
+              <span className="hidden sm:inline">Subscriptions ({subscriptions.length})</span>
             </TabsTrigger>
-            <TabsTrigger value="shooters" className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">Shooters</span> ({shooters.length})
+            <TabsTrigger value="shooters" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <Users className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden xs:inline">Users</span>
+              <span className="sm:hidden">({shooters.length})</span>
+              <span className="hidden sm:inline">Shooters ({shooters.length})</span>
             </TabsTrigger>
           </TabsList>
 
           {/* Bills Tab */}
           <TabsContent value="bills">
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Filter className="w-5 h-5" />
+            <Card className="mb-4 sm:mb-6">
+              <CardHeader className="pb-3 sm:pb-4">
+                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                  <Filter className="w-4 h-4 sm:w-5 sm:h-5" />
                   Filter Bills
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                   <div>
-                    <Label htmlFor="search">Search</Label>
+                    <Label htmlFor="search" className="text-sm">Search</Label>
                     <div className="relative">
                       <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
                       <Input
@@ -832,7 +1134,7 @@ export default function BillsAndSubscriptions() {
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="paymentStatus">Payment Status</Label>
+                    <Label htmlFor="paymentStatus" className="text-sm">Payment Status</Label>
                     <Select
                       value={billFilters.paymentStatus}
                       onValueChange={(value) => setBillFilters({...billFilters, paymentStatus: value})}
@@ -848,7 +1150,7 @@ export default function BillsAndSubscriptions() {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="dateRange">Date Range</Label>
+                    <Label htmlFor="dateRange" className="text-sm">Date Range</Label>
                     <Select
                       value={billFilters.dateRange}
                       onValueChange={(value) => setBillFilters({...billFilters, dateRange: value})}
@@ -865,7 +1167,7 @@ export default function BillsAndSubscriptions() {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="rangeName">Range Name</Label>
+                    <Label htmlFor="rangeName" className="text-sm">Range Name</Label>
                     <Select
                       value={billFilters.rangeName}
                       onValueChange={(value) => setBillFilters({...billFilters, rangeName: value})}
@@ -875,8 +1177,8 @@ export default function BillsAndSubscriptions() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Ranges</SelectItem>
-                        {uniqueRangeNames.bills.map(name => (
-                          <SelectItem key={name} value={name}>{name}</SelectItem>
+                        {ranges.map(range => (
+                          <SelectItem key={range.id} value={range.name}>{range.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -887,8 +1189,8 @@ export default function BillsAndSubscriptions() {
 
             {filteredBills.length === 0 ? (
               <Card>
-                <CardContent className="py-12 text-center">
-                  <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <CardContent className="py-8 sm:py-12 text-center">
+                  <FileText className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">No Bills Found</h3>
                   <p className="text-gray-500">
                     {bills.length === 0 
@@ -898,13 +1200,13 @@ export default function BillsAndSubscriptions() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-6">
+              <div className="grid gap-4 sm:gap-6">
                 {filteredBills.map((bill) => (
                   <Card key={bill.id} className="overflow-hidden">
-                    <CardHeader className="bg-gray-50 pb-4">
+                    <CardHeader className="bg-gray-50 pb-3 sm:pb-4">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <FileText className="w-5 h-5 text-blue-500" />
+                        <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                          <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
                           Bill: {bill.billId}
                         </CardTitle>
                         <Badge className={
@@ -917,46 +1219,46 @@ export default function BillsAndSubscriptions() {
                       </div>
                       <p className="text-sm text-gray-600">{bill.description}</p>
                     </CardHeader>
-                    <CardContent className="pt-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <CardContent className="pt-3 sm:pt-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
                         <div>
-                          <p className="text-sm font-medium text-gray-500">Date</p>
-                          <p className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4 text-gray-400" />
+                          <p className="text-xs sm:text-sm font-medium text-gray-500">Date</p>
+                          <p className="flex items-center gap-1 text-sm">
+                            <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
                             {formatDate(bill.billDate)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-500">Amount</p>
-                          <p className="flex items-center gap-1">
-                            <DollarSign className="w-4 h-4 text-gray-400" />
+                          <p className="text-xs sm:text-sm font-medium text-gray-500">Amount</p>
+                          <p className="flex items-center gap-1 text-sm">
+                            <DollarSign className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
                             {formatCurrency(bill.amountPaid, bill.currency)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-500">User</p>
-                          <p className="flex items-center gap-1">
-                            <User className="w-4 h-4 text-gray-40" />
+                          <p className="text-xs sm:text-sm font-medium text-gray-500">User</p>
+                          <p className="flex items-center gap-1 text-sm truncate">
+                            <User className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
                             {bill.userName || bill.userEmail}
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-500">Range</p>
-                          <p className="flex items-center gap-1">
-                            <MapPin className="w-4 h-4 text-gray-400" />
+                          <p className="text-xs sm:text-sm font-medium text-gray-500">Range</p>
+                          <p className="flex items-center gap-1 text-sm">
+                            <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
                             {bill.rangeName}
                           </p>
                         </div>
                       </div>
                       
-                      <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
+                      <div className="flex flex-wrap gap-2 pt-3 sm:pt-4 border-t border-gray-100">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => printBill(bill)}
                         >
-                          <Download className="w-4 h-4 mr-2" />
-                          Print Bill
+                          <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                          <span className="text-xs sm:text-sm">Print</span>
                         </Button>
                         
                         {bill.paymentMethod === "cash" && bill.paymentStatus === "pending" && (
@@ -967,18 +1269,18 @@ export default function BillsAndSubscriptions() {
                             disabled={updatingPayment === bill.id}
                           >
                             {updatingPayment === bill.id ? (
-                              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                              <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 animate-spin" />
                             ) : (
-                              <CheckCircle className="w-4 h-4 mr-2" />
+                              <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                             )}
-                            Mark as Paid
+                            <span className="text-xs sm:text-sm">Mark Paid</span>
                           </Button>
                         )}
                         
                         {bill.paymentMethod !== "cash" && (
-                          <span className="text-sm text-gray-500 flex items-center">
-                            <Clock className="w-4 h-4 mr-1" />
-                            Automatic payment processing
+                          <span className="text-xs sm:text-sm text-gray-500 flex items-center">
+                            <Clock className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                            Auto processing
                           </span>
                         )}
                       </div>
@@ -991,17 +1293,17 @@ export default function BillsAndSubscriptions() {
 
           {/* Subscriptions Tab */}
           <TabsContent value="subscriptions">
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Filter className="w-5 h-5" />
+            <Card className="mb-4 sm:mb-6">
+              <CardHeader className="pb-3 sm:pb-4">
+                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                  <Filter className="w-4 h-4 sm:w-5 sm:h-5" />
                   Filter Subscriptions
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   <div>
-                    <Label htmlFor="subSearch">Search</Label>
+                    <Label htmlFor="subSearch" className="text-sm">Search</Label>
                     <div className="relative">
                       <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
                       <Input
@@ -1014,7 +1316,7 @@ export default function BillsAndSubscriptions() {
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="subStatus">Subscription Status</Label>
+                    <Label htmlFor="subStatus" className="text-sm">Subscription Status</Label>
                     <Select
                       value={subscriptionFilters.subscriptionStatus}
                       onValueChange={(value) => setSubscriptionFilters({...subscriptionFilters, subscriptionStatus: value})}
@@ -1031,7 +1333,7 @@ export default function BillsAndSubscriptions() {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="subRangeName">Range Name</Label>
+                    <Label htmlFor="subRangeName" className="text-sm">Range Name</Label>
                     <Select
                       value={subscriptionFilters.rangeName}
                       onValueChange={(value) => setSubscriptionFilters({...subscriptionFilters, rangeName: value})}
@@ -1041,8 +1343,8 @@ export default function BillsAndSubscriptions() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Ranges</SelectItem>
-                        {uniqueRangeNames.subscriptions.map(name => (
-                          <SelectItem key={name} value={name}>{name}</SelectItem>
+                        {ranges.map(range => (
+                          <SelectItem key={range.id} value={range.name}>{range.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -1053,8 +1355,8 @@ export default function BillsAndSubscriptions() {
 
             {filteredSubscriptions.length === 0 ? (
               <Card>
-                <CardContent className="py-12 text-center">
-                  <Crown className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <CardContent className="py-8 sm:py-12 text-center">
+                  <Crown className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">No Subscriptions Found</h3>
                   <p className="text-gray-500">
                     {subscriptions.length === 0 
@@ -1064,13 +1366,13 @@ export default function BillsAndSubscriptions() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-6">
+              <div className="grid gap-4 sm:gap-6">
                 {filteredSubscriptions.map((subscription) => (
                   <Card key={subscription.id} className="overflow-hidden">
-                    <CardHeader className="bg-gray-50 pb-4">
+                    <CardHeader className="bg-gray-50 pb-3 sm:pb-4">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <Crown className="w-5 h-5 text-yellow-500" />
+                        <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                          <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />
                           {subscription.planDuration} Subscription
                         </CardTitle>
                         <Badge className={
@@ -1087,33 +1389,33 @@ export default function BillsAndSubscriptions() {
                         {formatCurrency(subscription.price)} • {subscription.planDuration}
                       </p>
                     </CardHeader>
-                    <CardContent className="pt-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <CardContent className="pt-3 sm:pt-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
                         <div>
-                          <p className="text-sm font-medium text-gray-500">Start Date</p>
-                          <p className="flex items-center gap-1">
-                            <CalendarDays className="w-4 h-4 text-gray-400" />
+                          <p className="text-xs sm:text-sm font-medium text-gray-500">Start Date</p>
+                          <p className="flex items-center gap-1 text-sm">
+                            <CalendarDays className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
                             {formatDate(subscription.startDate)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-500">End Date</p>
-                          <p className="flex items-center gap-1">
-                            <CalendarDays className="w-4 h-4 text-gray-400" />
+                          <p className="text-xs sm:text-sm font-medium text-gray-500">End Date</p>
+                          <p className="flex items-center gap-1 text-sm">
+                            <CalendarDays className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
                             {formatDate(subscription.endDate)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-500">User</p>
-                          <p className="flex items-center gap-1">
-                            <User className="w-4 h-4 text-gray-400" />
+                          <p className="text-xs sm:text-sm font-medium text-gray-500">User</p>
+                          <p className="flex items-center gap-1 text-sm truncate">
+                            <User className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
                             {subscription.userEmail}
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-500">Range</p>
-                          <p className="flex items-center gap-1">
-                            <MapPin className="w-4 h-4 text-gray-400" />
+                          <p className="text-xs sm:text-sm font-medium text-gray-500">Range</p>
+                          <p className="flex items-center gap-1 text-sm">
+                            <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
                             {subscription.rangeName}
                           </p>
                         </div>
@@ -1121,10 +1423,10 @@ export default function BillsAndSubscriptions() {
                       
                       {subscription.features && subscription.features.length > 0 && (
                         <div className="mb-4">
-                          <p className="text-sm font-medium text-gray-500 mb-2">Features</p>
+                          <p className="text-xs sm:text-sm font-medium text-gray-500 mb-2">Features</p>
                           <div className="flex flex-wrap gap-2">
                             {subscription.features.map((feature, index) => (
-                              <Badge key={index} variant="outline" className="bg-blue-50 text-blue-700">
+                              <Badge key={index} variant="outline" className="bg-blue-50 text-blue-700 text-xs">
                                 {feature}
                               </Badge>
                             ))}
@@ -1132,18 +1434,18 @@ export default function BillsAndSubscriptions() {
                         </div>
                       )}
                       
-                      <div className="pt-4 border-t border-gray-100">
-                        <p className="text-sm font-medium text-gray-500 mb-2">Payment Details</p>
-                        <div className="flex flex-wrap items-center gap-4">
-                          <span className="text-sm">
-                            Method: <Badge variant="outline">{subscription.paymentMethod}</Badge>
+                      <div className="pt-3 sm:pt-4 border-t border-gray-100">
+                        <p className="text-xs sm:text-sm font-medium text-gray-500 mb-2">Payment Details</p>
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+                          <span className="text-xs sm:text-sm">
+                            Method: <Badge variant="outline" className="text-xs">{subscription.paymentMethod}</Badge>
                           </span>
-                          <span className="text-sm">
-                            Status: <Badge variant="outline" className={
+                          <span className="text-xs sm:text-sm">
+                            Status: <Badge variant="outline" className={`text-xs ${
                               subscription.paymentStatus === "paid" 
                                 ? "bg-green-100 text-green-800" 
                                 : "bg-yellow-100 text-yellow-800"
-                            }>
+                            }`}>
                               {subscription.paymentStatus}
                             </Badge>
                           </span>
@@ -1158,17 +1460,17 @@ export default function BillsAndSubscriptions() {
 
           {/* Shooters Tab */}
           <TabsContent value="shooters">
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Filter className="w-5 h-5" />
+            <Card className="mb-4 sm:mb-6">
+              <CardHeader className="pb-3 sm:pb-4">
+                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                  <Filter className="w-4 h-4 sm:w-5 sm:h-5" />
                   Filter Shooters
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   <div>
-                    <Label htmlFor="shooterSearch">Search</Label>
+                    <Label htmlFor="shooterSearch" className="text-sm">Search</Label>
                     <div className="relative">
                       <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
                       <Input
@@ -1181,7 +1483,7 @@ export default function BillsAndSubscriptions() {
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="shooterStatus">Subscription Status</Label>
+                    <Label htmlFor="shooterStatus" className="text-sm">Subscription Status</Label>
                     <Select
                       value={shooterFilters.subscriptionStatus}
                       onValueChange={(value) => setShooterFilters({...shooterFilters, subscriptionStatus: value})}
@@ -1198,7 +1500,7 @@ export default function BillsAndSubscriptions() {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="shooterRangeName">Range Name</Label>
+                    <Label htmlFor="shooterRangeName" className="text-sm">Range Name</Label>
                     <Select
                       value={shooterFilters.rangeName}
                       onValueChange={(value) => setShooterFilters({...shooterFilters, rangeName: value})}
@@ -1208,8 +1510,8 @@ export default function BillsAndSubscriptions() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Ranges</SelectItem>
-                        {uniqueRangeNames.shooters.map(name => (
-                          <SelectItem key={name} value={name}>{name}</SelectItem>
+                        {ranges.map(range => (
+                          <SelectItem key={range.id} value={range.name}>{range.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -1220,8 +1522,8 @@ export default function BillsAndSubscriptions() {
 
             {filteredShooters.length === 0 ? (
               <Card>
-                <CardContent className="py-12 text-center">
-                  <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <CardContent className="py-8 sm:py-12 text-center">
+                  <Users className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">No Shooters Found</h3>
                   <p className="text-gray-500">
                     {shooters.length === 0 
@@ -1231,13 +1533,13 @@ export default function BillsAndSubscriptions() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-6">
+              <div className="grid gap-4 sm:gap-6">
                 {filteredShooters.map((shooter) => (
                   <Card key={shooter.id} className="overflow-hidden">
-                    <CardHeader className="bg-gray-50 pb-4">
+                    <CardHeader className="bg-gray-50 pb-3 sm:pb-4">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <User className="w-5 h-5 text-blue-500" />
+                        <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                          <User className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
                           {shooter.userName}
                         </CardTitle>
                         <Badge className={
@@ -1248,48 +1550,48 @@ export default function BillsAndSubscriptions() {
                           {shooter.subscriptionStatus.toUpperCase()}
                         </Badge>
                       </div>
-                      <p className="text-sm text-gray-600">{shooter.userEmail}</p>
+                      <p className="text-sm text-gray-600 break-all">{shooter.userEmail}</p>
                     </CardHeader>
-                    <CardContent className="pt-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <CardContent className="pt-3 sm:pt-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
                         <div>
-                          <p className="text-sm font-medium text-gray-500">Range</p>
-                          <p className="flex items-center gap-1">
-                            <MapPin className="w-4 h-4 text-gray-400" />
+                          <p className="text-xs sm:text-sm font-medium text-gray-500">Range</p>
+                          <p className="flex items-center gap-1 text-sm">
+                            <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
                             {shooter.rangeName}
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-500">Subscription Type</p>
-                          <p className="flex items-center gap-1">
-                            <Crown className="w-4 h-4 text-gray-400" />
+                          <p className="text-xs sm:text-sm font-medium text-gray-500">Subscription Type</p>
+                          <p className="flex items-center gap-1 text-sm">
+                            <Crown className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
                             {shooter.subscriptionType}
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-500">End Date</p>
-                          <p className="flex items-center gap-1">
-                            <CalendarDays className="w-4 h-4 text-gray-400" />
+                          <p className="text-xs sm:text-sm font-medium text-gray-500">End Date</p>
+                          <p className="flex items-center gap-1 text-sm">
+                            <CalendarDays className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
                             {formatDate(shooter.subscriptionEndDate)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-500">Member Since</p>
-                          <p className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4 text-gray-400" />
+                          <p className="text-xs sm:text-sm font-medium text-gray-500">Member Since</p>
+                          <p className="flex items-center gap-1 text-sm">
+                            <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
                             {formatDate(shooter.createdAt)}
                           </p>
                         </div>
                       </div>
                       
-                      <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
+                      <div className="flex flex-wrap gap-2 pt-3 sm:pt-4 border-t border-gray-100">
                         <Button
                           variant="default"
                           size="sm"
                           onClick={() => setSelectedShooter(shooter)}
                         >
-                          <Eye className="w-4 h-4 mr-2" />
-                          View Details & Data
+                          <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                          <span className="text-xs sm:text-sm">View Details</span>
                         </Button>
                       </div>
                     </CardContent>
@@ -1305,7 +1607,8 @@ export default function BillsAndSubscriptions() {
       {selectedShooter && (
         <ShooterAttendanceAndData 
           shooter={selectedShooter} 
-          onClose={() => setSelectedShooter(null)} 
+          onClose={() => setSelectedShooter(null)}
+          ranges={ranges}
         />
       )}
     </div>
