@@ -35,6 +35,8 @@ import CmbEvents from "./CmbEvents";
 import RangeOwnerShop from "./RangeOwnerShop";
 import AdminProducts from "./AdminProducts";
 import BillsAndSubscriptions from "./BillsAndSubscriptions";
+import DeletionRequestComponent from "./DeletionRequestComponent";
+import BillsSubscriptionsComponent from "./BillsSubscriptionsComponent";
 
 const DashboardRouter = () => {
   const { userRole, loading } = useAuth();
@@ -97,6 +99,8 @@ const DashboardRouter = () => {
       <Route path="admin/shooter-data" element={<DashboardShooterData />} />
       <Route path="admin/events" element={<AdminEventsPage />} />
       <Route path="admin/shop" element={<AdminProducts />} />
+      <Route path="admin/deletion-requests" element={<DeletionRequestComponent />} />
+      <Route path="admin/billing" element={<BillsSubscriptionsComponent />} />
       
       {/* Shooter sub-routes */}
       <Route path="shooter/bookings" element={<ShooterBooking />} />

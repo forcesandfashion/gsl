@@ -50,12 +50,17 @@ import {
   CheckCircle,
   Clock,
   X,
-  RefreshCw
+  RefreshCw,
+  FileX,
+  CreditCard,
+  Package
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 // Type definitions
+type UserRole = 'admin' | 'sub_admin' | 'shooter' | 'range_owner';
+
 interface SubAdmin {
   id: string;
   username: string;
@@ -90,6 +95,8 @@ interface Counts {
   products: number;
   ranges: number;
   events: number;
+  actions: number;
+  billsandsubscriptions: number;
   loading: boolean;
 }
 
@@ -133,6 +140,22 @@ const AdminDashboard: React.FC = () => {
   const { signOut, user } = useAuth();
   const navigate = useNavigate();
 
+  // Role-based access control
+  useEffect(() => {
+    if (!user) {
+      navigate("/");
+      return;
+    }
+
+    const role = user.displayName?.split('|')[1] as UserRole;
+    if (role !== 'admin') {
+      // Redirect non-admin users
+      console.warn('Unauthorized access attempt to admin dashboard');
+      navigate("/");
+      return;
+    }
+  }, [user, navigate]);
+
   // State for storing counts
   const [counts, setCounts] = useState<Counts>({
     shooters: 0,
@@ -140,6 +163,8 @@ const AdminDashboard: React.FC = () => {
     ranges: 0,
     products:0,
     events: 0,
+    actions: 0,
+    billsandsubscriptions: 0,
     loading: true
   });
 
@@ -209,6 +234,37 @@ const AdminDashboard: React.FC = () => {
     });
   };
 
+  // Get user role and name
+  const getUserInfo = () => {
+    if (!user?.displayName) return { name: user?.email || 'Admin', role: 'admin' };
+    const [name, role] = user.displayName.split('|');
+    return { name: name || user.email || 'Admin', role: role as UserRole || 'admin' };
+  };
+
+  const { name: userName, role: userRole } = getUserInfo();
+
+  // Early return if not admin
+  if (user && userRole !== 'admin') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <CardTitle className="text-xl text-red-600">Access Denied</CardTitle>
+            <CardDescription>
+              You don't have permission to access the admin dashboard.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center">
+            <Button onClick={() => navigate("/")} className="w-full">
+              Return to Home
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // Fetch data from Firebase collections
   useEffect(() => {
     const fetchCounts = async (): Promise<void> => {
@@ -228,6 +284,23 @@ const AdminDashboard: React.FC = () => {
         const rangesSnapshot = await getDocs(collection(db, "ranges"));
         const rangesCount = rangesSnapshot.size;
 
+        const actionsSnapshot = await getDocs(collection(db, "actions"));
+        const actionsCount = actionsSnapshot.size;
+
+
+        const billsSnapshot = await getDocs(collection(db, "bills"));
+        const billsCount = actionsSnapshot.size;
+
+
+        const subscriptionsSnapshot = await getDocs(collection(db, "subscriptions"));
+        const subscriptionsCount = actionsSnapshot.size;
+
+
+        const billsandsubscriptions = billsCount + subscriptionsCount;
+
+        
+        
+
         // Query events collection
         const eventsSnapshot = await getDocs(collection(db, "events"));
         const eventsCount = eventsSnapshot.size;
@@ -238,6 +311,8 @@ const AdminDashboard: React.FC = () => {
           rangeOwners: rangeOwnersCount,
           ranges: rangesCount,
           products: productsCount,
+          actions: actionsCount,
+          billsandsubscriptions: billsandsubscriptions,
           events: eventsCount,
           loading: false
         });
@@ -758,32 +833,39 @@ const AdminDashboard: React.FC = () => {
     ((counts.rangeOwners / totalUsers) * 100).toFixed(1) : "0";
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7]">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-          <div className="flex items-center space-x-4">
-            <span className="text-sm text-gray-600">
-              {user?.displayName?.split(' | ')[0] || user?.email} 
-              <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                Admin
-              </span>
-            </span>
-            <Button
-              onClick={handleSignOut}
-              variant="outline"
-              className="text-sm"
-            >
-              Sign Out
-            </Button>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
+      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                Admin Dashboard
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">Manage your platform with ease</p>
+            </div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+              <div className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-lg border">
+                <span className="font-medium">{userName}</span>
+                <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
+                  {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
+                </span>
+              </div>
+              <Button
+                onClick={handleSignOut}
+                variant="outline"
+                className="text-sm hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-colors"
+              >
+                Sign Out
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
         {/* Success/Error Messages */}
         {error && (
-          <Alert className="mb-6 border-red-200 bg-red-50">
+          <Alert className="mb-6 border-red-200 bg-red-50 shadow-sm">
             <AlertCircle className="h-4 w-4 text-red-600" />
             <AlertDescription className="text-red-800">
               {error}
@@ -792,8 +874,8 @@ const AdminDashboard: React.FC = () => {
         )}
         
         {success && (
-          <Alert className="mb-6 border-green-200 bg-green-50">
-            <AlertCircle className="h-4 w-4 text-green-600" />
+          <Alert className="mb-6 border-green-200 bg-green-50 shadow-sm">
+            <CheckCircle className="h-4 w-4 text-green-600" />
             <AlertDescription className="text-green-800">
               {success}
             </AlertDescription>
@@ -801,24 +883,28 @@ const AdminDashboard: React.FC = () => {
         )}
 
         {/* Analytics Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
           {/* Shooters Growth Chart */}
-          <Card className="bg-white shadow-lg border-0">
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold text-gray-800">Shooter Account Growth</CardTitle>
+          <Card className="bg-white/60 backdrop-blur-sm shadow-lg border-0 hover:shadow-xl transition-all duration-300">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <Target className="h-5 w-5 text-blue-600" />
+                Shooter Account Growth
+              </CardTitle>
               <CardDescription className="text-gray-600">New shooter registrations over time</CardDescription>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
                 <AreaChart data={shootersData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
-                  <XAxis dataKey="name" stroke="#6b7280" />
-                  <YAxis stroke="#6b7280" />
+                  <XAxis dataKey="name" stroke="#6b7280" fontSize={12} />
+                  <YAxis stroke="#6b7280" fontSize={12} />
                   <Tooltip 
                     contentStyle={{ 
                       backgroundColor: '#f8fafc', 
                       border: '1px solid #e2e8f0',
-                      borderRadius: '8px'
+                      borderRadius: '8px',
+                      fontSize: '12px'
                     }} 
                   />
                   <Area 
@@ -835,22 +921,25 @@ const AdminDashboard: React.FC = () => {
           </Card>
 
           {/* Bookings Chart */}
-          <Card className="bg-white shadow-lg border-0">
-            <CardHeader>
+          <Card className="bg-white/60 backdrop-blur-sm shadow-lg border-0 hover:shadow-xl transition-all duration-300">
+            <CardHeader className="pb-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                  <CardTitle className="text-xl font-semibold text-gray-800">Booking Analytics</CardTitle>
+                  <CardTitle className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-green-600" />
+                    Booking Analytics
+                  </CardTitle>
                   <CardDescription className="text-gray-600">Booking trends by time period</CardDescription>
                 </div>
-                <div className="flex bg-gray-100 rounded-lg p-1">
+                <div className="flex bg-gray-100 rounded-lg p-1 shadow-inner">
                   {(['week', 'month', 'year'] as TimeFrame[]).map((period: TimeFrame) => (
                     <button
                       key={period}
                       onClick={() => setTimeFrame(period)}
-                      className={`px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 ${
+                      className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
                         timeFrame === period
-                          ? 'bg-white text-blue-600 shadow-sm'
-                          : 'text-gray-600 hover:text-gray-800'
+                          ? 'bg-white text-blue-600 shadow-sm transform scale-105'
+                          : 'text-gray-600 hover:text-gray-800 hover:bg-white/50'
                       }`}
                     >
                       {period.charAt(0).toUpperCase() + period.slice(1)}
@@ -863,13 +952,14 @@ const AdminDashboard: React.FC = () => {
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={bookingsData[timeFrame]}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
-                  <XAxis dataKey="name" stroke="#6b7280" />
-                  <YAxis stroke="#6b7280" />
+                  <XAxis dataKey="name" stroke="#6b7280" fontSize={12} />
+                  <YAxis stroke="#6b7280" fontSize={12} />
                   <Tooltip 
                     contentStyle={{ 
                       backgroundColor: '#f8fafc', 
                       border: '1px solid #e2e8f0',
-                      borderRadius: '8px'
+                      borderRadius: '8px',
+                      fontSize: '12px'
                     }} 
                   />
                   <Bar dataKey="bookings" fill="#10b981" radius={[4, 4, 0, 0]} />
@@ -879,116 +969,194 @@ const AdminDashboard: React.FC = () => {
           </Card>
         </div>
 
-        {/* Main Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        {/* Main Navigation Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4 lg:gap-6 mb-8">
           <Card
-          onClick={() => navigate("/dashboard/admin/shooter-data")}
-           className="cursor-pointer hover:shadow-md transition-shadow">
+            onClick={() => navigate("/dashboard/admin/shooter-data")}
+            className="group cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:from-blue-100 hover:to-blue-200"
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-blue-600" />
+              <CardTitle className="text-sm font-medium text-blue-900">Total Users</CardTitle>
+              <Users className="h-5 w-5 text-blue-600 group-hover:scale-110 transition-transform" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {counts.loading ? "Loading..." : totalUsers.toLocaleString()}
+              <div className="text-2xl font-bold text-blue-900">
+                {counts.loading ? (
+                  <div className="animate-pulse bg-blue-200 h-6 w-16 rounded"></div>
+                ) : (
+                  totalUsers.toLocaleString()
+                )}
               </div>
-              <p className="text-xs text-gray-500">Shooters + Range Owners</p>
+              <p className="text-xs text-blue-700 mt-1">Shooters + Range Owners</p>
             </CardContent>
           </Card>
 
           <Card 
             onClick={() => navigate("/dashboard/admin/range-owners")}
-            className="cursor-pointer hover:shadow-md transition-shadow"
+            className="group cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-green-50 to-green-100 border-green-200 hover:from-green-100 hover:to-green-200"
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+              <CardTitle className="text-sm font-medium text-green-900">
                 Range Owners
               </CardTitle>
-              <Shield className="h-4 w-4 text-green-600" />
+              <Shield className="h-5 w-5 text-green-600 group-hover:scale-110 transition-transform" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {counts.loading ? "..." : counts.rangeOwners}
+              <div className="text-2xl font-bold text-green-900">
+                {counts.loading ? (
+                  <div className="animate-pulse bg-green-200 h-6 w-12 rounded"></div>
+                ) : (
+                  counts.rangeOwners
+                )}
               </div>
-              <p className="text-xs text-gray-500">Registered owners</p>
+              <p className="text-xs text-green-700 mt-1">Registered owners</p>
             </CardContent>
           </Card>
 
           <Card
-          onClick={() => navigate("/dashboard/admin/shop")}
-           className="cursor-pointer hover:shadow-md transition-shadow">
+            onClick={() => navigate("/dashboard/admin/shop")}
+            className="group cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 hover:from-purple-100 hover:to-purple-200"
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Products</CardTitle>
-              <Users className="h-4 w-4 text-blue-600" />
+              <CardTitle className="text-sm font-medium text-purple-900">Products</CardTitle>
+              <Package className="h-5 w-5 text-purple-600 group-hover:scale-110 transition-transform" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {counts.loading ? "Loading..." : counts.products.toLocaleString()}
+              <div className="text-2xl font-bold text-purple-900">
+                {counts.loading ? (
+                  <div className="animate-pulse bg-purple-200 h-6 w-16 rounded"></div>
+                ) : (
+                  counts.products.toLocaleString()
+                )}
               </div>
-              <p className="text-xs text-gray-500">Shooters + Range Owners</p>
+              <p className="text-xs text-purple-700 mt-1">Total products</p>
             </CardContent>
           </Card>
 
           <Card 
             onClick={() => navigate("/dashboard/admin/ranges")}
-            className="cursor-pointer hover:shadow-md transition-shadow"
+            className="group cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-red-50 to-red-100 border-red-200 hover:from-red-100 hover:to-red-200"
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+              <CardTitle className="text-sm font-medium text-red-900">
                 Active Ranges
               </CardTitle>
-              <MapPin className="h-4 w-4 text-red-600" />
+              <MapPin className="h-5 w-5 text-red-600 group-hover:scale-110 transition-transform" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {counts.loading ? "..." : counts.ranges}
+              <div className="text-2xl font-bold text-red-900">
+                {counts.loading ? (
+                  <div className="animate-pulse bg-red-200 h-6 w-12 rounded"></div>
+                ) : (
+                  counts.ranges
+                )}
               </div>
-              <p className="text-xs text-gray-500">Total ranges</p>
+              <p className="text-xs text-red-700 mt-1">Total ranges</p>
             </CardContent>
           </Card>
 
           <Card
             onClick={() => navigate("/dashboard/admin/events")}
-            className="cursor-pointer hover:shadow-md transition-shadow">
+            className="group cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200 hover:from-indigo-100 hover:to-indigo-200"
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+              <CardTitle className="text-sm font-medium text-indigo-900">
                 Total Events
               </CardTitle>
-              <Globe className="h-4 w-4 text-purple-600" />
+              <Globe className="h-5 w-5 text-indigo-600 group-hover:scale-110 transition-transform" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {counts.loading ? "..." : counts.events}
+              <div className="text-2xl font-bold text-indigo-900">
+                {counts.loading ? (
+                  <div className="animate-pulse bg-indigo-200 h-6 w-12 rounded"></div>
+                ) : (
+                  counts.events
+                )}
               </div>
-              <p className="text-xs text-gray-500">All events</p>
+              <p className="text-xs text-indigo-700 mt-1">All events</p>
+            </CardContent>
+          </Card>
+
+          {/* New Deletion Requests Card */}
+          <Card
+            onClick={() => navigate("/dashboard/admin/deletion-requests")}
+            className="group cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 hover:from-orange-100 hover:to-orange-200"
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-orange-900">
+                Deletion Requests
+              </CardTitle>
+              <FileX className="h-5 w-5 text-orange-600 group-hover:scale-110 transition-transform" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-purple-900">
+                {counts.loading ? (
+                  <div className="animate-pulse bg-purple-200 h-6 w-16 rounded"></div>
+                ) : (
+                  counts.actions.toLocaleString()
+                )}
+              </div>
+              <p className="text-xs text-orange-700 mt-1">Pending requests</p>
+            </CardContent>
+          </Card>
+
+          {/* New Bills & Subscriptions Card */}
+          <Card
+            onClick={() => navigate("/dashboard/admin/billing")}
+            className="group cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200 hover:from-emerald-100 hover:to-emerald-200"
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-emerald-900">
+                Bills & Subscriptions
+              </CardTitle>
+              <CreditCard className="h-5 w-5 text-emerald-600 group-hover:scale-110 transition-transform" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-purple-900">
+                {counts.loading ? (
+                  <div className="animate-pulse bg-purple-200 h-6 w-16 rounded"></div>
+                ) : (
+                  counts.billsandsubscriptions.toLocaleString()
+                )}
+              </div>
+              <p className="text-xs text-emerald-700 mt-1">Active subscriptions</p>
             </CardContent>
           </Card>
         </div>
 
         <div className="space-y-8">
           {/* CMB Accounts Management */}
-          <Card className="bg-white shadow-lg border-0">
+          <Card className="bg-white/70 backdrop-blur-sm shadow-lg border-0 hover:shadow-xl transition-all duration-300">
             <CardHeader>
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 <div>
-                  <CardTitle className="text-2xl font-semibold text-gray-800">CMB Accounts</CardTitle>
+                  <CardTitle className="text-2xl font-semibold text-gray-800 flex items-center gap-2">
+                    <Users className="h-6 w-6 text-blue-600" />
+                    CMB Accounts
+                  </CardTitle>
                   <CardDescription className="text-gray-600">
                     Manage CMB user accounts ({cmbAccounts.length} total)
-                    <span className="text-green-600 ml-2">• Live updates</span>
+                    <span className="inline-flex items-center gap-1 text-green-600 ml-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      Live updates
+                    </span>
                   </CardDescription>
                 </div>
 
                 {/* Add CMB Account Modal */}
                 <Dialog open={isCmbModalOpen} onOpenChange={setIsCmbModalOpen}>
                   <DialogTrigger asChild>
-                    <Button className="flex items-center gap-2">
+                    <Button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all duration-200">
                       <Plus className="h-4 w-4" />
                       Add CMB Account
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                      <DialogTitle>Add New CMB Account</DialogTitle>
+                      <DialogTitle className="flex items-center gap-2">
+                        <Users className="h-5 w-5 text-blue-600" />
+                        Add New CMB Account
+                      </DialogTitle>
                       <DialogDescription>
                         Create a new CMB user account with username, email, and password.
                       </DialogDescription>
@@ -1004,6 +1172,7 @@ const AdminDashboard: React.FC = () => {
                           }
                           placeholder="Enter username"
                           disabled={isCreatingCmb}
+                          className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                         />
                         <p className="text-xs text-gray-500 mt-1">Only letters, numbers, and underscores allowed</p>
                       </div>
@@ -1018,6 +1187,7 @@ const AdminDashboard: React.FC = () => {
                           }
                           placeholder="Enter email address"
                           disabled={isCreatingCmb}
+                          className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                       <div>
@@ -1032,11 +1202,12 @@ const AdminDashboard: React.FC = () => {
                             }
                             placeholder="Enter password (min. 6 characters)"
                             disabled={isCreatingCmb}
+                            className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                           />
                           <button
                             type="button"
                             onClick={() => setShowCmbPassword(!showCmbPassword)}
-                            className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                            className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
                             disabled={isCreatingCmb}
                           >
                             {showCmbPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -1057,8 +1228,19 @@ const AdminDashboard: React.FC = () => {
                       >
                         Cancel
                       </Button>
-                      <Button onClick={handleCreateCmbAccount} disabled={isCreatingCmb}>
-                        {isCreatingCmb ? "Creating..." : "Create Account"}
+                      <Button 
+                        onClick={handleCreateCmbAccount} 
+                        disabled={isCreatingCmb}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        {isCreatingCmb ? (
+                          <div className="flex items-center gap-2">
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                            Creating...
+                          </div>
+                        ) : (
+                          "Create Account"
+                        )}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -1067,38 +1249,44 @@ const AdminDashboard: React.FC = () => {
             </CardHeader>
             <CardContent>
               {loadingCmbAccounts ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                  <span className="ml-2 text-gray-600">Loading accounts...</span>
+                <div className="flex items-center justify-center py-12">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                    <span className="text-gray-600">Loading accounts...</span>
+                  </div>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-3 px-4 font-medium">Username</th>
-                        <th className="text-left py-3 px-4 font-medium">Email</th>
-                        <th className="text-left py-3 px-4 font-medium">Status</th>
-                        <th className="text-left py-3 px-4 font-medium">Created At</th>
-                        <th className="text-left py-3 px-4 font-medium">Last Login</th>
-                        <th className="text-left py-3 px-4 font-medium">Actions</th>
+                      <tr className="border-b border-gray-200 bg-gray-50/50">
+                        <th className="text-left py-4 px-4 font-semibold text-gray-700">Username</th>
+                        <th className="text-left py-4 px-4 font-semibold text-gray-700">Email</th>
+                        <th className="text-left py-4 px-4 font-semibold text-gray-700">Status</th>
+                        <th className="text-left py-4 px-4 font-semibold text-gray-700">Created At</th>
+                        <th className="text-left py-4 px-4 font-semibold text-gray-700">Last Login</th>
+                        <th className="text-left py-4 px-4 font-semibold text-gray-700">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {cmbAccounts.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="py-8 text-center text-gray-500">
-                            No CMB accounts found. Create your first account above.
+                          <td colSpan={6} className="py-12 text-center text-gray-500">
+                            <div className="flex flex-col items-center gap-3">
+                              <Users className="h-12 w-12 text-gray-300" />
+                              <p className="font-medium">No CMB accounts found</p>
+                              <p className="text-sm">Create your first account above.</p>
+                            </div>
                           </td>
                         </tr>
                       ) : (
                         cmbAccounts.map((account: CmbAccount) => (
-                          <tr key={account.id} className="border-b hover:bg-gray-50">
-                            <td className="py-3 px-4 font-medium">{account.username}</td>
-                            <td className="py-3 px-4">{account.email}</td>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-2">
-                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(account.status)}`}>
+                          <tr key={account.id} className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
+                            <td className="py-4 px-4 font-medium text-gray-900">{account.username}</td>
+                            <td className="py-4 px-4 text-gray-700">{account.email}</td>
+                            <td className="py-4 px-4">
+                              <div className="flex items-center gap-3">
+                                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(account.status)}`}>
                                   {getStatusIcon(account.status)}
                                   {account.status}
                                 </span>
@@ -1111,7 +1299,7 @@ const AdminDashboard: React.FC = () => {
                                         handleCmbStatusUpdate(account.id, newStatus);
                                       }}
                                       disabled={updatingStatus[account.id]}
-                                      className="ml-2 text-xs border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                                      className="text-xs border border-gray-300 rounded-md px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 transition-all"
                                     >
                                       <option value="active">Active</option>
                                       <option value="inactive">Inactive</option>
@@ -1124,16 +1312,16 @@ const AdminDashboard: React.FC = () => {
                                 )}
                               </div>
                             </td>
-                            <td className="py-3 px-4">
+                            <td className="py-4 px-4 text-gray-600">
                               {account.createdAt ? new Date(account.createdAt).toLocaleDateString() : 'N/A'}
                             </td>
-                            <td className="py-3 px-4">
+                            <td className="py-4 px-4 text-gray-600">
                               {account.lastLogin ? new Date(account.lastLogin).toLocaleDateString() : 'Never'}
                             </td>
-                            <td className="py-3 px-4">
+                            <td className="py-4 px-4">
                               <button
                                 onClick={() => handleDeleteCmbAccount(account.id, account.username)}
-                                className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded-full transition-colors duration-200"
+                                className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded-full transition-all duration-200 hover:scale-110"
                                 title={`Delete ${account.username}`}
                               >
                                 <Trash2 size={16} />
@@ -1150,25 +1338,31 @@ const AdminDashboard: React.FC = () => {
           </Card>
 
           {/* Sub-Admin Management and System Statistics */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader className="flex items-center justify-between">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8">
+            <Card className="bg-white/70 backdrop-blur-sm shadow-lg border-0 hover:shadow-xl transition-all duration-300">
+              <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle className="text-2xl">Sub-Admin Management</CardTitle>
+                  <CardTitle className="text-2xl flex items-center gap-2">
+                    <Shield className="h-6 w-6 text-green-600" />
+                    Sub-Admin Management
+                  </CardTitle>
                   <CardDescription className="text-base">Manage Sub-Administrators</CardDescription>
                 </div>
 
                 {/* Add Sub-Admin Modal */}
                 <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
                   <DialogTrigger asChild>
-                    <Button className="flex items-center gap-2">
+                    <Button className="flex items-center gap-2 bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl transition-all duration-200">
                       <Plus className="h-4 w-4" />
                       Add Sub-Admin
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                      <DialogTitle>Add New Sub-Admin</DialogTitle>
+                      <DialogTitle className="flex items-center gap-2">
+                        <Shield className="h-5 w-5 text-green-600" />
+                        Add New Sub-Admin
+                      </DialogTitle>
                       <DialogDescription>
                         Create a new sub-administrator account with username, email, and password.
                       </DialogDescription>
@@ -1184,6 +1378,7 @@ const AdminDashboard: React.FC = () => {
                           }
                           placeholder="Enter username"
                           disabled={isCreating}
+                          className="transition-all duration-200 focus:ring-2 focus:ring-green-500"
                         />
                       </div>
                       <div>
@@ -1197,6 +1392,7 @@ const AdminDashboard: React.FC = () => {
                           }
                           placeholder="Enter email address"
                           disabled={isCreating}
+                          className="transition-all duration-200 focus:ring-2 focus:ring-green-500"
                         />
                       </div>
                       <div>
@@ -1210,6 +1406,7 @@ const AdminDashboard: React.FC = () => {
                           }
                           placeholder="Enter password (min. 6 characters)"
                           disabled={isCreating}
+                          className="transition-all duration-200 focus:ring-2 focus:ring-green-500"
                         />
                       </div>
                     </div>
@@ -1225,8 +1422,19 @@ const AdminDashboard: React.FC = () => {
                       >
                         Cancel
                       </Button>
-                      <Button onClick={handleCreateSubAdmin} disabled={isCreating}>
-                        {isCreating ? "Creating..." : "Create Sub-Admin"}
+                      <Button 
+                        onClick={handleCreateSubAdmin} 
+                        disabled={isCreating}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        {isCreating ? (
+                          <div className="flex items-center gap-2">
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                            Creating...
+                          </div>
+                        ) : (
+                          "Create Sub-Admin"
+                        )}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -1236,7 +1444,10 @@ const AdminDashboard: React.FC = () => {
                 <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
                   <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                      <DialogTitle>Edit Sub-Admin</DialogTitle>
+                      <DialogTitle className="flex items-center gap-2">
+                        <Edit className="h-5 w-5 text-blue-600" />
+                        Edit Sub-Admin
+                      </DialogTitle>
                       <DialogDescription>
                         Update sub-administrator information.
                       </DialogDescription>
@@ -1252,6 +1463,7 @@ const AdminDashboard: React.FC = () => {
                           }
                           placeholder="Enter username"
                           disabled={isUpdating}
+                          className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                       <div>
@@ -1265,6 +1477,7 @@ const AdminDashboard: React.FC = () => {
                           }
                           placeholder="Enter email address"
                           disabled={isUpdating}
+                          className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                     </div>
@@ -1281,8 +1494,19 @@ const AdminDashboard: React.FC = () => {
                       >
                         Cancel
                       </Button>
-                      <Button onClick={handleUpdateSubAdmin} disabled={isUpdating}>
-                        {isUpdating ? "Updating..." : "Update Sub-Admin"}
+                      <Button 
+                        onClick={handleUpdateSubAdmin} 
+                        disabled={isUpdating}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        {isUpdating ? (
+                          <div className="flex items-center gap-2">
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                            Updating...
+                          </div>
+                        ) : (
+                          "Update Sub-Admin"
+                        )}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -1292,39 +1516,46 @@ const AdminDashboard: React.FC = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-3 px-4 font-medium">Username</th>
-                        <th className="text-left py-3 px-4 font-medium">Email</th>
-                        <th className="text-left py-3 px-4 font-medium">Role</th>
-                        <th className="text-left py-3 px-4 font-medium">Status</th>
-                        <th className="text-left py-3 px-4 font-medium">Actions</th>
+                      <tr className="border-b border-gray-200 bg-gray-50/50">
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Username</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Email</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Role</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {loadingSubAdmins ? (
                         <tr>
                           <td colSpan={5} className="py-8 text-center text-gray-500">
-                            Loading sub-admins...
+                            <div className="flex items-center justify-center gap-2">
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                              Loading sub-admins...
+                            </div>
                           </td>
                         </tr>
                       ) : subAdmins.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="py-8 text-center text-gray-500">
-                            No sub-admins found
+                          <td colSpan={5} className="py-12 text-center text-gray-500">
+                            <div className="flex flex-col items-center gap-3">
+                              <Shield className="h-12 w-12 text-gray-300" />
+                              <p className="font-medium">No sub-admins found</p>
+                              <p className="text-sm">Create your first sub-admin above.</p>
+                            </div>
                           </td>
                         </tr>
                       ) : (
                         subAdmins.map((admin: SubAdmin) => (
-                          <tr key={admin.id} className="border-b hover:bg-gray-50">
-                            <td className="py-3 px-4">{admin.username}</td>
-                            <td className="py-3 px-4">{admin.email}</td>
+                          <tr key={admin.id} className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
+                            <td className="py-3 px-4 font-medium text-gray-900">{admin.username}</td>
+                            <td className="py-3 px-4 text-gray-700">{admin.email}</td>
                             <td className="py-3 px-4">
-                              <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                              <span className="px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-800 font-medium">
                                 {admin.role === 'sub_admin' ? 'Sub-Admin' : 'Sub-Admin'}
                               </span>
                             </td>
                             <td className="py-3 px-4">
-                              <span className={`px-2 py-1 rounded-full text-xs ${
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                                 admin.active !== false 
                                   ? 'bg-green-100 text-green-800' 
                                   : 'bg-red-100 text-red-800'
@@ -1337,7 +1568,7 @@ const AdminDashboard: React.FC = () => {
                                 <Button 
                                   variant="ghost" 
                                   size="sm" 
-                                  className="h-8 px-2"
+                                  className="h-8 px-2 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                                   onClick={() => handleEditSubAdmin(admin)}
                                 >
                                   <Edit className="h-4 w-4" />
@@ -1345,7 +1576,7 @@ const AdminDashboard: React.FC = () => {
                                 <Button 
                                   variant="ghost" 
                                   size="sm" 
-                                  className="h-8 px-2 text-red-600 hover:text-red-800"
+                                  className="h-8 px-2 text-red-600 hover:text-red-800 hover:bg-red-50 transition-colors"
                                   onClick={() => handleDeleteSubAdmin(admin.id)}
                                 >
                                   <Trash2 className="h-4 w-4" />
@@ -1361,84 +1592,129 @@ const AdminDashboard: React.FC = () => {
               </CardContent>
             </Card>
 
-            <Card>
+            {/* System Statistics */}
+            <Card className="bg-white/70 backdrop-blur-sm shadow-lg border-0 hover:shadow-xl transition-all duration-300">
               <CardHeader>
-                <CardTitle>System Statistics</CardTitle>
-                <CardDescription>Overall platform metrics</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <Globe className="h-6 w-6 text-purple-600" />
+                  System Statistics
+                </CardTitle>
+                <CardDescription>Overall platform metrics and insights</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm">Shooters</span>
-                      <span className="text-sm font-medium">
-                        {counts.loading ? "Loading..." : `${counts.shooters} (${shootersPercentage}%)`}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-700">Shooters</span>
+                      <span className="text-sm font-semibold text-blue-600">
+                        {counts.loading ? (
+                          <div className="animate-pulse bg-blue-200 h-4 w-16 rounded"></div>
+                        ) : (
+                          `${counts.shooters} (${shootersPercentage}%)`
+                        )}
                       </span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                       <div
-                        className="bg-blue-600 h-2.5 rounded-full"
+                        className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-1000 ease-out"
                         style={{ width: `${shootersPercentage}%` }}
                       ></div>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm">Range Owners</span>
-                      <span className="text-sm font-medium">
-                        {counts.loading ? "Loading..." : `${counts.rangeOwners} (${rangeOwnersPercentage}%)`}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-700">Range Owners</span>
+                      <span className="text-sm font-semibold text-green-600">
+                        {counts.loading ? (
+                          <div className="animate-pulse bg-green-200 h-4 w-16 rounded"></div>
+                        ) : (
+                          `${counts.rangeOwners} (${rangeOwnersPercentage}%)`
+                        )}
                       </span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                       <div
-                        className="bg-green-600 h-2.5 rounded-full"
+                        className="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-1000 ease-out"
                         style={{ width: `${rangeOwnersPercentage}%` }}
                       ></div>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm">Total Ranges</span>
-                      <span className="text-sm font-medium">
-                        {counts.loading ? "Loading..." : counts.ranges}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-700">Total Ranges</span>
+                      <span className="text-sm font-semibold text-red-600">
+                        {counts.loading ? (
+                          <div className="animate-pulse bg-red-200 h-4 w-12 rounded"></div>
+                        ) : (
+                          counts.ranges
+                        )}
                       </span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div
-                        className="bg-red-600 h-2.5 rounded-full"
-                        style={{ width: "100%" }}
-                      ></div>
+                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                      <div className="bg-gradient-to-r from-red-500 to-red-600 h-3 rounded-full w-full transition-all duration-1000 ease-out"></div>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm">Total Events</span>
-                      <span className="text-sm font-medium">
-                        {counts.loading ? "Loading..." : counts.events}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-700">Total Events</span>
+                      <span className="text-sm font-semibold text-purple-600">
+                        {counts.loading ? (
+                          <div className="animate-pulse bg-purple-200 h-4 w-12 rounded"></div>
+                        ) : (
+                          counts.events
+                        )}
                       </span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div
-                        className="bg-purple-600 h-2.5 rounded-full"
-                        style={{ width: "100%" }}
-                      ></div>
+                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                      <div className="bg-gradient-to-r from-purple-500 to-purple-600 h-3 rounded-full w-full transition-all duration-1000 ease-out"></div>
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t">
-                    <h3 className="text-sm font-medium mb-3">
+                  <div className="pt-6 border-t border-gray-200">
+                    <h3 className="text-sm font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                      <Package className="h-4 w-4 text-indigo-600" />
                       Collection Summary
                     </h3>
-                    <div className="text-sm text-gray-600">
-                      <p>Shooters: {counts.loading ? "Loading..." : counts.shooters}</p>
-                      <p>Range Owners: {counts.loading ? "Loading..." : counts.rangeOwners}</p>
-                      <p>Ranges: {counts.loading ? "Loading..." : counts.ranges}</p>
-                      <p>Events: {counts.loading ? "Loading..." : counts.events}</p>
-                      <p>Sub-Admins: {loadingSubAdmins ? "Loading..." : subAdmins.length}</p>
-                      <p>CMB Accounts: {loadingCmbAccounts ? "Loading..." : cmbAccounts.length}</p>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                        <p className="text-blue-700 font-medium">Shooters</p>
+                        <p className="text-blue-900 font-bold text-lg">
+                          {counts.loading ? "..." : counts.shooters}
+                        </p>
+                      </div>
+                      <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                        <p className="text-green-700 font-medium">Range Owners</p>
+                        <p className="text-green-900 font-bold text-lg">
+                          {counts.loading ? "..." : counts.rangeOwners}
+                        </p>
+                      </div>
+                      <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                        <p className="text-red-700 font-medium">Ranges</p>
+                        <p className="text-red-900 font-bold text-lg">
+                          {counts.loading ? "..." : counts.ranges}
+                        </p>
+                      </div>
+                      <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                        <p className="text-purple-700 font-medium">Events</p>
+                        <p className="text-purple-900 font-bold text-lg">
+                          {counts.loading ? "..." : counts.events}
+                        </p>
+                      </div>
+                      <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                        <p className="text-orange-700 font-medium">Sub-Admins</p>
+                        <p className="text-orange-900 font-bold text-lg">
+                          {loadingSubAdmins ? "..." : subAdmins.length}
+                        </p>
+                      </div>
+                      <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-200">
+                        <p className="text-emerald-700 font-medium">CMB Accounts</p>
+                        <p className="text-emerald-900 font-bold text-lg">
+                          {loadingCmbAccounts ? "..." : cmbAccounts.length}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
