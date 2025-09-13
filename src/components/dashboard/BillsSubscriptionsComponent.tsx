@@ -258,84 +258,133 @@ const BillsSubscriptionsComponent = () => {
     a.click();
   };
 
+  const exportSingleItem = (item) => {
+    let dataToExport;
+    
+    if (activeTab === 'bills') {
+      dataToExport = {
+        'Bill ID': item.billId || 'N/A',
+        'Amount': item.amountPaid || 0,
+        'Currency': item.currency || 'INR',
+        'Range': item.rangeName || 'N/A',
+        'User': item.userName || 'N/A',
+        'Email': item.userEmail || 'N/A',
+        'Payment Method': item.paymentMethod || 'N/A',
+        'Status': item.billStatus || 'N/A',
+        'Date': formatDate(item.billDate),
+        'Description': item.description || 'N/A'
+      };
+    } else {
+      dataToExport = {
+        'Range': item.rangeName || 'N/A',
+        'User': item.userName || 'N/A',
+        'Email': item.userEmail || 'N/A',
+        'Plan': item.planDuration || 'N/A',
+        'Price': item.price || 0,
+        'Status': item.subscriptionStatus || 'N/A',
+        'Start Date': formatDate(item.startDate),
+        'End Date': formatDate(item.endDate),
+        'Payment Method': item.paymentMethod || 'N/A',
+        'Payment Status': item.paymentStatus || 'N/A'
+      };
+    }
+
+    const csv = [
+      Object.keys(dataToExport).join(','),
+      Object.values(dataToExport).join(',')
+    ].join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${activeTab === 'bills' ? 'bill' : 'subscription'}-${item.id}.csv`;
+    a.click();
+  };
+
   // Render Bills Item
   const renderBillItem = (item) => (
-    <div className="space-y-4 lg:space-y-0 lg:flex lg:items-start lg:justify-between">
-      <div className="flex-1 space-y-4">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <h3 className="text-lg sm:text-xl font-bold text-slate-900">
-            {item.billId || 'N/A'}
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {getStatusBadge(item.billStatus, 'bill')}
-            {getStatusBadge(item.paymentStatus, 'payment')}
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h3 className="text-lg sm:text-xl font-bold text-slate-900">
+          {item.billId || 'N/A'}
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {getStatusBadge(item.billStatus, 'bill')}
+          {getStatusBadge(item.paymentStatus, 'payment')}
+        </div>
+      </div>
+      
+      {/* Amount */}
+      <div className="flex items-center">
+        <div className="bg-emerald-100 rounded-full p-2 mr-3">
+          <DollarSign className="w-5 h-5 text-emerald-600" />
+        </div>
+        <span className="text-2xl sm:text-3xl font-bold text-emerald-600">
+          {formatCurrency(item.amountPaid, item.currency)}
+        </span>
+      </div>
+      
+      {/* Description */}
+      {item.description && <p className="text-slate-600 leading-relaxed">{item.description}</p>}
+      
+      {/* Details Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+        <div className="flex items-center space-x-3">
+          <div className="bg-purple-100 rounded-lg p-2">
+            <User className="w-4 h-4 text-purple-600" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wide">User</p>
+            <p className="font-semibold text-slate-900 truncate">{item.userName || 'N/A'}</p>
+            <p className="text-xs text-slate-500 truncate">{item.userEmail || 'N/A'}</p>
           </div>
         </div>
         
-        {/* Amount */}
-        <div className="flex items-center">
-          <div className="bg-emerald-100 rounded-full p-2 mr-3">
-            <DollarSign className="w-5 h-5 text-emerald-600" />
+        <div className="flex items-center space-x-3">
+          <div className="bg-blue-100 rounded-lg p-2">
+            <MapPin className="w-4 h-4 text-blue-600" />
           </div>
-          <span className="text-2xl sm:text-3xl font-bold text-emerald-600">
-            {formatCurrency(item.amountPaid, item.currency)}
-          </span>
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wide">Range</p>
+            <p className="font-semibold text-slate-900">{item.rangeName || 'N/A'}</p>
+          </div>
         </div>
         
-        {/* Description */}
-        {item.description && <p className="text-slate-600 leading-relaxed">{item.description}</p>}
+        <div className="flex items-center space-x-3">
+          <div className="bg-green-100 rounded-lg p-2">
+            <Calendar className="w-4 h-4 text-green-600" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wide">Bill Date</p>
+            <p className="font-semibold text-slate-900">{formatDate(item.billDate)}</p>
+          </div>
+        </div>
         
-        {/* Details Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-          <div className="flex items-center space-x-3">
-            <div className="bg-purple-100 rounded-lg p-2">
-              <User className="w-4 h-4 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide">User</p>
-              <p className="font-semibold text-slate-900 truncate">{item.userName || 'N/A'}</p>
-              <p className="text-xs text-slate-500 truncate">{item.userEmail || 'N/A'}</p>
-            </div>
+        <div className="flex items-center space-x-3">
+          <div className="bg-amber-100 rounded-lg p-2">
+            <CreditCard className="w-4 h-4 text-amber-600" />
           </div>
-          
-          <div className="flex items-center space-x-3">
-            <div className="bg-blue-100 rounded-lg p-2">
-              <MapPin className="w-4 h-4 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide">Range</p>
-              <p className="font-semibold text-slate-900">{item.rangeName || 'N/A'}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <div className="bg-green-100 rounded-lg p-2">
-              <Calendar className="w-4 h-4 text-green-600" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide">Bill Date</p>
-              <p className="font-semibold text-slate-900">{formatDate(item.billDate)}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <div className="bg-amber-100 rounded-lg p-2">
-              <CreditCard className="w-4 h-4 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide">Payment</p>
-              <p className="font-semibold text-slate-900">{(item.paymentMethod || 'N/A').toUpperCase()}</p>
-            </div>
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wide">Payment</p>
+            <p className="font-semibold text-slate-900">{(item.paymentMethod || 'N/A').toUpperCase()}</p>
           </div>
         </div>
       </div>
       
       {/* Actions */}
-      <div className="flex flex-row lg:flex-col gap-3 pt-4 lg:pt-0 lg:ml-6">
-        <button className="flex-1 lg:flex-none inline-flex items-center justify-center px-4 py-2.5 border border-slate-300 text-sm font-semibold rounded-xl text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-all duration-200">
+      <div className="flex flex-row gap-3 pt-4 border-t border-slate-200">
+        <button className="flex-1 inline-flex items-center justify-center px-4 py-2.5 border border-slate-300 text-sm font-semibold rounded-xl text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-all duration-200">
           <Eye className="w-4 h-4 mr-2" />
           View Details
+        </button>
+        <button 
+          onClick={() => exportSingleItem(item)}
+          className="flex-1 inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-lg hover:shadow-xl"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          Export
         </button>
       </div>
     </div>
@@ -343,183 +392,183 @@ const BillsSubscriptionsComponent = () => {
 
   // Render Subscription Item
   const renderSubscriptionItem = (item) => (
-    <div className="space-y-4 lg:space-y-0 lg:flex lg:items-start lg:justify-between">
-      <div className="flex-1 space-y-4">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <h3 className="text-lg sm:text-xl font-bold text-slate-900">
-            {item.planDuration || 'N/A'} Plan
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {getStatusBadge(item.subscriptionStatus, 'subscription')}
-          </div>
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h3 className="text-lg sm:text-xl font-bold text-slate-900">
+          {item.planDuration || 'N/A'} Plan
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {getStatusBadge(item.subscriptionStatus, 'subscription')}
+          {getStatusBadge(item.paymentStatus, 'payment')}
         </div>
-        
-        {/* Amount */}
-        <div className="flex items-center">
-          <div className="bg-emerald-100 rounded-full p-2 mr-3">
-            <DollarSign className="w-5 h-5 text-emerald-600" />
-          </div>
-          <span className="text-2xl sm:text-3xl font-bold text-emerald-600">
-            {formatCurrency(item.price, item.currency)}
-          </span>
-        </div>
-        
-        {/* Details Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-          <div className="flex items-center space-x-3">
-            <div className="bg-purple-100 rounded-lg p-2">
-              <User className="w-4 h-4 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide">User</p>
-              <p className="font-semibold text-slate-900 truncate">{item.userName || 'N/A'}</p>
-              <p className="text-xs text-slate-500 truncate">{item.userEmail || 'N/A'}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <div className="bg-blue-100 rounded-lg p-2">
-              <MapPin className="w-4 h-4 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide">Range</p>
-              <p className="font-semibold text-slate-900">{item.rangeName || 'N/A'}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <div className="bg-green-100 rounded-lg p-2">
-              <Calendar className="w-4 h-4 text-green-600" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide">Start Date</p>
-              <p className="font-semibold text-slate-900">{formatDate(item.startDate)}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <div className="bg-red-100 rounded-lg p-2">
-              <Calendar className="w-4 h-4 text-red-600" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide">End Date</p>
-              <p className="font-semibold text-slate-900">{formatDate(item.endDate)}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <div className="bg-amber-100 rounded-lg p-2">
-              <CreditCard className="w-4 h-4 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide">Payment</p>
-              <p className="font-semibold text-slate-900">{(item.paymentMethod || 'N/A').toUpperCase()}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <div className="bg-indigo-100 rounded-lg p-2">
-              <Clock className="w-4 h-4 text-indigo-600" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide">Extensions</p>
-              <p className="font-semibold text-slate-900">{item.extensions ? item.extensions.length : 0}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Extensions */}
-        {item.extensions && item.extensions.length > 0 && (
-          <div className="mt-4 p-4 bg-gradient-to-r from-slate-50 to-blue-50 rounded-xl border border-slate-200">
-            <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center">
-              <Clock className="w-4 h-4 mr-2 text-slate-600" />
-              Recent Extensions
-            </h4>
-            <div className="space-y-2">
-              {item.extensions.slice(-2).map((extension, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-200">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-sm font-medium text-slate-900">{extension.planDuration || 'N/A'}</span>
-                    <span className="text-sm font-bold text-green-600">{formatCurrency(extension.price)}</span>
-                  </div>
-                  <span className="text-xs text-slate-500">{formatDate(extension.extendedAt)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
       
+      {/* Amount */}
+      <div className="flex items-center">
+        <div className="bg-emerald-100 rounded-full p-2 mr-3">
+          <DollarSign className="w-5 h-5 text-emerald-600" />
+        </div>
+        <span className="text-2xl sm:text-3xl font-bold text-emerald-600">
+          {formatCurrency(item.price, item.currency)}
+        </span>
+      </div>
+      
+      {/* Details Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+        <div className="flex items-center space-x-3">
+          <div className="bg-purple-100 rounded-lg p-2">
+            <User className="w-4 h-4 text-purple-600" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wide">User</p>
+            <p className="font-semibold text-slate-900 truncate">{item.userName || 'N/A'}</p>
+            <p className="text-xs text-slate-500 truncate">{item.userEmail || 'N/A'}</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center space-x-3">
+          <div className="bg-blue-100 rounded-lg p-2">
+            <MapPin className="w-4 h-4 text-blue-600" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wide">Range</p>
+            <p className="font-semibold text-slate-900">{item.rangeName || 'N/A'}</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center space-x-3">
+          <div className="bg-green-100 rounded-lg p-2">
+            <Calendar className="w-4 h-4 text-green-600" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wide">Start Date</p>
+            <p className="font-semibold text-slate-900">{formatDate(item.startDate)}</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center space-x-3">
+          <div className="bg-red-100 rounded-lg p-2">
+            <Calendar className="w-4 h-4 text-red-600" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wide">End Date</p>
+            <p className="font-semibold text-slate-900">{formatDate(item.endDate)}</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center space-x-3">
+          <div className="bg-amber-100 rounded-lg p-2">
+            <CreditCard className="w-4 h-4 text-amber-600" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wide">Payment</p>
+            <p className="font-semibold text-slate-900">{(item.paymentMethod || 'N/A').toUpperCase()}</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center space-x-3">
+          <div className="bg-indigo-100 rounded-lg p-2">
+            <Clock className="w-4 h-4 text-indigo-600" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wide">Extensions</p>
+            <p className="font-semibold text-slate-900">{item.extensions ? item.extensions.length : 0}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Extensions */}
+      {item.extensions && item.extensions.length > 0 && (
+        <div className="mt-4 p-4 bg-gradient-to-r from-slate-50 to-blue-50 rounded-xl border border-slate-200">
+          <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center">
+            <Clock className="w-4 h-4 mr-2 text-slate-600" />
+            Recent Extensions
+          </h4>
+          <div className="space-y-2">
+            {item.extensions.slice(-2).map((extension, index) => (
+              <div key={index} className="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-200">
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm font-medium text-slate-900">{extension.planDuration || 'N/A'}</span>
+                  <span className="text-sm font-bold text-green-600">{formatCurrency(extension.price)}</span>
+                </div>
+                <span className="text-xs text-slate-500">{formatDate(extension.extendedAt)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
       {/* Actions */}
-      <div className="flex flex-row lg:flex-col gap-3 pt-4 lg:pt-0 lg:ml-6">
-        <button className="flex-1 lg:flex-none inline-flex items-center justify-center px-4 py-2.5 border border-slate-300 text-sm font-semibold rounded-xl text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-all duration-200">
+      <div className="flex flex-row gap-3 pt-4 border-t border-slate-200">
+        <button className="flex-1 inline-flex items-center justify-center px-4 py-2.5 border border-slate-300 text-sm font-semibold rounded-xl text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-all duration-200">
           <Eye className="w-4 h-4 mr-2" />
           View Details
         </button>
-        {item.subscriptionStatus === 'active' && (
-          <button className="flex-1 lg:flex-none inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
-            <Clock className="w-4 h-4 mr-2" />
-            Extend
-          </button>
-        )}
+        <button 
+          onClick={() => exportSingleItem(item)}
+          className="flex-1 inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-lg hover:shadow-xl"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          Export
+        </button>
       </div>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200/60 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-5 py-4 sm:py-6">
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl shadow-slate-200/50 border border-slate-200/60 overflow-hidden">
           {/* Header */}
-          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-6 sm:px-8 py-6 sm:py-8">
+          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-4 sm:px-6 py-5 sm:py-7">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-white">Financial Management</h1>
-                <p className="text-slate-300 mt-1 text-sm sm:text-base">Manage your bills and subscriptions efficiently</p>
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">Financial Management</h1>
+                <p className="text-slate-300 mt-1 text-xs sm:text-sm">Manage your bills and subscriptions efficiently</p>
               </div>
               <button
                 onClick={exportData}
                 disabled={filteredData.length === 0}
-                className="inline-flex items-center px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs sm:text-sm font-semibold rounded-lg sm:rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Download className="w-4 h-4 mr-2" />
-                Export Data
+                <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                Export All
               </button>
             </div>
           </div>
 
-          <div className="p-4 sm:p-6 lg:p-8">
+          <div className="p-3 sm:p-4 lg:p-6">
             {/* Tabs */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 space-y-4 sm:space-y-0">
-              <div className="flex bg-slate-100 p-1 rounded-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-3 sm:space-y-0">
+              <div className="flex bg-slate-100 p-1 rounded-lg sm:rounded-xl">
                 <button
                   onClick={() => setActiveTab('bills')}
-                  className={`flex items-center px-4 sm:px-6 py-2.5 sm:py-3 text-sm font-semibold rounded-lg transition-all duration-200 ${
+                  className={`flex items-center px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 ${
                     activeTab === 'bills'
                       ? 'bg-white text-slate-900 shadow-md'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                   }`}
                 >
-                  <FileText className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">Bills</span>
-                  <span className="sm:hidden">Bills</span>
-                  <span className="ml-1 sm:ml-2 px-2 py-0.5 bg-slate-200 text-slate-700 text-xs rounded-full">
+                  <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                  <span className="hidden xs:inline">Bills</span>
+                  <span className="xs:hidden">Bills</span>
+                  <span className="ml-1 sm:ml-2 px-1.5 sm:px-2 py-0.5 bg-slate-200 text-slate-700 text-xs rounded-full">
                     {bills.length}
                   </span>
                 </button>
                 <button
                   onClick={() => setActiveTab('subscriptions')}
-                  className={`flex items-center px-4 sm:px-6 py-2.5 sm:py-3 text-sm font-semibold rounded-lg transition-all duration-200 ${
+                  className={`flex items-center px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 ${
                     activeTab === 'subscriptions'
                       ? 'bg-white text-slate-900 shadow-md'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                   }`}
                 >
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">Subscriptions</span>
-                  <span className="sm:hidden">Subs</span>
-                  <span className="ml-1 sm:ml-2 px-2 py-0.5 bg-slate-200 text-slate-700 text-xs rounded-full">
+                  <CreditCard className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                  <span className="hidden xs:inline">Subscriptions</span>
+                  <span className="xs:hidden">Subs</span>
+                  <span className="ml-1 sm:ml-2 px-1.5 sm:px-2 py-0.5 bg-slate-200 text-slate-700 text-xs rounded-full">
                     {subscriptions.length}
                   </span>
                 </button>
@@ -527,25 +576,25 @@ const BillsSubscriptionsComponent = () => {
 
               <button
                 onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
-                className="sm:hidden inline-flex items-center px-4 py-2 border border-slate-300 rounded-lg text-slate-700 bg-white hover:bg-slate-50 transition-colors"
+                className="sm:hidden inline-flex items-center px-3 py-1.5 border border-slate-300 rounded-lg text-slate-700 bg-white hover:bg-slate-50 transition-colors text-xs"
               >
-                {mobileFiltersOpen ? <X className="w-4 h-4 mr-2" /> : <Filter className="w-4 h-4 mr-2" />}
+                {mobileFiltersOpen ? <X className="w-3 h-3 mr-1" /> : <Filter className="w-3 h-3 mr-1" />}
                 Filters
               </button>
             </div>
 
             {/* Filters */}
-            <div className={`space-y-4 sm:space-y-6 mb-6 sm:mb-8 ${mobileFiltersOpen ? 'block' : 'hidden sm:block'}`}>
+            <div className={`space-y-3 sm:space-y-4 mb-4 sm:mb-6 ${mobileFiltersOpen ? 'block' : 'hidden sm:block'}`}>
               {/* Primary filters */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="relative col-span-2 xs:col-span-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-3 h-3 sm:w-4 sm:h-4" />
                   <input
                     type="text"
                     placeholder="Search..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 pr-4 py-2.5 w-full border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white"
+                    className="pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 w-full border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-xs sm:text-sm"
                   />
                 </div>
 
@@ -554,7 +603,7 @@ const BillsSubscriptionsComponent = () => {
                   placeholder="Filter by range..."
                   value={rangeFilter}
                   onChange={(e) => setRangeFilter(e.target.value)}
-                  className="px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white"
+                  className="px-3 sm:px-4 py-2 sm:py-2.5 border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-xs sm:text-sm"
                 />
 
                 <input
@@ -562,13 +611,13 @@ const BillsSubscriptionsComponent = () => {
                   placeholder="Filter by shooter..."
                   value={shooterFilter}
                   onChange={(e) => setShooterFilter(e.target.value)}
-                  className="px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white"
+                  className="px-3 sm:px-4 py-2 sm:py-2.5 border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-xs sm:text-sm"
                 />
 
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white"
+                  className="px-3 sm:px-4 py-2 sm:py-2.5 border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-xs sm:text-sm"
                 >
                   <option value="all">All Status</option>
                   {activeTab === 'bills' ? (
@@ -586,11 +635,11 @@ const BillsSubscriptionsComponent = () => {
               </div>
 
               {/* Secondary filters */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
                 <select
                   value={paymentMethodFilter}
                   onChange={(e) => setPaymentMethodFilter(e.target.value)}
-                  className="px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white"
+                  className="px-3 sm:px-4 py-2 sm:py-2.5 border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-xs sm:text-sm"
                 >
                   <option value="all">All Payment Methods</option>
                   <option value="cash">Cash</option>
@@ -603,7 +652,7 @@ const BillsSubscriptionsComponent = () => {
                   placeholder="From date"
                   value={dateRange.from}
                   onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
-                  className="px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white"
+                  className="px-3 sm:px-4 py-2 sm:py-2.5 border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-xs sm:text-sm"
                 />
 
                 <input
@@ -611,7 +660,7 @@ const BillsSubscriptionsComponent = () => {
                   placeholder="To date"
                   value={dateRange.to}
                   onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
-                  className="px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white"
+                  className="px-3 sm:px-4 py-2 sm:py-2.5 border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-xs sm:text-sm"
                 />
 
                 <input
@@ -619,7 +668,7 @@ const BillsSubscriptionsComponent = () => {
                   placeholder="Min amount"
                   value={amountRange.min}
                   onChange={(e) => setAmountRange({ ...amountRange, min: e.target.value })}
-                  className="px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white"
+                  className="px-3 sm:px-4 py-2 sm:py-2.5 border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-xs sm:text-sm"
                 />
 
                 <input
@@ -627,20 +676,20 @@ const BillsSubscriptionsComponent = () => {
                   placeholder="Max amount"
                   value={amountRange.max}
                   onChange={(e) => setAmountRange({ ...amountRange, max: e.target.value })}
-                  className="px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white"
+                  className="px-3 sm:px-4 py-2 sm:py-2.5 border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-xs sm:text-sm"
                 />
               </div>
 
               {/* Filter summary */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-2 border-t border-slate-200">
-                <div className="flex items-center text-sm text-slate-600">
-                  <Filter className="w-4 h-4 mr-2 text-slate-400" />
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-slate-200">
+                <div className="flex items-center text-xs sm:text-sm text-slate-600">
+                  <Filter className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 text-slate-400" />
                   <span className="font-medium">{filteredData.length}</span> of {activeTab === 'bills' ? bills.length : subscriptions.length} {activeTab}
                 </div>
                 
                 <button
                   onClick={clearFilters}
-                  className="text-sm text-blue-600 hover:text-blue-800 font-semibold transition-colors"
+                  className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 font-semibold transition-colors"
                 >
                   Clear all filters
                 </button>
@@ -650,21 +699,21 @@ const BillsSubscriptionsComponent = () => {
             {/* Data Display */}
             <div className="space-y-4">
               {loading ? (
-                <div className="flex flex-col items-center justify-center py-16">
-                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
-                  <p className="mt-4 text-slate-600 font-medium">Loading {activeTab}...</p>
+                <div className="flex flex-col items-center justify-center py-12 sm:py-16">
+                  <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-4 border-blue-500 border-t-transparent"></div>
+                  <p className="mt-3 sm:mt-4 text-slate-600 font-medium text-sm sm:text-base">Loading {activeTab}...</p>
                 </div>
               ) : filteredData.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-slate-500">
-                  <div className="bg-slate-100 rounded-full p-6 mb-4">
-                    <FileText className="w-12 h-12 text-slate-400" />
+                <div className="flex flex-col items-center justify-center py-12 sm:py-16 text-slate-500">
+                  <div className="bg-slate-100 rounded-full p-4 sm:p-6 mb-3 sm:mb-4">
+                    <FileText className="w-8 h-8 sm:w-12 sm:h-12 text-slate-400" />
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">No {activeTab} found</h3>
-                  <p className="text-sm">Try adjusting your filters or search terms</p>
+                  <h3 className="text-base sm:text-lg font-semibold mb-1 sm:mb-2">No {activeTab} found</h3>
+                  <p className="text-xs sm:text-sm">Try adjusting your filters or search terms</p>
                 </div>
               ) : (
                 filteredData.map((item) => (
-                  <div key={item.id} className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 hover:shadow-lg hover:border-slate-300 transition-all duration-200">
+                  <div key={item.id} className="bg-white border border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 hover:shadow-md sm:hover:shadow-lg hover:border-slate-300 transition-all duration-200">
                     {activeTab === 'bills' ? renderBillItem(item) : renderSubscriptionItem(item)}
                   </div>
                 ))

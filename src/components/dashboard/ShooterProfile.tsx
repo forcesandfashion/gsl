@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { User, Calendar, Award, Star, Briefcase, Target, Crosshair, Package, BarChart3, TrendingUp, Filter, Clock, FileText, ScanLine, Receipt } from "lucide-react";
+import { User, Calendar, Award, Star, Briefcase, Target, Crosshair, Package, BarChart3, TrendingUp, Filter, Clock, FileText, ScanLine, Receipt, Menu, X } from "lucide-react";
 import { db, storage } from "@/firebase/config";
 import { collection, doc, getDocs, query, setDoc, where, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -83,6 +83,7 @@ export default function ShooterProfile() {
   const [loading, setLoading] = useState(false);
   const [image, setImage] = useState<string | null>(null);
   const [isNewProfile, setIsNewProfile] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Analytics state with proper typing
@@ -489,12 +490,23 @@ export default function ShooterProfile() {
   if (loading) return <div className="text-center text-lg mt-6">Loading profile...</div>;
 
   return (
-    <div className="w-full max-w-4xl mx-auto bg-gradient-to-br from-blue-50 via-purple-50 to-green-50 rounded-2xl shadow-xl p-6">
+    <div className="w-full max-w-6xl mx-auto bg-gradient-to-br from-blue-50 via-purple-50 to-green-50 rounded-xl md:rounded-2xl shadow-lg md:shadow-xl p-4 md:p-6">
       
+      {/* Mobile Menu Toggle */}
+      <div className="md:hidden flex justify-between items-center mb-4">
+        <h1 className="text-xl font-bold text-blue-700">Shooter Profile</h1>
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2 rounded-md bg-blue-100 text-blue-700"
+        >
+          {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+      </div>
+
       {/* Tab Navigation */}
-      <div className="mb-6">
+      <div className="mb-4 md:mb-6">
         <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
+          <nav className={`${mobileMenuOpen ? 'flex' : 'hidden'} md:flex flex-col md:flex-row md:space-x-8 space-y-2 md:space-y-0`}>
             {[
               { id: 'profile', label: 'Profile', icon: User },
               { id: 'analytics', label: 'Analytics', icon: BarChart3 },
@@ -503,8 +515,11 @@ export default function ShooterProfile() {
             ].map(tab => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`py-2 px-4 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setMobileMenuOpen(false);
+                }}
+                className={`py-2 px-3 md:px-4 border-b-2 md:border-b-2 font-medium text-sm flex items-center gap-2 ${
                   activeTab === tab.id
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -520,16 +535,16 @@ export default function ShooterProfile() {
 
       {activeTab === 'profile' && (
         <>
-          <h2 className="text-2xl font-extrabold text-blue-700 mb-4 flex items-center gap-2 justify-center">
-            <User className="w-7 h-7 text-blue-400" /> Shooter Profile
+          <h2 className="text-xl md:text-2xl font-bold text-blue-700 mb-4 flex items-center gap-2 justify-center">
+            <User className="w-5 h-5 md:w-7 md:h-7 text-blue-400" /> Shooter Profile
           </h2>
-          <form onSubmit={handleSubmit} className="space-y-6 w-full">
+          <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6 w-full">
             {/* Image Upload Section */}
-            <div className="flex flex-col items-center mb-6">
+            <div className="flex flex-col items-center mb-4 md:mb-6">
               {image ? (
-                <img src={image} alt="Shooter" className="w-32 h-32 rounded-full object-cover border-4 border-blue-200 shadow-md mb-2" />
+                <img src={image} alt="Shooter" className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-4 border-blue-200 shadow-md mb-2" />
               ) : (
-                <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 mb-2">
+                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 mb-2">
                   No Image
                 </div>
               )}
@@ -542,7 +557,7 @@ export default function ShooterProfile() {
               />
               <button
                 type="button"
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition"
+                className="px-3 py-1.5 md:px-4 md:py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition text-sm"
                 onClick={() => fileInputRef.current?.click()}
               >
                 {image ? "Change Image" : "Upload Image"}
@@ -551,34 +566,34 @@ export default function ShooterProfile() {
             </div>
 
             {/* Basic Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
               <InputBlock label="Full Name" id="fullName" icon={<User />} value={profile.fullName} onChange={handleChange} />
               <InputBlock label="Age" id="age" type="number" icon={<Calendar />} value={profile.age} onChange={handleChange} />
             </div>
 
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-3 md:gap-4">
               <InputBlock label="Experience" id="experience" icon={<Briefcase />} value={profile.experience} onChange={handleChange} />
               <InputBlock label="Achievements" id="achievements" icon={<Award />} value={profile.achievements} onChange={handleChange} />
             </div>
 
             {/* Preferred Disciplines - Multi-select */}
-            <div className="mb-6 p-6 rounded-2xl shadow-lg bg-gradient-to-br from-purple-50 via-blue-50 to-green-50 border border-blue-100">
-              <h3 className="text-xl font-extrabold mb-4 text-blue-700 flex items-center gap-2">
-                <Target className="w-6 h-6 text-blue-400" /> Preferred Disciplines
+            <div className="mb-4 md:mb-6 p-4 md:p-6 rounded-xl md:rounded-2xl shadow-md bg-gradient-to-br from-purple-50 via-blue-50 to-green-50 border border-blue-100">
+              <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4 text-blue-700 flex items-center gap-2">
+                <Target className="w-5 h-5 md:w-6 md:h-6 text-blue-400" /> Preferred Disciplines
               </h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
                 {[
                   "10m Air Pistol", "25m Pistol", "50m Pistol", 
                   "10m Air Rifle", "50m Rifle", "300m Rifle",
                   "Trap", "Skeet", "Double Trap",
                   "Running Target", "Sport Pistol", "Free Pistol"
                 ].map((discipline) => (
-                  <label key={discipline} className="flex items-center space-x-2 cursor-pointer">
+                  <label key={discipline} className="flex items-center space-x-2 cursor-pointer text-sm md:text-base">
                     <input
                       type="checkbox"
                       checked={(profile.preferredDisciplines || []).includes(discipline)}
                       onChange={() => handleDisciplineChange(discipline)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
                     />
                     <span className="text-sm font-medium text-gray-700">{discipline}</span>
                   </label>
@@ -587,12 +602,12 @@ export default function ShooterProfile() {
             </div>
 
             {/* Equipment Section */}
-            <div className="mb-6 p-6 rounded-2xl shadow-lg bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 border border-pink-100">
-              <h3 className="text-xl font-extrabold mb-4 text-pink-700 flex items-center gap-2">
-                <Package className="w-6 h-6 text-pink-400" /> Equipment & Preferences
+            <div className="mb-4 md:mb-6 p-4 md:p-6 rounded-xl md:rounded-2xl shadow-md bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 border border-pink-100">
+              <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4 text-pink-700 flex items-center gap-2">
+                <Package className="w-5 h-5 md:w-6 md:h-6 text-pink-400" /> Equipment & Preferences
               </h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-3 md:mb-4">
                 {/* Favorite Gun Dropdown */}
                 <SelectBlock
                   label="Favorite Gun"
@@ -619,7 +634,7 @@ export default function ShooterProfile() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                 {/* Favorite Stance */}
                 <SelectBlock
                   label="Favorite Stance"
@@ -644,7 +659,7 @@ export default function ShooterProfile() {
 
               {/* Custom gun input if "Other" is selected */}
               {profile.favoriteGun === "Other" && (
-                <div className="mt-4">
+                <div className="mt-3 md:mt-4">
                   <InputBlock
                     label="Specify Your Favorite Gun"
                     id="customGun"
@@ -657,7 +672,7 @@ export default function ShooterProfile() {
 
               {/* Custom ammunition input if "Other" is selected */}
               {profile.favoriteAmmunition === "Other" && (
-                <div className="mt-4">
+                <div className="mt-3 md:mt-4">
                   <InputBlock
                     label="Specify Your Favorite Ammunition"
                     id="customAmmunition"
@@ -670,12 +685,12 @@ export default function ShooterProfile() {
             </div>
 
             {/* Physical Details Section */}
-            <div className="mb-8 p-6 rounded-2xl shadow-lg bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 border border-blue-100">
-              <h3 className="text-xl font-extrabold mb-4 text-blue-700 flex items-center gap-2">
-                <User className="w-6 h-6 text-blue-400" /> Physical Details
+            <div className="mb-6 md:mb-8 p-4 md:p-6 rounded-xl md:rounded-2xl shadow-md bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 border border-blue-100">
+              <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4 text-blue-700 flex items-center gap-2">
+                <User className="w-5 h-5 md:w-6 md:h-6 text-blue-400" /> Physical Details
               </h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                 <InputBlock 
                   label="Height (cm)" 
                   id="height" 
@@ -694,7 +709,7 @@ export default function ShooterProfile() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mt-3 md:mt-4">
                 <InputBlock 
                   label="Left Eye Sight" 
                   id="leftEyeSight" 
@@ -719,7 +734,7 @@ export default function ShooterProfile() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full py-3 text-lg font-bold bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg hover:from-purple-500 hover:to-blue-500 transition rounded-lg mt-4">
+            <Button type="submit" className="w-full py-2 md:py-3 text-base md:text-lg font-bold bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-md hover:from-purple-500 hover:to-blue-500 transition rounded-lg mt-4">
               {isNewProfile ? "Create Profile" : "Update Profile"}
             </Button>
           </form>
@@ -728,41 +743,41 @@ export default function ShooterProfile() {
 
       {activeTab === 'analytics' && (
         <>
-          <h2 className="text-2xl font-extrabold text-blue-700 mb-4 flex items-center gap-2 justify-center">
-            <BarChart3 className="w-7 h-7 text-blue-400" /> Shooting Analytics
+          <h2 className="text-xl md:text-2xl font-bold text-blue-700 mb-4 flex items-center gap-2 justify-center">
+            <BarChart3 className="w-5 h-5 md:w-7 md:h-7 text-blue-400" /> Shooting Analytics
           </h2>
 
           {/* Filters */}
-          <div className="mb-6 p-4 bg-white rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Filter className="w-5 h-5 text-blue-600" />
+          <div className="mb-4 md:mb-6 p-3 md:p-4 bg-white rounded-lg md:rounded-xl shadow-md border border-gray-200">
+            <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4 flex items-center gap-2">
+              <Filter className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
               Filters
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Start Date</label>
+                <label className="block text-xs md:text-sm font-medium mb-1">Start Date</label>
                 <input
                   type="date"
                   value={dateFilter.startDate}
                   onChange={(e) => setDateFilter(prev => ({ ...prev, startDate: e.target.value }))}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-xs md:text-sm"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">End Date</label>
+                <label className="block text-xs md:text-sm font-medium mb-1">End Date</label>
                 <input
                   type="date"
                   value={dateFilter.endDate}
                   onChange={(e) => setDateFilter(prev => ({ ...prev, endDate: e.target.value }))}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-xs md:text-sm"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Year</label>
+                <label className="block text-xs md:text-sm font-medium mb-1">Year</label>
                 <select
                   value={yearFilter}
                   onChange={(e) => setYearFilter(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-xs md:text-sm"
                 >
                   <option value="all">All Years</option>
                   {years.map(year => (
@@ -771,11 +786,11 @@ export default function ShooterProfile() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Discipline</label>
+                <label className="block text-xs md:text-sm font-medium mb-1">Discipline</label>
                 <select
                   value={disciplineFilter}
                   onChange={(e) => setDisciplineFilter(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-xs md:text-sm"
                 >
                   <option value="all">All Disciplines</option>
                   {disciplines.map(discipline => (
@@ -787,195 +802,205 @@ export default function ShooterProfile() {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-            <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-200">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-4 mb-4 md:mb-6">
+            <div className="bg-white p-3 md:p-4 rounded-lg md:rounded-xl shadow-md border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Total Sessions</p>
-                  <p className="text-2xl font-bold text-blue-600">{stats.totalSessions || 0}</p>
+                  <p className="text-xs md:text-sm text-gray-600">Total Sessions</p>
+                  <p className="text-lg md:text-2xl font-bold text-blue-600">{stats.totalSessions || 0}</p>
                 </div>
-                <Target className="w-8 h-8 text-blue-600" />
+                <Target className="w-5 h-5 md:w-8 md:h-8 text-blue-600" />
               </div>
             </div>
-            <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-200">
+            <div className="bg-white p-3 md:p-4 rounded-lg md:rounded-xl shadow-md border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Avg Score</p>
-                  <p className="text-2xl font-bold text-green-600">{stats.avgScore?.toFixed(1) || 0}</p>
+                  <p className="text-xs md:text-sm text-gray-600">Avg Score</p>
+                  <p className="text-lg md:text-2xl font-bold text-green-600">{stats.avgScore?.toFixed(1) || 0}</p>
                 </div>
-                <Award className="w-8 h-8 text-green-600" />
+                <Award className="w-5 h-5 md:w-8 md:h-8 text-green-600" />
               </div>
             </div>
-            <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-200">
+            <div className="bg-white p-3 md:p-4 rounded-lg md:rounded-xl shadow-md border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Avg Accuracy</p>
-                  <p className="text-2xl font-bold text-purple-600">{stats.avgAccuracy?.toFixed(1) || 0}%</p>
+                  <p className="text-xs md:text-sm text-gray-600">Avg Accuracy</p>
+                  <p className="text-lg md:text-2xl font-bold text-purple-600">{stats.avgAccuracy?.toFixed(1) || 0}%</p>
                 </div>
-                <TrendingUp className="w-8 h-8 text-purple-600" />
+                <TrendingUp className="w-5 h-5 md:w-8 md:h-8 text-purple-600" />
               </div>
             </div>
-            <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-200">
+            <div className="bg-white p-3 md:p-4 rounded-lg md:rounded-xl shadow-md border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Best Score</p>
-                  <p className="text-2xl font-bold text-orange-600">{stats.bestScore || 0}</p>
+                  <p className="text-xs md:text-sm text-gray-600">Best Score</p>
+                  <p className="text-lg md:text-2xl font-bold text-orange-600">{stats.bestScore || 0}</p>
                 </div>
-                <Award className="w-8 h-8 text-orange-600" />
+                <Award className="w-5 h-5 md:w-8 md:h-8 text-orange-600" />
               </div>
             </div>
-            <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-200">
+            <div className="bg-white p-3 md:p-4 rounded-lg md:rounded-xl shadow-md border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Avg Group Size</p>
-                  <p className="text-2xl font-bold text-red-600">{stats.avgGroupSize?.toFixed(1) || 0}mm</p>
+                  <p className="text-xs md:text-sm text-gray-600">Avg Group Size</p>
+                  <p className="text-lg md:text-2xl font-bold text-red-600">{stats.avgGroupSize?.toFixed(1) || 0}mm</p>
                 </div>
-                <Target className="w-8 h-8 text-red-600" />
+                <Target className="w-5 h-5 md:w-8 md:h-8 text-red-600" />
               </div>
             </div>
           </div>
 
           {shootingData.length === 0 ? (
-            <div className="bg-white p-8 rounded-xl shadow-lg text-center">
-              <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">No Shooting Data Available</h3>
-              <p className="text-gray-500">Upload your shooting session CSV files to see detailed analytics and performance trends.</p>
+            <div className="bg-white p-6 md:p-8 rounded-lg md:rounded-xl shadow-md text-center">
+              <BarChart3 className="w-12 h-12 md:w-16 md:h-16 text-gray-400 mx-auto mb-3 md:mb-4" />
+              <h3 className="text-lg md:text-xl font-semibold text-gray-600 mb-2">No Shooting Data Available</h3>
+              <p className="text-gray-500 text-sm md:text-base">Upload your shooting session CSV files to see detailed analytics and performance trends.</p>
             </div>
           ) : (
             <>
               {/* Analytics Charts */}
-              <div className="space-y-6">
+              <div className="space-y-4 md:space-y-6">
                 {/* Performance Overview Chart */}
-                <div className="bg-white rounded-xl shadow-lg p-6">
-                  <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-blue-600" />
+                <div className="bg-white rounded-lg md:rounded-xl shadow-md p-4 md:p-6">
+                  <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
                     Performance Overview
                   </h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={prepareAccuracyTrendData()}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="sessionNumber" />
-                      <YAxis />
-                      <Tooltip 
-                        labelFormatter={(value) => `Session ${value}`}
-                        formatter={(value: number, name: string) => [
-                          name === 'accuracy' ? `${value}%` : 
-                          name === 'groupSize' ? `${value}mm` : value,
-                          name === 'accuracy' ? 'Accuracy' :
-                          name === 'score' ? 'Score' :
-                          name === 'groupSize' ? 'Group Size' : 
-                          name === 'innerTens' ? 'Inner Tens' : name
-                        ]}
-                      />
-                      <Legend />
-                      <Line type="monotone" dataKey="accuracy" stroke="#8884d8" name="Accuracy %" strokeWidth={2} />
-                      <Line type="monotone" dataKey="score" stroke="#82ca9d" name="Score" strokeWidth={2} />
-                      <Line type="monotone" dataKey="innerTens" stroke="#ffc658" name="Inner Tens" strokeWidth={2} />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  <div className="h-64 md:h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={prepareAccuracyTrendData()}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="sessionNumber" />
+                        <YAxis />
+                        <Tooltip 
+                          labelFormatter={(value) => `Session ${value}`}
+                          formatter={(value: number, name: string) => [
+                            name === 'accuracy' ? `${value}%` : 
+                            name === 'groupSize' ? `${value}mm` : value,
+                            name === 'accuracy' ? 'Accuracy' :
+                            name === 'score' ? 'Score' :
+                            name === 'groupSize' ? 'Group Size' : 
+                            name === 'innerTens' ? 'Inner Tens' : name
+                          ]}
+                        />
+                        <Legend />
+                        <Line type="monotone" dataKey="accuracy" stroke="#8884d8" name="Accuracy %" strokeWidth={2} />
+                        <Line type="monotone" dataKey="score" stroke="#82ca9d" name="Score" strokeWidth={2} />
+                        <Line type="monotone" dataKey="innerTens" stroke="#ffc658" name="Inner Tens" strokeWidth={2} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
 
                 {/* Monthly Performance Analysis */}
-                <div className="bg-white rounded-xl shadow-lg p-6">
-                  <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-purple-600" />
+                <div className="bg-white rounded-lg md:rounded-xl shadow-md p-4 md:p-6">
+                  <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 md:w-5 md:h-5 text-purple-600" />
                     Monthly Performance Analysis
                   </h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <AreaChart data={prepareMonthlyData()}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip 
-                        formatter={(value: number, name: string) => [
-                          name.includes('Score') ? Math.round(value) : 
-                          name.includes('Accuracy') ? `${value}%` :
-                          name.includes('Group') ? `${value}mm` : value,
-                          name
-                        ]}
-                      />
-                      <Legend />
-                      <Area type="monotone" dataKey="avgScore" stackId="1" stroke="#8884d8" fill="#8884d8" name="Avg Score" />
-                      <Area type="monotone" dataKey="avgAccuracy" stackId="2" stroke="#82ca9d" fill="#82ca9d" name="Avg Accuracy %" />
-                      <Area type="monotone" dataKey="sessions" stackId="3" stroke="#ffc658" fill="#ffc658" name="Sessions" />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  <div className="h-64 md:h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={prepareMonthlyData()}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <Tooltip 
+                          formatter={(value: number, name: string) => [
+                            name.includes('Score') ? Math.round(value) : 
+                            name.includes('Accuracy') ? `${value}%` :
+                            name.includes('Group') ? `${value}mm` : value,
+                            name
+                          ]}
+                        />
+                        <Legend />
+                        <Area type="monotone" dataKey="avgScore" stackId="1" stroke="#8884d8" fill="#8884d8" name="Avg Score" />
+                        <Area type="monotone" dataKey="avgAccuracy" stackId="2" stroke="#82ca9d" fill="#82ca9d" name="Avg Accuracy %" />
+                        <Area type="monotone" dataKey="sessions" stackId="3" stroke="#ffc658" fill="#ffc658" name="Sessions" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
 
                 {/* Training Frequency Chart */}
-                <div className="bg-white rounded-xl shadow-lg p-6">
-                  <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-green-600" />
+                <div className="bg-white rounded-lg md:rounded-xl shadow-md p-4 md:p-6">
+                  <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 flex items-center gap-2">
+                    <Calendar className="w-4 h-4 md:w-5 md:h-5 text-green-600" />
                     Training Frequency
                   </h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={prepareFrequencyData()}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="totalVisits" fill="#8884d8" name="Total Visits" />
-                      <Bar dataKey="shootingSessions" fill="#82ca9d" name="With CSV Data" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <div className="h-64 md:h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={prepareFrequencyData()}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="totalVisits" fill="#8884d8" name="Total Visits" />
+                        <Bar dataKey="shootingSessions" fill="#82ca9d" name="With CSV Data" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
 
                 {/* Discipline Comparison */}
                 {prepareDisciplineData().length > 1 && (
-                  <div className="bg-white rounded-xl shadow-lg p-6">
-                    <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                      <Target className="w-5 h-5 text-orange-600" />
+                  <div className="bg-white rounded-lg md:rounded-xl shadow-md p-4 md:p-6">
+                    <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 flex items-center gap-2">
+                      <Target className="w-4 h-4 md:w-5 md:h-5 text-orange-600" />
                       Performance by Discipline
                     </h3>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <ResponsiveContainer width="100%" height={250}>
-                        <BarChart data={prepareDisciplineData()}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" />
-                          <YAxis />
-                          <Tooltip formatter={(value: number, name: string) => [
-                            name.includes('Accuracy') ? `${value}%` : Math.round(value),
-                            name
-                          ]} />
-                          <Legend />
-                          <Bar dataKey="avgScore" fill="#8884d8" name="Avg Score" />
-                          <Bar dataKey="avgAccuracy" fill="#82ca9d" name="Avg Accuracy %" />
-                        </BarChart>
-                      </ResponsiveContainer>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={prepareDisciplineData()}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <Tooltip formatter={(value: number, name: string) => [
+                              name.includes('Accuracy') ? `${value}%` : Math.round(value),
+                              name
+                            ]} />
+                            <Legend />
+                            <Bar dataKey="avgScore" fill="#8884d8" name="Avg Score" />
+                            <Bar dataKey="avgAccuracy" fill="#82ca9d" name="Avg Accuracy %" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
                       
-                      <ResponsiveContainer width="100%" height={250}>
-                        <PieChart>
-                          <Pie
-                            data={prepareDisciplineData()}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={({ name, sessions }: any) => `${name}: ${sessions}`}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="sessions"
-                          >
-                            {prepareDisciplineData().map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
-                      </ResponsiveContainer>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={prepareDisciplineData()}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({ name, sessions }: any) => `${name}: ${sessions}`}
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="sessions"
+                            >
+                              {prepareDisciplineData().map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Enhanced Insights */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                <div className="bg-white p-6 rounded-xl shadow-lg">
-                  <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-green-600" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-4 md:mt-6">
+                <div className="bg-white p-4 md:p-6 rounded-lg md:rounded-xl shadow-md">
+                  <h4 className="text-base md:text-lg font-semibold mb-3 md:mb-4 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-green-600" />
                     Performance Insights
                   </h4>
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-2 text-xs md:text-sm">
                     {filteredData.length > 5 && (
                       <>
                         <p>• Recent trend: {
@@ -1011,12 +1036,12 @@ export default function ShooterProfile() {
                   </div>
                 </div>
                 
-                <div className="bg-white p-6 rounded-xl shadow-lg">
-                  <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <Target className="w-5 h-5 text-blue-600" />
+                <div className="bg-white p-4 md:p-6 rounded-lg md:rounded-xl shadow-md">
+                  <h4 className="text-base md:text-lg font-semibold mb-3 md:mb-4 flex items-center gap-2">
+                    <Target className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
                     Technical Analysis
                   </h4>
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-2 text-xs md:text-sm">
                     <p>• Total shots fired: {filteredData.reduce((sum, s) => sum + s.totalShots, 0)}</p>
                     <p>• Total inner tens: {filteredData.reduce((sum, s) => sum + s.innerTens, 0)}</p>
                     <p>• Inner ten rate: {
@@ -1041,8 +1066,8 @@ export default function ShooterProfile() {
 
       {activeTab === 'bills' && (
         <>
-          <h2 className="text-2xl font-extrabold text-blue-700 mb-4 flex items-center gap-2 justify-center">
-            <Receipt className="w-7 h-7 text-blue-400" /> Bills Management
+          <h2 className="text-xl md:text-2xl font-bold text-blue-700 mb-4 flex items-center gap-2 justify-center">
+            <Receipt className="w-5 h-5 md:w-7 md:h-7 text-blue-400" /> Bills Management
           </h2>
           <ShooterBills />
         </>
@@ -1050,8 +1075,8 @@ export default function ShooterProfile() {
 
       {activeTab === 'scanner' && (
         <>
-          <h2 className="text-2xl font-extrabold text-blue-700 mb-4 flex items-center gap-2 justify-center">
-            <ScanLine className="w-7 h-7 text-blue-400" /> Document Scanner
+          <h2 className="text-xl md:text-2xl font-bold text-blue-700 mb-4 flex items-center gap-2 justify-center">
+            <ScanLine className="w-5 h-5 md:w-7 md:h-7 text-blue-400" /> Document Scanner
           </h2>
           <ShooterScanner />
         </>
@@ -1074,7 +1099,7 @@ interface InputBlockProps {
 function InputBlock({ label, id, icon, type = "text", value, onChange, placeholder }: InputBlockProps) {
   return (
     <div>
-      <Label htmlFor={id} className="flex items-center gap-2 font-semibold text-blue-700">
+      <Label htmlFor={id} className="flex items-center gap-2 font-semibold text-blue-700 text-sm md:text-base">
         {icon && <span className="text-blue-400">{icon}</span>} {label}
       </Label>
       <Input
@@ -1084,7 +1109,7 @@ function InputBlock({ label, id, icon, type = "text", value, onChange, placehold
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="mt-1 w-full rounded-lg border border-blue-200 focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm"
+        className="mt-1 w-full rounded-lg border border-blue-200 focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm text-sm md:text-base p-2 md:p-2.5"
       />
     </div>
   );
@@ -1102,15 +1127,15 @@ interface SelectBlockProps {
 function SelectBlock({ label, id, value, onChange, options }: SelectBlockProps) {
   return (
     <div>
-      <Label htmlFor={id} className="flex items-center gap-2 text-pink-700 font-semibold">
-        <Star className="w-5 h-5 text-pink-400" /> {label}
+      <Label htmlFor={id} className="flex items-center gap-2 text-pink-700 font-semibold text-sm md:text-base">
+        <Star className="w-4 h-4 md:w-5 md:h-5 text-pink-400" /> {label}
       </Label>
       <select
         id={id}
         name={id}
         value={value}
         onChange={onChange}
-        className="mt-1 w-full rounded-lg border border-pink-200 focus:ring-2 focus:ring-pink-300 focus:border-pink-400 transition shadow-sm p-2"
+        className="mt-1 w-full rounded-lg border border-pink-200 focus:ring-2 focus:ring-pink-300 focus:border-pink-400 transition shadow-sm p-2 md:p-2.5 text-sm md:text-base"
       >
         <option value="">Select {label}</option>
         {options.map((opt: string) => (

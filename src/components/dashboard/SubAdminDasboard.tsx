@@ -6,7 +6,7 @@ import { collection, query, where, onSnapshot, doc, updateDoc, orderBy, Timestam
 import { db } from "../../firebase/config"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
-import { Users, Target, Calendar, MapPin, Plus, X, Eye, EyeOff, Trash2, AlertCircle, CheckCircle, Clock, RefreshCw } from 'lucide-react'
+import { Users, Target, Calendar, MapPin, Plus, X, Eye, EyeOff, Trash2, AlertCircle, CheckCircle, Clock, RefreshCw, Menu, LogOut } from 'lucide-react'
 
 // TypeScript Interfaces
 interface User {
@@ -108,6 +108,7 @@ export default function SubAdminDashboard(): JSX.Element {
     email: '',
     password: ''
   })
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false)
 
   // Cloud Functions API calls (only for create and delete)
   const API_BASE_URL: string = ' https://us-central1-global-shooting-league.cloudfunctions.net' // Replace with your actual Cloud Functions URL
@@ -482,6 +483,7 @@ export default function SubAdminDashboard(): JSX.Element {
 
   const handleNavigate = (path: string): void => {
     navigate(path)
+    setMobileMenuOpen(false)
   }
 
   const handleSignOut = async (): Promise<void> => {
@@ -509,15 +511,24 @@ export default function SubAdminDashboard(): JSX.Element {
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 sm:p-6 gap-4">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-800">Sub-Admin Dashboard</h1>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <h2 className="text-lg sm:text-xl text-gray-600">
+          <div className="flex items-center justify-between w-full sm:w-auto">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Sub-Admin Dashboard</h1>
+            <button 
+              className="sm:hidden text-gray-600"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              <Menu size={24} />
+            </button>
+          </div>
+          <div className={`${mobileMenuOpen ? 'flex' : 'hidden'} sm:flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto bg-white sm:bg-transparent p-4 sm:p-0 absolute sm:relative top-16 left-0 right-0 shadow-lg sm:shadow-none z-10`}>
+            <h2 className="text-base sm:text-lg text-gray-600">
               {user?.displayName?.split(' | ')[0] || user?.email}
             </h2>
             <button 
               onClick={handleSignOut}
-              className="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg transition-colors duration-200 shadow-md"
+              className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg transition-colors duration-200 shadow-md w-full sm:w-auto"
             >
+              <LogOut size={16} />
               Sign Out
             </button>
           </div>
@@ -542,120 +553,122 @@ export default function SubAdminDashboard(): JSX.Element {
         </div>
       )}
 
-      <div className="p-4 sm:p-6 space-y-8">
+      <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
         {/* Management Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          <Card className="bg-white shadow-lg hover:shadow-xl transition-all duration-300 border-0 cursor-pointer transform hover:-translate-y-1"
+        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <Card className="bg-white shadow-md hover:shadow-lg transition-all duration-300 border-0 cursor-pointer transform hover:-translate-y-1"
             onClick={() => handleNavigate('/dashboard/sub-admin/shooters-data')}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-semibold text-gray-800">Shooters Data</CardTitle>
-                <Target className="h-6 w-6 text-blue-500" />
+                <CardTitle className="text-base sm:text-lg font-semibold text-gray-800">Shooters Data</CardTitle>
+                <Target className="h-5 w-5 sm:h-6 sm:w-6 text-blue-500" />
               </div>
-              <CardDescription className="text-gray-600">Manage Shooters Data here</CardDescription>
+              <CardDescription className="text-sm text-gray-600">Manage Shooters Data here</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-500">View and manage shooters data</p>
+              <p className="text-xs sm:text-sm text-gray-500">View and manage shooters data</p>
             </CardContent>
           </Card>
 
           <Card 
-            className="bg-white shadow-lg hover:shadow-xl transition-all duration-300 border-0 cursor-pointer transform hover:-translate-y-1"
+            className="bg-white shadow-md hover:shadow-lg transition-all duration-300 border-0 cursor-pointer transform hover:-translate-y-1"
             onClick={() => handleNavigate('/dashboard/sub-admin/range-owners')}
           >
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-semibold text-gray-800">Range Owners</CardTitle>
-                <Users className="h-6 w-6 text-green-500" />
+                <CardTitle className="text-base sm:text-lg font-semibold text-gray-800">Range Owners</CardTitle>
+                <Users className="h-5 w-5 sm:h-6 sm:w-6 text-green-500" />
               </div>
-              <CardDescription className="text-gray-600">Manage range owners</CardDescription>
+              <CardDescription className="text-sm text-gray-600">Manage range owners</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-500">View registered range owners</p>
+              <p className="text-xs sm:text-sm text-gray-500">View registered range owners</p>
             </CardContent>
           </Card>
 
           <Card 
-            className="bg-white shadow-lg hover:shadow-xl transition-all duration-300 border-0 cursor-pointer transform hover:-translate-y-1"
+            className="bg-white shadow-md hover:shadow-lg transition-all duration-300 border-0 cursor-pointer transform hover:-translate-y-1"
             onClick={() => handleNavigate('/dashboard/sub-admin/ranges')}
           >
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-semibold text-gray-800">Ranges</CardTitle>
-                <MapPin className="h-6 w-6 text-purple-500" />
+                <CardTitle className="text-base sm:text-lg font-semibold text-gray-800">Ranges</CardTitle>
+                <MapPin className="h-5 w-5 sm:h-6 sm:w-6 text-purple-500" />
               </div>
-              <CardDescription className="text-gray-600">Manage shooting ranges</CardDescription>
+              <CardDescription className="text-sm text-gray-600">Manage shooting ranges</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-500">Configure and manage ranges</p>
+              <p className="text-xs sm:text-sm text-gray-500">Configure and manage ranges</p>
             </CardContent>
           </Card>
 
           <Card 
-            className="bg-white shadow-lg hover:shadow-xl transition-all duration-300 border-0 cursor-pointer transform hover:-translate-y-1"
+            className="bg-white shadow-md hover:shadow-lg transition-all duration-300 border-0 cursor-pointer transform hover:-translate-y-1"
             onClick={() => handleNavigate('/dashboard/sub-admin/events')}
           >
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-semibold text-gray-800">Events</CardTitle>
-                <Calendar className="h-6 w-6 text-orange-500" />
+                <CardTitle className="text-base sm:text-lg font-semibold text-gray-800">Events</CardTitle>
+                <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-orange-500" />
               </div>
-              <CardDescription className="text-gray-600">Manage events</CardDescription>
+              <CardDescription className="text-sm text-gray-600">Manage events</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-500">Create and manage events</p>
+              <p className="text-xs sm:text-sm text-gray-500">Create and manage events</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Analytics Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Shooters Growth Chart */}
-          <Card className="bg-white shadow-lg border-0">
+          <Card className="bg-white shadow-md border-0">
             <CardHeader>
-              <CardTitle className="text-xl font-semibold text-gray-800">Shooter Account Growth</CardTitle>
-              <CardDescription className="text-gray-600">New shooter registrations over time (Real Data)</CardDescription>
+              <CardTitle className="text-lg sm:text-xl font-semibold text-gray-800">Shooter Account Growth</CardTitle>
+              <CardDescription className="text-sm text-gray-600">New shooter registrations over time (Real Data)</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={shootersData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
-                  <XAxis dataKey="name" stroke="#6b7280" />
-                  <YAxis stroke="#6b7280" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#f8fafc', 
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '8px'
-                    }} 
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="shooters" 
-                    stroke="#3b82f6" 
-                    fill="#3b82f6" 
-                    fillOpacity={0.1}
-                    strokeWidth={3}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              <div className="h-64 sm:h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={shootersData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
+                    <XAxis dataKey="name" stroke="#6b7280" />
+                    <YAxis stroke="#6b7280" />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: '#f8fafc', 
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px'
+                      }} 
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="shooters" 
+                      stroke="#3b82f6" 
+                      fill="#3b82f6" 
+                      fillOpacity={0.1}
+                      strokeWidth={3}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
 
           {/* Bookings Chart */}
-          <Card className="bg-white shadow-lg border-0">
+          <Card className="bg-white shadow-md border-0">
             <CardHeader>
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
                 <div>
-                  <CardTitle className="text-xl font-semibold text-gray-800">Booking Analytics</CardTitle>
-                  <CardDescription className="text-gray-600">Booking trends by time period (Real Data)</CardDescription>
+                  <CardTitle className="text-lg sm:text-xl font-semibold text-gray-800">Booking Analytics</CardTitle>
+                  <CardDescription className="text-sm text-gray-600">Booking trends by time period (Real Data)</CardDescription>
                 </div>
                 <div className="flex bg-gray-100 rounded-lg p-1">
                   {(['week', 'month', 'year'] as TimeFrame[]).map((period: TimeFrame) => (
                     <button
                       key={period}
                       onClick={() => handleTimeFrameChange(period)}
-                      className={`px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 ${
+                      className={`px-2 py-1 sm:px-3 sm:py-1 rounded-md text-xs sm:text-sm font-medium transition-colors duration-200 ${
                         timeFrame === period
                           ? 'bg-white text-blue-600 shadow-sm'
                           : 'text-gray-600 hover:text-gray-800'
@@ -668,41 +681,43 @@ export default function SubAdminDashboard(): JSX.Element {
               </div>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={bookingsData[timeFrame]}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
-                  <XAxis dataKey="name" stroke="#6b7280" />
-                  <YAxis stroke="#6b7280" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#f8fafc', 
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '8px'
-                    }} 
-                  />
-                  <Bar dataKey="bookings" fill="#10b981" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="h-64 sm:h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={bookingsData[timeFrame]}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
+                    <XAxis dataKey="name" stroke="#6b7280" />
+                    <YAxis stroke="#6b7280" />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: '#f8fafc', 
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px'
+                      }} 
+                    />
+                    <Bar dataKey="bookings" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
         </div>
 
         {/* CMB Accounts Section */}
-        <Card className="bg-white shadow-lg border-0">
+        <Card className="bg-white shadow-md border-0">
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <CardTitle className="text-2xl font-semibold text-gray-800">CMB Accounts</CardTitle>
-                <CardDescription className="text-gray-600">
+                <CardTitle className="text-xl sm:text-2xl font-semibold text-gray-800">CMB Accounts</CardTitle>
+                <CardDescription className="text-sm text-gray-600">
                   Manage CMB user accounts ({cmbAccounts.length} total)
                   <span className="text-green-600 ml-2">• Live updates</span>
                 </CardDescription>
               </div>
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors duration-200 shadow-md"
+                className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg transition-colors duration-200 shadow-md text-sm sm:text-base"
               >
-                <Plus size={20} />
+                <Plus size={16} />
                 Add Account
               </button>
             </div>
@@ -710,36 +725,36 @@ export default function SubAdminDashboard(): JSX.Element {
           <CardContent>
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                <span className="ml-2 text-gray-600">Loading accounts...</span>
+                <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-500"></div>
+                <span className="ml-2 text-sm text-gray-600">Loading accounts...</span>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700">Username</th>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700">Email</th>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700">Status</th>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700">Created At</th>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700">Last Login</th>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700">Actions</th>
+                      <th className="text-left py-3 px-2 font-semibold text-gray-700 text-sm">Username</th>
+                      <th className="text-left py-3 px-2 font-semibold text-gray-700 text-sm">Email</th>
+                      <th className="text-left py-3 px-2 font-semibold text-gray-700 text-sm">Status</th>
+                      <th className="text-left py-3 px-2 font-semibold text-gray-700 text-sm">Created At</th>
+                      <th className="text-left py-3 px-2 font-semibold text-gray-700 text-sm">Last Login</th>
+                      <th className="text-left py-3 px-2 font-semibold text-gray-700 text-sm">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {cmbAccounts.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="text-center py-8 text-gray-500">
+                        <td colSpan={6} className="text-center py-8 text-gray-500 text-sm">
                           No CMB accounts found. Create your first account above.
                         </td>
                       </tr>
                     ) : (
                       cmbAccounts.map((account: CmbAccount) => (
                         <tr key={account.id} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-3 px-2 text-gray-800 font-medium">{account.username}</td>
-                          <td className="py-3 px-2 text-gray-600">{account.email}</td>
+                          <td className="py-3 px-2 text-gray-800 font-medium text-sm">{account.username}</td>
+                          <td className="py-3 px-2 text-gray-600 text-sm">{account.email}</td>
                           <td className="py-3 px-2">
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                               <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(account.status)}`}>
                                 {getStatusIcon(account.status)}
                                 {account.status}
@@ -750,7 +765,7 @@ export default function SubAdminDashboard(): JSX.Element {
                                     value={account.status}
                                     onChange={handleStatusChange(account.id)}
                                     disabled={updatingStatus[account.id]}
-                                    className="ml-2 text-xs border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                                    className="text-xs border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                                   >
                                     <option value="active">Active</option>
                                     <option value="inactive">Inactive</option>
@@ -763,19 +778,19 @@ export default function SubAdminDashboard(): JSX.Element {
                               )}
                             </div>
                           </td>
-                          <td className="py-3 px-2 text-gray-600 text-sm">
+                          <td className="py-3 px-2 text-gray-600 text-xs sm:text-sm">
                             {account.createdAt ? new Date(account.createdAt).toLocaleDateString() : 'N/A'}
                           </td>
-                          <td className="py-3 px-2 text-gray-600 text-sm">
+                          <td className="py-3 px-2 text-gray-600 text-xs sm:text-sm">
                             {account.lastLogin ? new Date(account.lastLogin).toLocaleDateString() : 'Never'}
                           </td>
                           <td className="py-3 px-2">
                             <button
                               onClick={() => handleDeleteAccount(account.id, account.username)}
-                              className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded-full transition-colors duration-200"
+                              className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 sm:p-2 rounded-full transition-colors duration-200"
                               title={`Delete ${account.username}`}
                             >
-                              <Trash2 size={16} />
+                              <Trash2 size={14} />
                             </button>
                           </td>
                         </tr>
@@ -792,24 +807,24 @@ export default function SubAdminDashboard(): JSX.Element {
       {/* Modal for Adding CMB Account */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-xl font-semibold text-gray-800">Create CMB Account</h3>
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="flex justify-between items-center p-4 sm:p-6 border-b">
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-800">Create CMB Account</h3>
               <button
                 onClick={handleModalClose}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
-                <X size={24} />
+                <X size={20} />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
                 <input
                   type="text"
                   value={formData.username}
                   onChange={handleFormChange('username')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   placeholder="Enter username (letters, numbers, underscore only)"
                   disabled={loading}
                 />
@@ -821,7 +836,7 @@ export default function SubAdminDashboard(): JSX.Element {
                   type="email"
                   value={formData.email}
                   onChange={handleFormChange('email')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   placeholder="Enter email address"
                   disabled={loading}
                 />
@@ -833,7 +848,7 @@ export default function SubAdminDashboard(): JSX.Element {
                     type={showPassword ? "text" : "password"}
                     value={formData.password}
                     onChange={handleFormChange('password')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10 text-sm"
                     placeholder="Enter password (minimum 6 characters)"
                     disabled={loading}
                   />
@@ -843,7 +858,7 @@ export default function SubAdminDashboard(): JSX.Element {
                     className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
                     disabled={loading}
                   >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">Password must be at least 6 characters long</p>
@@ -852,21 +867,21 @@ export default function SubAdminDashboard(): JSX.Element {
               {/* Modal Error/Success Messages */}
               {error && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm flex items-center gap-2">
-                  <AlertCircle size={16} />
+                  <AlertCircle size={14} />
                   {error}
                 </div>
               )}
               {success && (
                 <div className="bg-green-100 border border-green-400 text-green-700 px-3 py-2 rounded text-sm flex items-center gap-2">
-                  <CheckCircle size={16} />
+                  <CheckCircle size={14} />
                   {success}
                 </div>
               )}
             </div>
-            <div className="flex gap-3 p-6 border-t">
+            <div className="flex gap-3 p-4 sm:p-6 border-t">
               <button
                 onClick={handleModalClose}
-                className="flex-1 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
                 disabled={loading}
               >
                 Cancel
@@ -874,7 +889,7 @@ export default function SubAdminDashboard(): JSX.Element {
               <button
                 onClick={handleCreateAccount}
                 disabled={loading || !formData.username || !formData.email || !formData.password}
-                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
               >
                 {loading ? (
                   <>
