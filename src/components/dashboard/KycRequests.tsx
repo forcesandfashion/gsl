@@ -62,21 +62,8 @@ const KYCRequests: React.FC = () => {
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
 
-  // Role-based access control
-  useEffect(() => {
-    if (!user) {
-      navigate("/");
-      return;
-    }
 
-    const role = user.displayName?.split('|')[1] as string;
-    if (role !== 'admin') {
-      // Redirect non-admin users
-      console.warn('Unauthorized access attempt to KYC requests');
-      navigate("/");
-      return;
-    }
-  }, [user, navigate]);
+
 
   // Fetch KYC applications
   useEffect((): (() => void) | void => {
