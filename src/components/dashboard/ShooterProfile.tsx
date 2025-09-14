@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { User, Calendar, Award, Star, Briefcase, Target, Crosshair, Package, BarChart3, TrendingUp, Filter, Clock, FileText, ScanLine, Receipt, Menu, X } from "lucide-react";
+import { User, Calendar, Award, Star, Briefcase, Target, Crosshair, Package, BarChart3, TrendingUp, Filter, Clock, FileText, ScanLine, Receipt, Menu, X, Wallet, AlertCircle, CheckCircle, Phone, Clock as ClockIcon } from "lucide-react";
 import { db, storage } from "@/firebase/config";
 import { collection, doc, getDocs, query, setDoc, where, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -13,6 +13,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 // Import the new components
 import ShooterScanner from "@/components/dashboard/ShooterScanner";
 import ShooterBills from "@/components/dashboard/ShootersBills";
+import ShooterWallet from "@/components/dashboard/ShooterWallet";
 
 interface ShooterProfile {
   fullName: string;
@@ -31,6 +32,9 @@ interface ShooterProfile {
   dominantHand: string;
   profileImage?: string;
   totalPoints?: number;
+  phoneNumber?: string;
+  kyc?: boolean;
+  wallet?: boolean;
 }
 
 interface ShootingSession {
@@ -60,6 +64,48 @@ interface BookingData {
   discipline: string;
 }
 
+interface KYCApplication {
+  id: string;
+  status: string;
+  applicationDate: Date;
+}
+
+// Chart data interfaces
+interface MonthlyData {
+  month: string;
+  sessions: number;
+  totalScore: number;
+  totalAccuracy: number;
+  totalGroupSize: number;
+  avgScore: number;
+  avgAccuracy: number;
+  avgGroupSize: number;
+}
+
+interface FrequencyData {
+  month: string;
+  shootingSessions: number;
+  totalVisits: number;
+}
+
+interface AccuracyTrendData {
+  sessionNumber: number;
+  date: string;
+  accuracy: number;
+  score: number;
+  groupSize: number;
+  innerTens: number;
+}
+
+interface DisciplineData {
+  name: string;
+  sessions: number;
+  totalScore: number;
+  totalAccuracy: number;
+  avgScore: number;
+  avgAccuracy: number;
+}
+
 export default function ShooterProfile() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -79,6 +125,9 @@ export default function ShooterProfile() {
     rightEyeSight: "",
     dominantHand: "Right",
     profileImage: "",
+    phoneNumber: "",
+    kyc: false,
+    wallet: false,
   });
   const [loading, setLoading] = useState(false);
   const [image, setImage] = useState<string | null>(null);
@@ -94,15 +143,41 @@ export default function ShooterProfile() {
   const [dateFilter, setDateFilter] = useState<{startDate: string, endDate: string}>({ startDate: '', endDate: '' });
   const [disciplineFilter, setDisciplineFilter] = useState<string>('all');
   const [yearFilter, setYearFilter] = useState<string>('all');
+  
+  // KYC Modal state
+  const [showKycModal, setShowKycModal] = useState(false);
+  const [showKycPendingModal, setShowKycPendingModal] = useState(false);
+  const [kycPhoneNumber, setKycPhoneNumber] = useState('');
+  const [kycLoading, setKycLoading] = useState(false);
+  const [kycApplication, setKycApplication] = useState<KYCApplication | null>(null);
 
   useEffect(() => {
-    setProfileData();
-    loadAnalyticsData();
-  }, []);
+    if (user) {
+      setProfileData();
+      loadAnalyticsData();
+      checkKYCStatus();
+    }
+  }, [user]);
 
   useEffect(() => {
     applyFilters();
   }, [dateFilter, disciplineFilter, yearFilter, shootingData]);
+
+  // Check KYC status when wallet tab is accessed
+  useEffect(() => {
+    if (activeTab === 'wallet') {
+      if (profile.kyc && profile.wallet) {
+        setShowKycModal(false);
+        setShowKycPendingModal(false);
+      } else if (kycApplication) {
+        setShowKycPendingModal(true);
+        setShowKycModal(false);
+      } else {
+        setShowKycModal(true);
+        setShowKycPendingModal(false);
+      }
+    }
+  }, [activeTab, profile, kycApplication]);
 
   const setProfileData = async () => {
     if (user) {
@@ -118,12 +193,14 @@ export default function ShooterProfile() {
           setIsNewProfile(false);
           shootersSnapshot.forEach((doc) => {
             const data = doc.data() as ShooterProfile;
-            // Fix: Ensure preferredDisciplines is always an array
             const safeData = {
               ...data,
               preferredDisciplines: Array.isArray(data.preferredDisciplines) 
                 ? data.preferredDisciplines 
-                : []
+                : [],
+              kyc: data.kyc || false,
+              wallet: data.wallet || false,
+              phoneNumber: data.phoneNumber || ""
             };
             setProfile(safeData);
             setImage(data.profileImage || null);
@@ -138,12 +215,35 @@ export default function ShooterProfile() {
     }
   };
 
+  // Check KYC application status
+  const checkKYCStatus = async () => {
+    if (!user) return;
+    
+    try {
+      const kycRef = collection(db, "kyc-applications");
+      const kycQuery = query(kycRef, where("userId", "==", user.uid));
+      const kycSnapshot = await getDocs(kycQuery);
+      
+      if (!kycSnapshot.empty) {
+        kycSnapshot.forEach((doc) => {
+          const data = doc.data();
+          setKycApplication({
+            id: doc.id,
+            status: data.status,
+            applicationDate: data.applicationDate.toDate()
+          });
+        });
+      }
+    } catch (error) {
+      console.error("Error checking KYC status:", error);
+    }
+  };
+
   // Load analytics data from Firebase
   const loadAnalyticsData = async () => {
     if (!user) return;
     
     try {
-      // Load shooting sessions from main collection with shooterId filter
       const shootingSessionsRef = collection(db, "shootingSessions");
       const shootingQuery = query(shootingSessionsRef, where("shooterId", "==", user.uid));
       const shootingSnapshot = await getDocs(shootingQuery);
@@ -151,14 +251,12 @@ export default function ShooterProfile() {
       const shootingSessions: ShootingSession[] = [];
       shootingSnapshot.forEach((doc) => {
         const data = doc.data();
-        // Parse data and convert to analytics format
         const parsedData = parseShootingSessionData({ ...data, id: doc.id });
         if (parsedData) {
           shootingSessions.push(parsedData);
         }
       });
       
-      // Load bookings data
       const bookingsRef = collection(db, "bookings");
       const bookingsQuery = query(bookingsRef, where("userId", "==", user.uid));
       const bookingsSnapshot = await getDocs(bookingsQuery);
@@ -188,10 +286,8 @@ export default function ShooterProfile() {
     }
   };
 
-  // Parse shooting session data with proper return type
   const parseShootingSessionData = (sessionData: any): ShootingSession | null => {
     try {
-      // Check if we have the necessary data
       if (!sessionData.sessionStats && !sessionData.totalScore) return null;
       
       let totalScore = 0;
@@ -199,34 +295,27 @@ export default function ShooterProfile() {
       let series: any[] = [];
       let discipline = 'Air Pistol 60';
       let totalShots = 60;
-      let overallGroupSize = 35; // Default average group size
+      let overallGroupSize = 35;
       
-      // Use sessionStats if available (from your sample data)
       if (sessionData.sessionStats) {
         totalScore = sessionData.sessionStats.totalScore || 0;
         innerTens = sessionData.sessionStats.innerTens || 0;
         discipline = sessionData.sessionStats.discipline || 'Air Pistol 60';
         
-        // Set total shots based on discipline
         if (discipline.includes('60')) totalShots = 60;
         else if (discipline.includes('40')) totalShots = 40;
-      } 
-      // Otherwise use direct values if available
-      else {
+      } else {
         totalScore = sessionData.totalScore || 0;
         innerTens = sessionData.innerTens || 0;
         discipline = sessionData.discipline || 'Air Pistol 60';
       }
       
-      // Calculate accuracy
       const maxScore = discipline.includes('60') ? 600 : 
                       discipline.includes('40') ? 400 : 600;
       const accuracy = totalScore > 0 ? (totalScore / maxScore * 100) : 0;
       
-      // Get session date
       let sessionDate = '';
       if (sessionData.sessionStats && sessionData.sessionStats.date) {
-        // Parse date from format "DD-MM-YYYY"
         const [day, month, year] = sessionData.sessionStats.date.split('-');
         sessionDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
       } else if (sessionData.uploadDate) {
@@ -277,13 +366,11 @@ export default function ShooterProfile() {
       filtered = filtered.filter(session => session.date <= dateFilter.endDate);
     }
     if (disciplineFilter !== 'all') {
-      // Fix: Ensure discipline is a string before using includes
       filtered = filtered.filter(session => 
         typeof session.discipline === 'string' && session.discipline.includes(disciplineFilter)
       );
     }
     if (yearFilter !== 'all') {
-      // Fix: Convert yearFilter to number for comparison
       const targetYear = parseInt(yearFilter);
       filtered = filtered.filter(session => session.year === targetYear);
     }
@@ -291,13 +378,10 @@ export default function ShooterProfile() {
     setFilteredData(filtered);
   };
 
-  // Fix: Properly type the event parameter
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     
-    // Handle number inputs
     if (type === 'number') {
-      // Fix: Handle empty string properly for number inputs
       const numericValue = value === '' ? 0 : Number(value);
       setProfile({ ...profile, [name]: numericValue });
     } else {
@@ -307,7 +391,6 @@ export default function ShooterProfile() {
 
   const handleDisciplineChange = (discipline: string) => {
     setProfile(prev => {
-      // Fix: Ensure preferredDisciplines is always an array before using includes
       const currentDisciplines = Array.isArray(prev.preferredDisciplines) 
         ? prev.preferredDisciplines 
         : [];
@@ -351,7 +434,6 @@ export default function ShooterProfile() {
       let dataToSave = { 
         ...profile, 
         uid: user.uid,
-        // Ensure preferredDisciplines is always an array when saving
         preferredDisciplines: Array.isArray(profile.preferredDisciplines) 
           ? profile.preferredDisciplines 
           : []
@@ -366,6 +448,12 @@ export default function ShooterProfile() {
           const existingData = existingDoc.data();
           if (existingData.totalPoints !== undefined) {
             dataToSave.totalPoints = existingData.totalPoints;
+          }
+          if (existingData.kyc !== undefined) {
+            dataToSave.kyc = existingData.kyc;
+          }
+          if (existingData.wallet !== undefined) {
+            dataToSave.wallet = existingData.wallet;
           }
         }
         toast({ title: "Profile Updated", description: "Your profile has been updated." });
@@ -382,14 +470,57 @@ export default function ShooterProfile() {
     }
   };
 
-  // Calculate statistics
-  const calculateStats = (): {
-    totalSessions?: number;
-    avgScore?: number;
-    avgAccuracy?: number;
-    bestScore?: number;
-    avgGroupSize?: number;
-  } => {
+  const handleKycApplication = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !profile.fullName || !kycPhoneNumber) {
+      toast({ title: "Error", description: "Please fill in all required fields" });
+      return;
+    }
+
+    setKycLoading(true);
+    try {
+      const kycApplicationRef = doc(collection(db, "kyc-applications"));
+      await setDoc(kycApplicationRef, {
+        name: profile.fullName,
+        phoneNumber: kycPhoneNumber,
+        email: user.email || '',
+        userId: user.uid,
+        description: "Apply for KYC",
+        applicationDate: new Date(),
+        status: "pending"
+      });
+
+      const shooterRef = doc(db, "shooters", user.uid);
+      await setDoc(shooterRef, {
+        ...profile,
+        phoneNumber: kycPhoneNumber,
+        uid: user.uid
+      }, { merge: true });
+
+      setProfile(prev => ({ ...prev, phoneNumber: kycPhoneNumber }));
+      setKycApplication({
+        id: kycApplicationRef.id,
+        status: "pending",
+        applicationDate: new Date()
+      });
+      
+      toast({ 
+        title: "KYC Application Submitted", 
+        description: "Your KYC application has been submitted successfully. You will be notified once approved." 
+      });
+      
+      setShowKycModal(false);
+      setKycPhoneNumber('');
+      
+    } catch (error) {
+      console.error("Error submitting KYC application:", error);
+      toast({ title: "Error", description: "Failed to submit KYC application. Please try again." });
+    } finally {
+      setKycLoading(false);
+    }
+  };
+
+  const calculateStats = () => {
     if (filteredData.length === 0) return {};
 
     const totalSessions = filteredData.length;
@@ -403,27 +534,30 @@ export default function ShooterProfile() {
 
   const stats = calculateStats();
 
-  // Prepare data for different charts
-  const prepareMonthlyData = () => {
-    const monthlyData: any = {};
+  const prepareMonthlyData = (): MonthlyData[] => {
+    const monthlyDataMap: { [key: string]: MonthlyData } = {};
+    
     filteredData.forEach(session => {
       const key = `${session.year}-${session.month.toString().padStart(2, '0')}`;
-      if (!monthlyData[key]) {
-        monthlyData[key] = { 
+      if (!monthlyDataMap[key]) {
+        monthlyDataMap[key] = { 
           month: key, 
           sessions: 0, 
           totalScore: 0, 
           totalAccuracy: 0,
-          totalGroupSize: 0
+          totalGroupSize: 0,
+          avgScore: 0,
+          avgAccuracy: 0,
+          avgGroupSize: 0
         };
       }
-      monthlyData[key].sessions++;
-      monthlyData[key].totalScore += session.totalScore;
-      monthlyData[key].totalAccuracy += parseFloat(session.accuracy);
-      monthlyData[key].totalGroupSize += parseFloat(session.avgGroupSize);
+      monthlyDataMap[key].sessions++;
+      monthlyDataMap[key].totalScore += session.totalScore;
+      monthlyDataMap[key].totalAccuracy += parseFloat(session.accuracy);
+      monthlyDataMap[key].totalGroupSize += parseFloat(session.avgGroupSize);
     });
 
-    return Object.values(monthlyData).map((data: any) => ({
+    return Object.values(monthlyDataMap).map((data) => ({
       ...data,
       avgScore: Number((data.totalScore / data.sessions).toFixed(1)),
       avgAccuracy: Number((data.totalAccuracy / data.sessions).toFixed(1)),
@@ -431,25 +565,24 @@ export default function ShooterProfile() {
     }));
   };
 
-  const prepareFrequencyData = () => {
-    const frequencyData: any = {};
+  const prepareFrequencyData = (): FrequencyData[] => {
+    const frequencyDataMap: { [key: string]: FrequencyData } = {};
     
-    // Combine shooting sessions and bookings
     [...filteredData, ...bookingData.filter(b => b.attended)].forEach(session => {
       const monthKey = `${session.year}-${session.month.toString().padStart(2, '0')}`;
-      if (!frequencyData[monthKey]) {
-        frequencyData[monthKey] = { month: monthKey, shootingSessions: 0, totalVisits: 0 };
+      if (!frequencyDataMap[monthKey]) {
+        frequencyDataMap[monthKey] = { month: monthKey, shootingSessions: 0, totalVisits: 0 };
       }
       if ('totalScore' in session) {
-        frequencyData[monthKey].shootingSessions++;
+        frequencyDataMap[monthKey].shootingSessions++;
       }
-      frequencyData[monthKey].totalVisits++;
+      frequencyDataMap[monthKey].totalVisits++;
     });
 
-    return Object.values(frequencyData);
+    return Object.values(frequencyDataMap);
   };
 
-  const prepareAccuracyTrendData = () => {
+  const prepareAccuracyTrendData = (): AccuracyTrendData[] => {
     return filteredData.map((session, index) => ({
       sessionNumber: index + 1,
       date: session.date,
@@ -460,23 +593,26 @@ export default function ShooterProfile() {
     }));
   };
 
-  const prepareDisciplineData = () => {
-    const disciplineData: any = {};
+  const prepareDisciplineData = (): DisciplineData[] => {
+    const disciplineDataMap: { [key: string]: DisciplineData } = {};
+    
     filteredData.forEach(session => {
-      if (!disciplineData[session.discipline]) {
-        disciplineData[session.discipline] = { 
+      if (!disciplineDataMap[session.discipline]) {
+        disciplineDataMap[session.discipline] = { 
           name: session.discipline, 
           sessions: 0, 
           totalScore: 0, 
-          totalAccuracy: 0 
+          totalAccuracy: 0,
+          avgScore: 0,
+          avgAccuracy: 0
         };
       }
-      disciplineData[session.discipline].sessions++;
-      disciplineData[session.discipline].totalScore += session.totalScore;
-      disciplineData[session.discipline].totalAccuracy += parseFloat(session.accuracy);
+      disciplineDataMap[session.discipline].sessions++;
+      disciplineDataMap[session.discipline].totalScore += session.totalScore;
+      disciplineDataMap[session.discipline].totalAccuracy += parseFloat(session.accuracy);
     });
 
-    return Object.values(disciplineData).map((data: any) => ({
+    return Object.values(disciplineDataMap).map((data) => ({
       ...data,
       avgScore: Number((data.totalScore / data.sessions).toFixed(1)),
       avgAccuracy: Number((data.totalAccuracy / data.sessions).toFixed(1))
@@ -510,6 +646,7 @@ export default function ShooterProfile() {
             {[
               { id: 'profile', label: 'Profile', icon: User },
               { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+              { id: 'wallet', label: 'Wallet', icon: Wallet },
               { id: 'bills', label: 'Bills', icon: Receipt },
               { id: 'scanner', label: 'Scanner', icon: ScanLine }
             ].map(tab => (
@@ -576,7 +713,7 @@ export default function ShooterProfile() {
               <InputBlock label="Achievements" id="achievements" icon={<Award />} value={profile.achievements} onChange={handleChange} />
             </div>
 
-            {/* Preferred Disciplines - Multi-select */}
+            {/* Preferred Disciplines */}
             <div className="mb-4 md:mb-6 p-4 md:p-6 rounded-xl md:rounded-2xl shadow-md bg-gradient-to-br from-purple-50 via-blue-50 to-green-50 border border-blue-100">
               <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4 text-blue-700 flex items-center gap-2">
                 <Target className="w-5 h-5 md:w-6 md:h-6 text-blue-400" /> Preferred Disciplines
@@ -608,7 +745,6 @@ export default function ShooterProfile() {
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-3 md:mb-4">
-                {/* Favorite Gun Dropdown */}
                 <SelectBlock
                   label="Favorite Gun"
                   id="favoriteGun"
@@ -621,7 +757,6 @@ export default function ShooterProfile() {
                   ]}
                 />
 
-                {/* Favorite Ammunition */}
                 <SelectBlock
                   label="Favorite Ammunition"
                   id="favoriteAmmunition"
@@ -635,7 +770,6 @@ export default function ShooterProfile() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                {/* Favorite Stance */}
                 <SelectBlock
                   label="Favorite Stance"
                   id="favoriteStance"
@@ -657,7 +791,6 @@ export default function ShooterProfile() {
                 />
               </div>
 
-              {/* Custom gun input if "Other" is selected */}
               {profile.favoriteGun === "Other" && (
                 <div className="mt-3 md:mt-4">
                   <InputBlock
@@ -670,7 +803,6 @@ export default function ShooterProfile() {
                 </div>
               )}
 
-              {/* Custom ammunition input if "Other" is selected */}
               {profile.favoriteAmmunition === "Other" && (
                 <div className="mt-3 md:mt-4">
                   <InputBlock
@@ -975,7 +1107,7 @@ export default function ShooterProfile() {
                               cx="50%"
                               cy="50%"
                               labelLine={false}
-                              label={({ name, sessions }: any) => `${name}: ${sessions}`}
+                              label={(entry: any) => `${entry.name}: ${entry.sessions}`}
                               outerRadius={80}
                               fill="#8884d8"
                               dataKey="sessions"
@@ -1011,7 +1143,7 @@ export default function ShooterProfile() {
                         <p>• Best performing discipline: {
                           prepareDisciplineData().length > 0 ? 
                           prepareDisciplineData().reduce((best, curr) => 
-                            parseFloat(curr.avgAccuracy.toString()) > parseFloat(best.avgAccuracy.toString()) ? curr : best
+                            curr.avgAccuracy > best.avgAccuracy ? curr : best
                           ).name : 'N/A'
                         }</p>
                         <p>• Average sessions per month: {
@@ -1021,6 +1153,7 @@ export default function ShooterProfile() {
                         <p>• Consistency rating: {
                           (() => {
                             const scores = filteredData.slice(-10).map(s => s.totalScore);
+                            if (scores.length === 0) return 'N/A';
                             const avg = scores.reduce((sum, score) => sum + score, 0) / scores.length;
                             const variance = scores.reduce((sum, score) => sum + Math.pow(score - avg, 2), 0) / scores.length;
                             const stdDev = Math.sqrt(variance);
@@ -1064,6 +1197,30 @@ export default function ShooterProfile() {
         </>
       )}
 
+      {activeTab === 'wallet' && (
+        <>
+          <h2 className="text-xl md:text-2xl font-bold text-blue-700 mb-4 flex items-center gap-2 justify-center">
+            <Wallet className="w-5 h-5 md:w-7 md:h-7 text-blue-400" /> Wallet Management
+          </h2>
+          
+          {profile.kyc && profile.wallet ? (
+            <ShooterWallet />
+          ) : (
+            <div className="bg-white rounded-lg md:rounded-xl shadow-md p-4 md:p-6 text-center">
+              <AlertCircle className="w-16 h-16 text-orange-500 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-orange-700 mb-2">KYC Required</h3>
+              <p className="text-gray-600 mb-4">Complete your KYC verification to activate wallet services.</p>
+              <Button 
+                onClick={() => setShowKycModal(true)}
+                className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2"
+              >
+                Apply for KYC
+              </Button>
+            </div>
+          )}
+        </>
+      )}
+
       {activeTab === 'bills' && (
         <>
           <h2 className="text-xl md:text-2xl font-bold text-blue-700 mb-4 flex items-center gap-2 justify-center">
@@ -1080,6 +1237,99 @@ export default function ShooterProfile() {
           </h2>
           <ShooterScanner />
         </>
+      )}
+
+      {/* KYC Application Modal */}
+      {showKycModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg md:rounded-xl shadow-xl max-w-md w-full p-6">
+            <div className="text-center mb-6">
+              <AlertCircle className="w-16 h-16 text-orange-500 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-gray-800 mb-2">KYC Verification Required</h3>
+              <p className="text-gray-600">Complete your KYC verification to access wallet services.</p>
+            </div>
+            
+            <form onSubmit={handleKycApplication} className="space-y-4">
+              <div>
+                <Label className="flex items-center gap-2 font-semibold text-blue-700 text-sm">
+                  <User className="w-4 h-4 text-blue-400" /> Full Name
+                </Label>
+                <Input
+                  type="text"
+                  value={profile.fullName}
+                  disabled
+                  className="mt-1 w-full rounded-lg border border-gray-300 bg-gray-50"
+                />
+              </div>
+              
+              <div>
+                <Label className="flex items-center gap-2 font-semibold text-blue-700 text-sm">
+                  <Phone className="w-4 h-4 text-blue-400" /> Phone Number
+                </Label>
+                <Input
+                  type="tel"
+                  value={kycPhoneNumber}
+                  onChange={(e) => setKycPhoneNumber(e.target.value)}
+                  placeholder="Enter your phone number"
+                  required
+                  className="mt-1 w-full rounded-lg border border-gray-300"
+                />
+              </div>
+              
+              <div className="flex gap-3 mt-6">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setShowKycModal(false);
+                    setKycPhoneNumber('');
+                  }}
+                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={kycLoading || !kycPhoneNumber}
+                  className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
+                >
+                  {kycLoading ? "Applying..." : "Apply for KYC"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* KYC Pending Modal */}
+      {showKycPendingModal && kycApplication && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg md:rounded-xl shadow-xl max-w-md w-full p-6">
+            <div className="text-center mb-6">
+              <ClockIcon className="w-16 h-16 text-blue-500 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-gray-800 mb-2">KYC Verification Pending</h3>
+              <p className="text-gray-600">
+                Your KYC application is currently being reviewed. Please wait for 2 business days to access the wallet system and make payments.
+              </p>
+            </div>
+            
+            <div className="bg-blue-50 p-4 rounded-lg mb-6">
+              <h4 className="font-semibold text-blue-800 mb-2">Application Details</h4>
+              <p className="text-sm text-blue-700">
+                <strong>Status:</strong> {kycApplication.status.charAt(0).toUpperCase() + kycApplication.status.slice(1)}
+              </p>
+              <p className="text-sm text-blue-700">
+                <strong>Submitted:</strong> {kycApplication.applicationDate.toLocaleDateString()}
+              </p>
+            </div>
+            
+            <Button
+              onClick={() => setShowKycPendingModal(false)}
+              className="w-full bg-blue-500 hover:bg-blue-600 text-white"
+            >
+              Close
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -37,6 +37,8 @@ import AdminProducts from "./AdminProducts";
 import BillsAndSubscriptions from "./BillsAndSubscriptions";
 import DeletionRequestComponent from "./DeletionRequestComponent";
 import BillsSubscriptionsComponent from "./BillsSubscriptionsComponent";
+import KYCRequests from "./KycRequests";
+
 
 const DashboardRouter = () => {
   const { userRole, loading } = useAuth();
@@ -91,6 +93,11 @@ const DashboardRouter = () => {
       <Route path="sub-admin/ranges" element={<SubAdminRanges />} />
       <Route path="sub-admin/events" element={<SubAdminEvent />} />
       <Route path="sub-admin/shooters-data" element={<SubAdminShooterData />} />
+      <Route path="sub-admin/shop" element={<AdminProducts />} />
+      <Route path="sub-admin/deletion-requests" element={<DeletionRequestComponent />} />
+      <Route path="sub-admin/billing" element={<BillsSubscriptionsComponent />} />
+      <Route path="sub-admin/kyc-requests" element={<KYCRequests />} />
+
       
 
       {/* Admin sub routes - Accessible by both admin and sub_admin */}
@@ -101,11 +108,13 @@ const DashboardRouter = () => {
       <Route path="admin/shop" element={<AdminProducts />} />
       <Route path="admin/deletion-requests" element={<DeletionRequestComponent />} />
       <Route path="admin/billing" element={<BillsSubscriptionsComponent />} />
+      <Route path="admin/kyc-requests" element={<KYCRequests />} />
       
       {/* Shooter sub-routes */}
       <Route path="shooter/bookings" element={<ShooterBooking />} />
       <Route path="shooter/events" element={<ShooterEvents />} />
       <Route path="shooter/documents" element={<UserDocumentsPage />} />
+      
       
       {/* Range owner sub-routes */}
       <Route path="range-owner/my-ranges" element={<RangeListOwners />} />
@@ -126,6 +135,7 @@ const DashboardRouter = () => {
       <Route path="cmb/ranges" element={<CmbRanges />} />
       <Route path="cmb/cmb-bookings" element={<CmbBookings />} />
       <Route path="cmb/cmb-events" element={<CmbEvents />} />
+      <Route path="cmb/billing" element={<BillsSubscriptionsComponent />} />
       
       {/* Manager sub-routes */}
       {/* Add manager-specific routes here when needed:

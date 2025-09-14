@@ -53,7 +53,9 @@ import {
   RefreshCw,
   FileX,
   CreditCard,
-  Package
+  Package,
+  FileCheck,
+  FileText
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
@@ -97,6 +99,7 @@ interface Counts {
   events: number;
   actions: number;
   billsandsubscriptions: number;
+  kycRequests: number;
   loading: boolean;
 }
 
@@ -165,6 +168,7 @@ const AdminDashboard: React.FC = () => {
     events: 0,
     actions: 0,
     billsandsubscriptions: 0,
+    kycRequests: 0,
     loading: true
   });
 
@@ -287,23 +291,25 @@ const AdminDashboard: React.FC = () => {
         const actionsSnapshot = await getDocs(collection(db, "actions"));
         const actionsCount = actionsSnapshot.size;
 
-
         const billsSnapshot = await getDocs(collection(db, "bills"));
-        const billsCount = actionsSnapshot.size;
-
+        const billsCount = billsSnapshot.size;
 
         const subscriptionsSnapshot = await getDocs(collection(db, "subscriptions"));
-        const subscriptionsCount = actionsSnapshot.size;
-
+        const subscriptionsCount = subscriptionsSnapshot.size;
 
         const billsandsubscriptions = billsCount + subscriptionsCount;
-
-        
-        
 
         // Query events collection
         const eventsSnapshot = await getDocs(collection(db, "events"));
         const eventsCount = eventsSnapshot.size;
+
+        // Query KYC applications collection
+        const kycQuery = query(
+          collection(db, "kyc-applications"),
+          where("status", "==", "pending")
+        );
+        const kycSnapshot = await getDocs(kycQuery);
+        const kycRequestsCount = kycSnapshot.size;
 
         // Update state with fetched counts
         setCounts({
@@ -314,6 +320,7 @@ const AdminDashboard: React.FC = () => {
           actions: actionsCount,
           billsandsubscriptions: billsandsubscriptions,
           events: eventsCount,
+          kycRequests: kycRequestsCount,
           loading: false
         });
       } catch (error) {
@@ -1100,6 +1107,29 @@ const AdminDashboard: React.FC = () => {
             </CardContent>
           </Card>
 
+          {/* New KYC Requests Card */}
+          <Card
+            onClick={() => navigate("/dashboard/admin/kyc-requests")}
+            className="group cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-cyan-50 to-cyan-100 border-cyan-200 hover:from-cyan-100 hover:to-cyan-200"
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-cyan-900">
+                KYC Requests
+              </CardTitle>
+              <FileCheck className="h-5 w-5 text-cyan-600 group-hover:scale-110 transition-transform" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-cyan-900">
+                {counts.loading ? (
+                  <div className="animate-pulse bg-cyan-200 h-6 w-12 rounded"></div>
+                ) : (
+                  counts.kycRequests
+                )}
+              </div>
+              <p className="text-xs text-cyan-700 mt-1">Pending verification</p>
+            </CardContent>
+          </Card>
+
           {/* New Bills & Subscriptions Card */}
           <Card
             onClick={() => navigate("/dashboard/admin/billing")}
@@ -1713,6 +1743,12 @@ const AdminDashboard: React.FC = () => {
                         <p className="text-emerald-700 font-medium">CMB Accounts</p>
                         <p className="text-emerald-900 font-bold text-lg">
                           {loadingCmbAccounts ? "..." : cmbAccounts.length}
+                        </p>
+                      </div>
+                      <div className="bg-cyan-50 p-3 rounded-lg border border-cyan-200">
+                        <p className="text-cyan-700 font-medium">KYC Requests</p>
+                        <p className="text-cyan-900 font-bold text-lg">
+                          {counts.loading ? "..." : counts.kycRequests}
                         </p>
                       </div>
                     </div>

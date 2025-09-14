@@ -1,122 +1,171 @@
-import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router'
-import { auth } from "../../firebase/config"
-import { useAuth } from "@/firebase/auth"
-import { collection, query, where, onSnapshot, doc, updateDoc, orderBy, Timestamp, Unsubscribe } from 'firebase/firestore'
-import { db } from "../../firebase/config"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
-import { Users, Target, Calendar, MapPin, Plus, X, Eye, EyeOff, Trash2, AlertCircle, CheckCircle, Clock, RefreshCw, Menu, LogOut } from 'lucide-react'
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from "@/firebase/auth";
+import { Button } from "@/components/ui/button";
+import { db } from "@/firebase/config";
+import { 
+  collection, 
+  getDocs, 
+  query, 
+  doc, 
+  updateDoc, 
+  orderBy,
+  Timestamp,
+  where,
+  onSnapshot,
+  Unsubscribe 
+} from "firebase/firestore";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { 
+  Users, 
+  Shield, 
+  Globe, 
+  MapPin, 
+  Trash2, 
+  Plus, 
+  AlertCircle, 
+  Target,
+  Calendar,
+  Eye,
+  EyeOff,
+  CheckCircle,
+  Clock,
+  X,
+  RefreshCw,
+  FileX,
+  CreditCard,
+  Package,
+  FileCheck,
+  FileText
+} from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
-// TypeScript Interfaces
-interface User {
-  uid: string
-  email: string | null
-  displayName: string | null
-  getIdToken: () => Promise<string>
-}
+// Type definitions
+type UserRole = 'admin' | 'sub_admin' | 'shooter' | 'range_owner';
 
 interface CmbAccount {
-  id: string
-  username: string
-  email: string
-  status: 'active' | 'inactive' | 'suspended' | 'deleted'
-  createdAt?: string
-  createdBy?: string
-  createdByRole?: 'admin' | 'sub_admin'
-  lastLogin?: string | null
-  loginCount?: number
-  updatedAt?: string
-  statusUpdatedAt?: string
-  statusUpdatedBy?: string
+  id: string;
+  username: string;
+  email: string;
+  status: 'active' | 'inactive' | 'suspended' | 'deleted';
+  createdAt?: string;
+  createdBy?: string;
+  createdByRole?: 'admin' | 'sub_admin';
+  lastLogin?: string | null;
+  loginCount?: number;
+  updatedAt?: string;
+  statusUpdatedAt?: string;
+  statusUpdatedBy?: string;
 }
 
-interface Shooter {
-  id: string
-  createdAt: Timestamp
-  // Add other shooter fields as needed
+interface Counts {
+  shooters: number;
+  rangeOwners: number;
+  products: number;
+  ranges: number;
+  events: number;
+  actions: number;
+  billsandsubscriptions: number;
+  kycRequests: number;
+  loading: boolean;
 }
 
-interface Booking {
-  id: string
-  createdAt: Timestamp
-  // Add other booking fields as needed
-}
-
-interface FormData {
-  username: string
-  email: string
-  password: string
+interface CmbAccountForm {
+  username: string;
+  email: string;
+  password: string;
 }
 
 interface ChartDataPoint {
-  name: string
-  shooters?: number
-  bookings?: number
+  name: string;
+  shooters?: number;
+  bookings?: number;
 }
 
 interface BookingsData {
-  week: ChartDataPoint[]
-  month: ChartDataPoint[]
-  year: ChartDataPoint[]
-}
-
-interface ApiResponse {
-  success: boolean
-  message?: string
-  error?: string
-  cmbAccountId?: string
-  username?: string
-  email?: string
-  deletedAccount?: {
-    id: string
-    username: string
-    email: string
-  }
+  week: ChartDataPoint[];
+  month: ChartDataPoint[];
+  year: ChartDataPoint[];
 }
 
 interface UpdatingStatus {
-  [accountId: string]: boolean
+  [accountId: string]: boolean;
 }
 
-type TimeFrame = 'week' | 'month' | 'year'
-// Fixed: Updated AccountStatus to include 'deleted' and match CmbAccount.status
-type AccountStatus = 'active' | 'inactive' | 'suspended' | 'deleted'
+type TimeFrame = 'week' | 'month' | 'year';
+type AccountStatus = 'active' | 'inactive' | 'suspended' | 'deleted';
 
-export default function SubAdminDashboard(): JSX.Element {
-  const { user, signOut } = useAuth()
-  const navigate = useNavigate()
-  
-  // State with proper typing
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
-  const [showPassword, setShowPassword] = useState<boolean>(false)
-  const [timeFrame, setTimeFrame] = useState<TimeFrame>('month')
-  const [loading, setLoading] = useState<boolean>(false)
-  const [cmbAccounts, setCmbAccounts] = useState<CmbAccount[]>([])
-  const [isLoading, setIsLoading] = useState<boolean>(true)
-  const [error, setError] = useState<string>('')
-  const [success, setSuccess] = useState<string>('')
-  const [updatingStatus, setUpdatingStatus] = useState<UpdatingStatus>({})
-  const [shootersData, setShootersData] = useState<ChartDataPoint[]>([])
+const SubAdminDashboard: React.FC = () => {
+  const { signOut, user } = useAuth();
+  const navigate = useNavigate();
+
+
+
+  // State for storing counts
+  const [counts, setCounts] = useState<Counts>({
+    shooters: 0,
+    rangeOwners: 0,
+    ranges: 0,
+    products: 0,
+    events: 0,
+    actions: 0,
+    billsandsubscriptions: 0,
+    kycRequests: 0,
+    loading: true
+  });
+
+  // State for CMB accounts
+  const [cmbAccounts, setCmbAccounts] = useState<CmbAccount[]>([]);
+  const [loadingCmbAccounts, setLoadingCmbAccounts] = useState<boolean>(true);
+  const [updatingStatus, setUpdatingStatus] = useState<UpdatingStatus>({});
+
+  // State for analytics
+  const [shootersData, setShootersData] = useState<ChartDataPoint[]>([]);
   const [bookingsData, setBookingsData] = useState<BookingsData>({
     week: [],
     month: [],
     year: []
-  })
-  const [formData, setFormData] = useState<FormData>({
-    username: '',
-    email: '',
-    password: ''
-  })
-  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false)
+  });
+  const [timeFrame, setTimeFrame] = useState<TimeFrame>('month');
 
-  // Cloud Functions API calls (only for create and delete)
-  const API_BASE_URL: string = ' https://us-central1-global-shooting-league.cloudfunctions.net' // Replace with your actual Cloud Functions URL
+  // State for CMB account modal
+  const [isCmbModalOpen, setIsCmbModalOpen] = useState<boolean>(false);
+  const [newCmbAccount, setNewCmbAccount] = useState<CmbAccountForm>({
+    username: "",
+    email: "",
+    password: ""
+  });
+  const [isCreatingCmb, setIsCreatingCmb] = useState<boolean>(false);
+  const [showCmbPassword, setShowCmbPassword] = useState<boolean>(false);
+
+  // State for messages
+  const [error, setError] = useState<string>("");
+  const [success, setSuccess] = useState<string>("");
+
+  const API_BASE_URL = 'https://us-central1-global-shooting-league.cloudfunctions.net';
 
   const makeAuthenticatedRequest = async (url: string, options: RequestInit = {}): Promise<Response> => {
-    if (!user) throw new Error('No authenticated user')
+    if (!user) throw new Error('No authenticated user');
     
-    const idToken: string = await user.getIdToken()
+    const idToken: string = await user.getIdToken();
     return fetch(url, {
       ...options,
       headers: {
@@ -124,82 +173,166 @@ export default function SubAdminDashboard(): JSX.Element {
         'Content-Type': 'application/json',
         ...options.headers
       }
-    })
+    });
+  };
+
+  // Get user role and name
+  const getUserInfo = () => {
+    if (!user?.displayName) return { name: user?.email || 'Sub-Admin', role: 'sub_admin' };
+    const [name, role] = user.displayName.split('|');
+    return { name: name || user.email || 'Sub-Admin', role: role as UserRole || 'sub_admin' };
+  };
+
+  const { name: userName, role: userRole } = getUserInfo();
+
+  // Loading state while checking user
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
   }
+
+  // Fetch data from Firebase collections
+  useEffect(() => {
+    const fetchCounts = async (): Promise<void> => {
+      try {
+        // Query shooters collection
+        const shootersSnapshot = await getDocs(collection(db, "shooters"));
+        const shootersCount = shootersSnapshot.size;
+
+        // Query range-owners collection
+        const rangeOwnersSnapshot = await getDocs(collection(db, "range-owners"));
+        const rangeOwnersCount = rangeOwnersSnapshot.size;
+
+        const productsSnapshot = await getDocs(collection(db, "products"));
+        const productsCount = productsSnapshot.size;
+
+        // Query ranges collection
+        const rangesSnapshot = await getDocs(collection(db, "ranges"));
+        const rangesCount = rangesSnapshot.size;
+
+        const actionsSnapshot = await getDocs(collection(db, "actions"));
+        const actionsCount = actionsSnapshot.size;
+
+        const billsSnapshot = await getDocs(collection(db, "bills"));
+        const billsCount = billsSnapshot.size;
+
+        const subscriptionsSnapshot = await getDocs(collection(db, "subscriptions"));
+        const subscriptionsCount = subscriptionsSnapshot.size;
+
+        const billsandsubscriptions = billsCount + subscriptionsCount;
+
+        // Query events collection
+        const eventsSnapshot = await getDocs(collection(db, "events"));
+        const eventsCount = eventsSnapshot.size;
+
+        // Query KYC applications collection
+        const kycQuery = query(
+          collection(db, "kyc-applications"),
+          where("status", "==", "pending")
+        );
+        const kycSnapshot = await getDocs(kycQuery);
+        const kycRequestsCount = kycSnapshot.size;
+
+        // Update state with fetched counts
+        setCounts({
+          shooters: shootersCount,
+          rangeOwners: rangeOwnersCount,
+          ranges: rangesCount,
+          products: productsCount,
+          actions: actionsCount,
+          billsandsubscriptions: billsandsubscriptions,
+          events: eventsCount,
+          kycRequests: kycRequestsCount,
+          loading: false
+        });
+      } catch (error) {
+        console.error("Error fetching collection counts:", error);
+        setCounts(prev => ({ ...prev, loading: false }));
+      }
+    };
+
+    fetchCounts();
+  }, []);
 
   // Fetch shooters data for chart
   useEffect((): (() => void) | void => {
-    if (!user) return
+    if (!user) return;
 
     try {
       const shootersQuery = query(
         collection(db, 'shooters'),
         orderBy('createdAt', 'desc')
-      )
+      );
 
       const unsubscribe: Unsubscribe = onSnapshot(shootersQuery, 
         (querySnapshot) => {
-          const shootersByMonth: { [key: string]: number } = {}
-          const currentDate = new Date()
+          const shootersByMonth: { [key: string]: number } = {};
+          const currentDate = new Date();
           
           // Initialize last 6 months
           for (let i = 5; i >= 0; i--) {
-            const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1)
-            const monthKey = date.toLocaleDateString('en-US', { month: 'short' })
-            shootersByMonth[monthKey] = 0
+            const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+            const monthKey = date.toLocaleDateString('en-US', { month: 'short' });
+            shootersByMonth[monthKey] = 0;
           }
 
           querySnapshot.forEach((doc) => {
-            const data = doc.data()
+            const data = doc.data();
             if (data.createdAt) {
-              const createdDate = data.createdAt.toDate()
-              const monthKey = createdDate.toLocaleDateString('en-US', { month: 'short' })
+              const createdDate = data.createdAt.toDate();
+              const monthKey = createdDate.toLocaleDateString('en-US', { month: 'short' });
               if (shootersByMonth.hasOwnProperty(monthKey)) {
-                shootersByMonth[monthKey]++
+                shootersByMonth[monthKey]++;
               }
             }
-          })
+          });
 
           const chartData: ChartDataPoint[] = Object.entries(shootersByMonth).map(([month, count]) => ({
             name: month,
             shooters: count
-          }))
+          }));
 
-          setShootersData(chartData)
+          setShootersData(chartData);
         },
         (err: Error) => {
-          console.error('Error fetching shooters data:', err)
+          console.error('Error fetching shooters data:', err);
         }
-      )
+      );
 
-      return () => unsubscribe()
+      return () => unsubscribe();
     } catch (err) {
-      console.error('Error setting up shooters listener:', err)
+      console.error('Error setting up shooters listener:', err);
     }
-  }, [user])
+  }, [user]);
 
   // Fetch bookings data for chart
   useEffect((): (() => void) | void => {
-    if (!user) return
+    if (!user) return;
 
     try {
       const bookingsQuery = query(
         collection(db, 'bookings'),
         orderBy('createdAt', 'desc')
-      )
+      );
 
       const unsubscribe: Unsubscribe = onSnapshot(bookingsQuery, 
         (querySnapshot) => {
-          const currentDate = new Date()
+          const currentDate = new Date();
           
           // Week data (last 7 days)
-          const weekData: { [key: string]: number } = {}
-          const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+          const weekData: { [key: string]: number } = {};
+          const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
           for (let i = 6; i >= 0; i--) {
-            const date = new Date(currentDate)
-            date.setDate(date.getDate() - i)
-            const dayKey = dayNames[date.getDay()]
-            weekData[dayKey] = 0
+            const date = new Date(currentDate);
+            date.setDate(date.getDate() - i);
+            const dayKey = dayNames[date.getDay()];
+            weekData[dayKey] = 0;
           }
 
           // Month data (last 4 weeks)
@@ -208,43 +341,43 @@ export default function SubAdminDashboard(): JSX.Element {
             'Week 2': 0,
             'Week 3': 0,
             'Week 4': 0
-          }
+          };
 
           // Year data (last 6 months)
-          const yearData: { [key: string]: number } = {}
+          const yearData: { [key: string]: number } = {};
           for (let i = 5; i >= 0; i--) {
-            const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1)
-            const monthKey = date.toLocaleDateString('en-US', { month: 'short' })
-            yearData[monthKey] = 0
+            const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+            const monthKey = date.toLocaleDateString('en-US', { month: 'short' });
+            yearData[monthKey] = 0;
           }
 
           querySnapshot.forEach((doc) => {
-            const data = doc.data()
+            const data = doc.data();
             if (data.createdAt) {
-              const createdDate = data.createdAt.toDate()
+              const createdDate = data.createdAt.toDate();
               
               // Week calculation
-              const daysDiff = Math.floor((currentDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24))
+              const daysDiff = Math.floor((currentDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
               if (daysDiff >= 0 && daysDiff < 7) {
-                const dayKey = dayNames[createdDate.getDay()]
-                weekData[dayKey]++
+                const dayKey = dayNames[createdDate.getDay()];
+                weekData[dayKey]++;
               }
 
               // Month calculation (last 4 weeks)
               if (daysDiff >= 0 && daysDiff < 28) {
-                const weekNumber = Math.floor(daysDiff / 7) + 1
+                const weekNumber = Math.floor(daysDiff / 7) + 1;
                 if (weekNumber <= 4) {
-                  monthData[`Week ${weekNumber}`]++
+                  monthData[`Week ${weekNumber}`]++;
                 }
               }
 
               // Year calculation
-              const monthKey = createdDate.toLocaleDateString('en-US', { month: 'short' })
+              const monthKey = createdDate.toLocaleDateString('en-US', { month: 'short' });
               if (yearData.hasOwnProperty(monthKey)) {
-                yearData[monthKey]++
+                yearData[monthKey]++;
               }
             }
-          })
+          });
 
           const newBookingsData: BookingsData = {
             week: Object.entries(weekData).map(([day, count]) => ({
@@ -259,42 +392,39 @@ export default function SubAdminDashboard(): JSX.Element {
               name: month,
               bookings: count
             }))
-          }
+          };
 
-          setBookingsData(newBookingsData)
+          setBookingsData(newBookingsData);
         },
         (err: Error) => {
-          console.error('Error fetching bookings data:', err)
+          console.error('Error fetching bookings data:', err);
         }
-      )
+      );
 
-      return () => unsubscribe()
+      return () => unsubscribe();
     } catch (err) {
-      console.error('Error setting up bookings listener:', err)
+      console.error('Error setting up bookings listener:', err);
     }
-  }, [user])
+  }, [user]);
 
-  // Fetch CMB accounts directly from Firestore with real-time updates
+  // Fetch CMB accounts
   useEffect((): (() => void) | void => {
-    if (!user) return
+    if (!user) return;
 
-    setIsLoading(true)
-    setError('')
+    setLoadingCmbAccounts(true);
+    setError('');
 
     try {
-      // Create query for active CMB accounts (excluding deleted ones)
       const cmbQuery = query(
         collection(db, 'cmb'),
         where('status', 'in', ['active', 'inactive', 'suspended'] as AccountStatus[]),
-        
-      )
+      );
 
-      // Set up real-time listener
       const unsubscribe: Unsubscribe = onSnapshot(cmbQuery, 
         (querySnapshot) => {
-          const accounts: CmbAccount[] = []
+          const accounts: CmbAccount[] = [];
           querySnapshot.forEach((doc) => {
-            const data = doc.data()
+            const data = doc.data();
             accounts.push({
               id: doc.id,
               username: data.username,
@@ -308,370 +438,274 @@ export default function SubAdminDashboard(): JSX.Element {
               updatedAt: data.updatedAt?.toDate().toISOString(),
               statusUpdatedAt: data.statusUpdatedAt?.toDate().toISOString(),
               statusUpdatedBy: data.statusUpdatedBy
-            })
-          })
-          setCmbAccounts(accounts)
-          setIsLoading(false)
+            });
+          });
+          setCmbAccounts(accounts);
+          setLoadingCmbAccounts(false);
         },
         (err: Error) => {
-          console.error('Error fetching CMB accounts:', err)
-          console.error('Error details:', {
-            code: (err as any).code,
-            message: err.message,
-            stack: err.stack
-          })
-          setError('Failed to fetch CMB accounts: ' + err.message)
-          setIsLoading(false)
+          console.error('Error fetching CMB accounts:', err);
+          setError('Failed to fetch CMB accounts: ' + err.message);
+          setLoadingCmbAccounts(false);
         }
-      )
+      );
 
-      // Cleanup subscription on unmount
-      return () => unsubscribe()
+      return () => unsubscribe();
     } catch (err) {
-      console.error('Error setting up CMB accounts listener:', err)
-      setError('Failed to set up real-time updates: ' + (err as Error).message)
-      setIsLoading(false)
+      console.error('Error setting up CMB accounts listener:', err);
+      setError('Failed to set up real-time updates: ' + (err as Error).message);
+      setLoadingCmbAccounts(false);
     }
-  }, [user])
+  }, [user]);
 
-  // Create CMB account using cloud function
-  const handleCreateAccount = async (): Promise<void> => {
-    if (!formData.username || !formData.email || !formData.password) {
-      setError('All fields are required')
-      return
+  const handleSignOut = async (): Promise<void> => {
+    await signOut();
+    navigate("/");
+  };
+
+  // Clear messages after 5 seconds
+  useEffect(() => {
+    if (error || success) {
+      const timer = setTimeout(() => {
+        setError("");
+        setSuccess("");
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, success]);
+
+  // Handle creating new CMB account
+  const handleCreateCmbAccount = async (): Promise<void> => {
+    if (!newCmbAccount.username || !newCmbAccount.email || !newCmbAccount.password) {
+      setError('All fields are required');
+      return;
+    }
+
+    if (newCmbAccount.password.length < 6) {
+      setError("Password must be at least 6 characters long");
+      return;
     }
 
     try {
-      setLoading(true)
-      setError('')
-      setSuccess('')
+      setIsCreatingCmb(true);
+      setError('');
+      setSuccess('');
 
-      const response: Response = await makeAuthenticatedRequest(`${API_BASE_URL}/createCmbAccount`, {
+      const response = await makeAuthenticatedRequest(`${API_BASE_URL}/createCmbAccount`, {
         method: 'POST',
-        body: JSON.stringify(formData)
-      })
+        body: JSON.stringify(newCmbAccount)
+      });
 
-      const data: ApiResponse = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create CMB account')
+        throw new Error(data.error || 'Failed to create CMB account');
       }
 
-      setSuccess('CMB account created successfully!')
-      setFormData({ username: '', email: '', password: '' })
-      setIsModalOpen(false)
+      setSuccess('CMB account created successfully!');
+      setNewCmbAccount({ username: '', email: '', password: '' });
+      setIsCmbModalOpen(false);
 
     } catch (err) {
-      console.error('Error creating CMB account:', err)
-      setError((err as Error).message || 'Failed to create CMB account')
+      console.error('Error creating CMB account:', err);
+      setError((err as Error).message || 'Failed to create CMB account');
     } finally {
-      setLoading(false)
+      setIsCreatingCmb(false);
     }
-  }
+  };
 
-  // Delete CMB account using cloud function
-  const handleDeleteAccount = async (accountId: string, username: string): Promise<void> => {
+  // Handle deleting CMB account
+  const handleDeleteCmbAccount = async (accountId: string, username: string): Promise<void> => {
     if (!confirm(`Are you sure you want to delete the CMB account "${username}"? This action cannot be undone.`)) {
-      return
+      return;
     }
 
     try {
-      setError('')
-      setSuccess('')
+      setError('');
+      setSuccess('');
 
-      const response: Response = await makeAuthenticatedRequest(`${API_BASE_URL}/deleteCmbAccount`, {
+      const response = await makeAuthenticatedRequest(`${API_BASE_URL}/deleteCmbAccount`, {
         method: 'POST',
         body: JSON.stringify({ cmbAccountId: accountId })
-      })
+      });
 
-      const data: ApiResponse = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete CMB account')
+        throw new Error(data.error || 'Failed to delete CMB account');
       }
 
-      setSuccess(`CMB account "${username}" deleted successfully!`)
+      setSuccess(`CMB account "${username}" deleted successfully!`);
 
     } catch (err) {
-      console.error('Error deleting CMB account:', err)
-      setError((err as Error).message || 'Failed to delete CMB account')
+      console.error('Error deleting CMB account:', err);
+      setError((err as Error).message || 'Failed to delete CMB account');
     }
-  }
+  };
 
-  // Update account status directly in Firestore
-  const handleStatusUpdate = async (accountId: string, newStatus: Exclude<AccountStatus, 'deleted'>): Promise<void> => {
-    if (!user) return
+  // Update CMB account status
+  const handleCmbStatusUpdate = async (accountId: string, newStatus: Exclude<AccountStatus, 'deleted'>): Promise<void> => {
+    if (!user) return;
 
     try {
-      setUpdatingStatus(prev => ({ ...prev, [accountId]: true }))
-      setError('')
-      setSuccess('')
+      setUpdatingStatus(prev => ({ ...prev, [accountId]: true }));
+      setError('');
+      setSuccess('');
 
-      const accountRef = doc(db, 'cmb', accountId)
+      const accountRef = doc(db, 'cmb', accountId);
       await updateDoc(accountRef, {
         status: newStatus,
         statusUpdatedAt: new Date(),
         statusUpdatedBy: user.uid,
         updatedAt: new Date()
-      })
+      });
 
-      setSuccess(`Account status updated to ${newStatus}!`)
+      setSuccess(`Account status updated to ${newStatus}!`);
 
     } catch (err) {
-      console.error('Error updating account status:', err)
-      setError((err as Error).message || 'Failed to update account status')
+      console.error('Error updating account status:', err);
+      setError((err as Error).message || 'Failed to update account status');
     } finally {
-      setUpdatingStatus(prev => ({ ...prev, [accountId]: false }))
+      setUpdatingStatus(prev => ({ ...prev, [accountId]: false }));
     }
-  }
+  };
 
-  // Auto-clear messages
-  useEffect((): (() => void) | void => {
-    if (success || error) {
-      const timer: NodeJS.Timeout = setTimeout(() => {
-        setSuccess('')
-        setError('')
-      }, 5000)
-      return () => clearTimeout(timer)
-    }
-  }, [success, error])
-
+  // Helper functions
   const getStatusColor = (status: AccountStatus): string => {
     switch (status) {
-      case 'active': return 'text-green-600 bg-green-100'
-      case 'inactive': return 'text-gray-600 bg-gray-100'
-      case 'suspended': return 'text-red-600 bg-red-100'
-      case 'deleted': return 'text-red-800 bg-red-200'
-      default: return 'text-gray-600 bg-gray-100'
+      case 'active': return 'text-green-600 bg-green-100';
+      case 'inactive': return 'text-gray-600 bg-gray-100';
+      case 'suspended': return 'text-red-600 bg-red-100';
+      case 'deleted': return 'text-red-800 bg-red-200';
+      default: return 'text-gray-600 bg-gray-100';
     }
-  }
+  };
 
   const getStatusIcon = (status: AccountStatus): JSX.Element => {
     switch (status) {
-      case 'active': return <CheckCircle size={16} />
-      case 'inactive': return <Clock size={16} />
-      case 'suspended': return <AlertCircle size={16} />
-      case 'deleted': return <X size={16} />
-      default: return <Clock size={16} />
+      case 'active': return <CheckCircle size={16} />;
+      case 'inactive': return <Clock size={16} />;
+      case 'suspended': return <AlertCircle size={16} />;
+      case 'deleted': return <X size={16} />;
+      default: return <Clock size={16} />;
     }
-  }
+  };
 
-  const handleFormChange = (field: keyof FormData) => (
-    e: React.ChangeEvent<HTMLInputElement>
-  ): void => {
-    const value = field === 'username' ? e.target.value.toLowerCase() : e.target.value
-    setFormData(prev => ({ ...prev, [field]: value }))
-  }
-
-  const handleModalClose = (): void => {
-    setIsModalOpen(false)
-    setFormData({ username: '', email: '', password: '' })
-    setError('')
-    setSuccess('')
-  }
-
-  const handleStatusChange = (accountId: string) => (
-    e: React.ChangeEvent<HTMLSelectElement>
-  ): void => {
-    const newStatus = e.target.value as Exclude<AccountStatus, 'deleted'>
-    handleStatusUpdate(accountId, newStatus)
-  }
-
-  const handleTimeFrameChange = (period: TimeFrame): void => {
-    setTimeFrame(period)
-  }
-
-  const handleNavigate = (path: string): void => {
-    navigate(path)
-    setMobileMenuOpen(false)
-  }
-
-  const handleSignOut = async (): Promise<void> => {
-    try {
-      await signOut()
-    } catch (err) {
-      console.error('Error signing out:', err)
-      setError('Failed to sign out. Please try again.')
-    }
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
-      </div>
-    )
-  }
+  // Calculate percentages for system statistics
+  const totalUsers: number = counts.shooters + counts.rangeOwners;
+  const shootersPercentage: string = totalUsers > 0 ? 
+    ((counts.shooters / totalUsers) * 100).toFixed(1) : "0";
+  const rangeOwnersPercentage: string = totalUsers > 0 ? 
+    ((counts.rangeOwners / totalUsers) * 100).toFixed(1) : "0";
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 sm:p-6 gap-4">
-          <div className="flex items-center justify-between w-full sm:w-auto">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Sub-Admin Dashboard</h1>
-            <button 
-              className="sm:hidden text-gray-600"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              <Menu size={24} />
-            </button>
-          </div>
-          <div className={`${mobileMenuOpen ? 'flex' : 'hidden'} sm:flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto bg-white sm:bg-transparent p-4 sm:p-0 absolute sm:relative top-16 left-0 right-0 shadow-lg sm:shadow-none z-10`}>
-            <h2 className="text-base sm:text-lg text-gray-600">
-              {user?.displayName?.split(' | ')[0] || user?.email}
-            </h2>
-            <button 
-              onClick={handleSignOut}
-              className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg transition-colors duration-200 shadow-md w-full sm:w-auto"
-            >
-              <LogOut size={16} />
-              Sign Out
-            </button>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
+      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                Sub-Admin Dashboard
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">Manage platform operations</p>
+            </div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+              <div className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-lg border">
+                <span className="font-medium">{userName}</span>
+                <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">
+                  Sub-Admin
+                </span>
+              </div>
+              <Button
+                onClick={handleSignOut}
+                variant="outline"
+                className="text-sm hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-colors"
+              >
+                Sign Out
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Alert Messages */}
-      {(success || error) && (
-        <div className="p-4">
-          {success && (
-            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 flex items-center gap-2">
-              <CheckCircle size={20} />
-              {success}
-            </div>
-          )}
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 flex items-center gap-2">
-              <AlertCircle size={20} />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+        {/* Success/Error Messages */}
+        {error && (
+          <Alert className="mb-6 border-red-200 bg-red-50 shadow-sm">
+            <AlertCircle className="h-4 w-4 text-red-600" />
+            <AlertDescription className="text-red-800">
               {error}
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
-        {/* Management Cards */}
-        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <Card className="bg-white shadow-md hover:shadow-lg transition-all duration-300 border-0 cursor-pointer transform hover:-translate-y-1"
-            onClick={() => handleNavigate('/dashboard/sub-admin/shooters-data')}>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base sm:text-lg font-semibold text-gray-800">Shooters Data</CardTitle>
-                <Target className="h-5 w-5 sm:h-6 sm:w-6 text-blue-500" />
-              </div>
-              <CardDescription className="text-sm text-gray-600">Manage Shooters Data here</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs sm:text-sm text-gray-500">View and manage shooters data</p>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="bg-white shadow-md hover:shadow-lg transition-all duration-300 border-0 cursor-pointer transform hover:-translate-y-1"
-            onClick={() => handleNavigate('/dashboard/sub-admin/range-owners')}
-          >
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base sm:text-lg font-semibold text-gray-800">Range Owners</CardTitle>
-                <Users className="h-5 w-5 sm:h-6 sm:w-6 text-green-500" />
-              </div>
-              <CardDescription className="text-sm text-gray-600">Manage range owners</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs sm:text-sm text-gray-500">View registered range owners</p>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="bg-white shadow-md hover:shadow-lg transition-all duration-300 border-0 cursor-pointer transform hover:-translate-y-1"
-            onClick={() => handleNavigate('/dashboard/sub-admin/ranges')}
-          >
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base sm:text-lg font-semibold text-gray-800">Ranges</CardTitle>
-                <MapPin className="h-5 w-5 sm:h-6 sm:w-6 text-purple-500" />
-              </div>
-              <CardDescription className="text-sm text-gray-600">Manage shooting ranges</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs sm:text-sm text-gray-500">Configure and manage ranges</p>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="bg-white shadow-md hover:shadow-lg transition-all duration-300 border-0 cursor-pointer transform hover:-translate-y-1"
-            onClick={() => handleNavigate('/dashboard/sub-admin/events')}
-          >
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base sm:text-lg font-semibold text-gray-800">Events</CardTitle>
-                <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-orange-500" />
-              </div>
-              <CardDescription className="text-sm text-gray-600">Manage events</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs sm:text-sm text-gray-500">Create and manage events</p>
-            </CardContent>
-          </Card>
-        </div>
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {success && (
+          <Alert className="mb-6 border-green-200 bg-green-50 shadow-sm">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800">
+              {success}
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Analytics Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
           {/* Shooters Growth Chart */}
-          <Card className="bg-white shadow-md border-0">
-            <CardHeader>
-              <CardTitle className="text-lg sm:text-xl font-semibold text-gray-800">Shooter Account Growth</CardTitle>
-              <CardDescription className="text-sm text-gray-600">New shooter registrations over time (Real Data)</CardDescription>
+          <Card className="bg-white/60 backdrop-blur-sm shadow-lg border-0 hover:shadow-xl transition-all duration-300">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <Target className="h-5 w-5 text-blue-600" />
+                Shooter Account Growth
+              </CardTitle>
+              <CardDescription className="text-gray-600">New shooter registrations over time</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-64 sm:h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={shootersData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
-                    <XAxis dataKey="name" stroke="#6b7280" />
-                    <YAxis stroke="#6b7280" />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: '#f8fafc', 
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '8px'
-                      }} 
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="shooters" 
-                      stroke="#3b82f6" 
-                      fill="#3b82f6" 
-                      fillOpacity={0.1}
-                      strokeWidth={3}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={shootersData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
+                  <XAxis dataKey="name" stroke="#6b7280" fontSize={12} />
+                  <YAxis stroke="#6b7280" fontSize={12} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#f8fafc', 
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      fontSize: '12px'
+                    }} 
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="shooters" 
+                    stroke="#3b82f6" 
+                    fill="#3b82f6" 
+                    fillOpacity={0.1}
+                    strokeWidth={3}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
 
           {/* Bookings Chart */}
-          <Card className="bg-white shadow-md border-0">
-            <CardHeader>
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+          <Card className="bg-white/60 backdrop-blur-sm shadow-lg border-0 hover:shadow-xl transition-all duration-300">
+            <CardHeader className="pb-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                  <CardTitle className="text-lg sm:text-xl font-semibold text-gray-800">Booking Analytics</CardTitle>
-                  <CardDescription className="text-sm text-gray-600">Booking trends by time period (Real Data)</CardDescription>
+                  <CardTitle className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-green-600" />
+                    Booking Analytics
+                  </CardTitle>
+                  <CardDescription className="text-gray-600">Booking trends by time period</CardDescription>
                 </div>
-                <div className="flex bg-gray-100 rounded-lg p-1">
+                <div className="flex bg-gray-100 rounded-lg p-1 shadow-inner">
                   {(['week', 'month', 'year'] as TimeFrame[]).map((period: TimeFrame) => (
                     <button
                       key={period}
-                      onClick={() => handleTimeFrameChange(period)}
-                      className={`px-2 py-1 sm:px-3 sm:py-1 rounded-md text-xs sm:text-sm font-medium transition-colors duration-200 ${
+                      onClick={() => setTimeFrame(period)}
+                      className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
                         timeFrame === period
-                          ? 'bg-white text-blue-600 shadow-sm'
-                          : 'text-gray-600 hover:text-gray-800'
+                          ? 'bg-white text-blue-600 shadow-sm transform scale-105'
+                          : 'text-gray-600 hover:text-gray-800 hover:bg-white/50'
                       }`}
                     >
                       {period.charAt(0).toUpperCase() + period.slice(1)}
@@ -681,229 +715,546 @@ export default function SubAdminDashboard(): JSX.Element {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="h-64 sm:h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={bookingsData[timeFrame]}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
-                    <XAxis dataKey="name" stroke="#6b7280" />
-                    <YAxis stroke="#6b7280" />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: '#f8fafc', 
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '8px'
-                      }} 
-                    />
-                    <Bar dataKey="bookings" fill="#10b981" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={bookingsData[timeFrame]}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
+                  <XAxis dataKey="name" stroke="#6b7280" fontSize={12} />
+                  <YAxis stroke="#6b7280" fontSize={12} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#f8fafc', 
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      fontSize: '12px'
+                    }} 
+                  />
+                  <Bar dataKey="bookings" fill="#10b981" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
         </div>
 
-        {/* CMB Accounts Section */}
-        <Card className="bg-white shadow-md border-0">
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <CardTitle className="text-xl sm:text-2xl font-semibold text-gray-800">CMB Accounts</CardTitle>
-                <CardDescription className="text-sm text-gray-600">
-                  Manage CMB user accounts ({cmbAccounts.length} total)
-                  <span className="text-green-600 ml-2">• Live updates</span>
-                </CardDescription>
+        {/* Main Navigation Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4 lg:gap-6 mb-8">
+          <Card
+            onClick={() => navigate("/dashboard/sub-admin/shooter-data")}
+            className="group cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:from-blue-100 hover:to-blue-200"
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-blue-900">Total Users</CardTitle>
+              <Users className="h-5 w-5 text-blue-600 group-hover:scale-110 transition-transform" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-900">
+                {counts.loading ? (
+                  <div className="animate-pulse bg-blue-200 h-6 w-16 rounded"></div>
+                ) : (
+                  totalUsers.toLocaleString()
+                )}
               </div>
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg transition-colors duration-200 shadow-md text-sm sm:text-base"
-              >
-                <Plus size={16} />
-                Add Account
-              </button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-500"></div>
-                <span className="ml-2 text-sm text-gray-600">Loading accounts...</span>
+              <p className="text-xs text-blue-700 mt-1">Shooters + Range Owners</p>
+            </CardContent>
+          </Card>
+
+          <Card 
+            onClick={() => navigate("/dashboard/sub-admin/range-owners")}
+            className="group cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-green-50 to-green-100 border-green-200 hover:from-green-100 hover:to-green-200"
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-green-900">
+                Range Owners
+              </CardTitle>
+              <Shield className="h-5 w-5 text-green-600 group-hover:scale-110 transition-transform" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-900">
+                {counts.loading ? (
+                  <div className="animate-pulse bg-green-200 h-6 w-12 rounded"></div>
+                ) : (
+                  counts.rangeOwners
+                )}
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700 text-sm">Username</th>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700 text-sm">Email</th>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700 text-sm">Status</th>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700 text-sm">Created At</th>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700 text-sm">Last Login</th>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700 text-sm">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cmbAccounts.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="text-center py-8 text-gray-500 text-sm">
-                          No CMB accounts found. Create your first account above.
-                        </td>
+              <p className="text-xs text-green-700 mt-1">Registered owners</p>
+            </CardContent>
+          </Card>
+
+          <Card
+            onClick={() => navigate("/dashboard/sub-admin/shop")}
+            className="group cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 hover:from-purple-100 hover:to-purple-200"
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-purple-900">Products</CardTitle>
+              <Package className="h-5 w-5 text-purple-600 group-hover:scale-110 transition-transform" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-purple-900">
+                {counts.loading ? (
+                  <div className="animate-pulse bg-purple-200 h-6 w-16 rounded"></div>
+                ) : (
+                  counts.products.toLocaleString()
+                )}
+              </div>
+              <p className="text-xs text-purple-700 mt-1">Total products</p>
+            </CardContent>
+          </Card>
+
+          <Card 
+            onClick={() => navigate("/dashboard/sub-admin/ranges")}
+            className="group cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-red-50 to-red-100 border-red-200 hover:from-red-100 hover:to-red-200"
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-red-900">
+                Active Ranges
+              </CardTitle>
+              <MapPin className="h-5 w-5 text-red-600 group-hover:scale-110 transition-transform" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-900">
+                {counts.loading ? (
+                  <div className="animate-pulse bg-red-200 h-6 w-12 rounded"></div>
+                ) : (
+                  counts.ranges
+                )}
+              </div>
+              <p className="text-xs text-red-700 mt-1">Total ranges</p>
+            </CardContent>
+          </Card>
+
+          <Card
+            onClick={() => navigate("/dashboard/sub-admin/events")}
+            className="group cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200 hover:from-indigo-100 hover:to-indigo-200"
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-indigo-900">
+                Total Events
+              </CardTitle>
+              <Globe className="h-5 w-5 text-indigo-600 group-hover:scale-110 transition-transform" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-indigo-900">
+                {counts.loading ? (
+                  <div className="animate-pulse bg-indigo-200 h-6 w-12 rounded"></div>
+                ) : (
+                  counts.events
+                )}
+              </div>
+              <p className="text-xs text-indigo-700 mt-1">All events</p>
+            </CardContent>
+          </Card>
+
+          <Card
+            onClick={() => navigate("/dashboard/sub-admin/deletion-requests")}
+            className="group cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 hover:from-orange-100 hover:to-orange-200"
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-orange-900">
+                Deletion Requests
+              </CardTitle>
+              <FileX className="h-5 w-5 text-orange-600 group-hover:scale-110 transition-transform" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-900">
+                {counts.loading ? (
+                  <div className="animate-pulse bg-orange-200 h-6 w-16 rounded"></div>
+                ) : (
+                  counts.actions.toLocaleString()
+                )}
+              </div>
+              <p className="text-xs text-orange-700 mt-1">Pending requests</p>
+            </CardContent>
+          </Card>
+
+          <Card
+            onClick={() => navigate("/dashboard/sub-admin/kyc-requests")}
+            className="group cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-cyan-50 to-cyan-100 border-cyan-200 hover:from-cyan-100 hover:to-cyan-200"
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-cyan-900">
+                KYC Requests
+              </CardTitle>
+              <FileCheck className="h-5 w-5 text-cyan-600 group-hover:scale-110 transition-transform" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-cyan-900">
+                {counts.loading ? (
+                  <div className="animate-pulse bg-cyan-200 h-6 w-12 rounded"></div>
+                ) : (
+                  counts.kycRequests
+                )}
+              </div>
+              <p className="text-xs text-cyan-700 mt-1">Pending verification</p>
+            </CardContent>
+          </Card>
+
+          <Card
+            onClick={() => navigate("/dashboard/sub-admin/billing")}
+            className="group cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200 hover:from-emerald-100 hover:to-emerald-200"
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-emerald-900">
+                Bills & Subscriptions
+              </CardTitle>
+              <CreditCard className="h-5 w-5 text-emerald-600 group-hover:scale-110 transition-transform" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-emerald-900">
+                {counts.loading ? (
+                  <div className="animate-pulse bg-emerald-200 h-6 w-16 rounded"></div>
+                ) : (
+                  counts.billsandsubscriptions.toLocaleString()
+                )}
+              </div>
+              <p className="text-xs text-emerald-700 mt-1">Active subscriptions</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-8">
+          {/* CMB Accounts Management */}
+          <Card className="bg-white/70 backdrop-blur-sm shadow-lg border-0 hover:shadow-xl transition-all duration-300">
+            <CardHeader>
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <div>
+                  <CardTitle className="text-2xl font-semibold text-gray-800 flex items-center gap-2">
+                    <Users className="h-6 w-6 text-blue-600" />
+                    CMB Accounts
+                  </CardTitle>
+                  <CardDescription className="text-gray-600">
+                    Manage CMB user accounts ({cmbAccounts.length} total)
+                    <span className="inline-flex items-center gap-1 text-green-600 ml-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      Live updates
+                    </span>
+                  </CardDescription>
+                </div>
+
+                {/* Add CMB Account Modal */}
+                <Dialog open={isCmbModalOpen} onOpenChange={setIsCmbModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                      <Plus className="h-4 w-4" />
+                      Add CMB Account
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <Users className="h-5 w-5 text-blue-600" />
+                        Add New CMB Account
+                      </DialogTitle>
+                      <DialogDescription>
+                        Create a new CMB user account with username, email, and password.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="cmb_username">Username</Label>
+                        <Input
+                          id="cmb_username"
+                          value={newCmbAccount.username}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
+                            setNewCmbAccount(prev => ({...prev, username: e.target.value.toLowerCase()}))
+                          }
+                          placeholder="Enter username"
+                          disabled={isCreatingCmb}
+                          className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Only letters, numbers, and underscores allowed</p>
+                      </div>
+                      <div>
+                        <Label htmlFor="cmb_email">Email</Label>
+                        <Input
+                          id="cmb_email"
+                          type="email"
+                          value={newCmbAccount.email}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
+                            setNewCmbAccount(prev => ({...prev, email: e.target.value}))
+                          }
+                          placeholder="Enter email address"
+                          disabled={isCreatingCmb}
+                          className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="cmb_password">Password</Label>
+                        <div className="relative">
+                          <Input
+                            id="cmb_password"
+                            type={showCmbPassword ? "text" : "password"}
+                            value={newCmbAccount.password}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
+                              setNewCmbAccount(prev => ({...prev, password: e.target.value}))
+                            }
+                            placeholder="Enter password (min. 6 characters)"
+                            disabled={isCreatingCmb}
+                            className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowCmbPassword(!showCmbPassword)}
+                            className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
+                            disabled={isCreatingCmb}
+                          >
+                            {showCmbPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Password must be at least 6 characters long</p>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setIsCmbModalOpen(false);
+                          setNewCmbAccount({ username: "", email: "", password: "" });
+                          setError("");
+                        }}
+                        disabled={isCreatingCmb}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={handleCreateCmbAccount} 
+                        disabled={isCreatingCmb}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        {isCreatingCmb ? (
+                          <div className="flex items-center gap-2">
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                            Creating...
+                          </div>
+                        ) : (
+                          "Create Account"
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingCmbAccounts ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                    <span className="text-gray-600">Loading accounts...</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200 bg-gray-50/50">
+                        <th className="text-left py-4 px-4 font-semibold text-gray-700">Username</th>
+                        <th className="text-left py-4 px-4 font-semibold text-gray-700">Email</th>
+                        <th className="text-left py-4 px-4 font-semibold text-gray-700">Status</th>
+                        <th className="text-left py-4 px-4 font-semibold text-gray-700">Created At</th>
+                        <th className="text-left py-4 px-4 font-semibold text-gray-700">Last Login</th>
+                        <th className="text-left py-4 px-4 font-semibold text-gray-700">Actions</th>
                       </tr>
-                    ) : (
-                      cmbAccounts.map((account: CmbAccount) => (
-                        <tr key={account.id} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-3 px-2 text-gray-800 font-medium text-sm">{account.username}</td>
-                          <td className="py-3 px-2 text-gray-600 text-sm">{account.email}</td>
-                          <td className="py-3 px-2">
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(account.status)}`}>
-                                {getStatusIcon(account.status)}
-                                {account.status}
-                              </span>
-                              {account.status !== 'deleted' && (
-                                <div className="relative">
-                                  <select
-                                    value={account.status}
-                                    onChange={handleStatusChange(account.id)}
-                                    disabled={updatingStatus[account.id]}
-                                    className="text-xs border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-                                  >
-                                    <option value="active">Active</option>
-                                    <option value="inactive">Inactive</option>
-                                    <option value="suspended">Suspended</option>
-                                  </select>
-                                  {updatingStatus[account.id] && (
-                                    <RefreshCw className="absolute right-1 top-1.5 h-3 w-3 animate-spin text-blue-500" />
-                                  )}
-                                </div>
-                              )}
+                    </thead>
+                    <tbody>
+                      {cmbAccounts.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="py-12 text-center text-gray-500">
+                            <div className="flex flex-col items-center gap-3">
+                              <Users className="h-12 w-12 text-gray-300" />
+                              <p className="font-medium">No CMB accounts found</p>
+                              <p className="text-sm">Create your first account above.</p>
                             </div>
                           </td>
-                          <td className="py-3 px-2 text-gray-600 text-xs sm:text-sm">
-                            {account.createdAt ? new Date(account.createdAt).toLocaleDateString() : 'N/A'}
-                          </td>
-                          <td className="py-3 px-2 text-gray-600 text-xs sm:text-sm">
-                            {account.lastLogin ? new Date(account.lastLogin).toLocaleDateString() : 'Never'}
-                          </td>
-                          <td className="py-3 px-2">
-                            <button
-                              onClick={() => handleDeleteAccount(account.id, account.username)}
-                              className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 sm:p-2 rounded-full transition-colors duration-200"
-                              title={`Delete ${account.username}`}
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                      ) : (
+                        cmbAccounts.map((account: CmbAccount) => (
+                          <tr key={account.id} className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
+                            <td className="py-4 px-4 font-medium text-gray-900">{account.username}</td>
+                            <td className="py-4 px-4 text-gray-700">{account.email}</td>
+                            <td className="py-4 px-4">
+                              <div className="flex items-center gap-3">
+                                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(account.status)}`}>
+                                  {getStatusIcon(account.status)}
+                                  {account.status}
+                                </span>
+                                {account.status !== 'deleted' && (
+                                  <div className="relative">
+                                    <select
+                                      value={account.status}
+                                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                                        const newStatus = e.target.value as Exclude<AccountStatus, 'deleted'>;
+                                        handleCmbStatusUpdate(account.id, newStatus);
+                                      }}
+                                      disabled={updatingStatus[account.id]}
+                                      className="text-xs border border-gray-300 rounded-md px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 transition-all"
+                                    >
+                                      <option value="active">Active</option>
+                                      <option value="inactive">Inactive</option>
+                                      <option value="suspended">Suspended</option>
+                                    </select>
+                                    {updatingStatus[account.id] && (
+                                      <RefreshCw className="absolute right-1 top-1.5 h-3 w-3 animate-spin text-blue-500" />
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-4 px-4 text-gray-600">
+                              {account.createdAt ? new Date(account.createdAt).toLocaleDateString() : 'N/A'}
+                            </td>
+                            <td className="py-4 px-4 text-gray-600">
+                              {account.lastLogin ? new Date(account.lastLogin).toLocaleDateString() : 'Never'}
+                            </td>
+                            <td className="py-4 px-4">
+                              <button
+                                onClick={() => handleDeleteCmbAccount(account.id, account.username)}
+                                className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded-full transition-all duration-200 hover:scale-110"
+                                title={`Delete ${account.username}`}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-      {/* Modal for Adding CMB Account */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-            <div className="flex justify-between items-center p-4 sm:p-6 border-b">
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-800">Create CMB Account</h3>
-              <button
-                onClick={handleModalClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-4 sm:p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
-                <input
-                  type="text"
-                  value={formData.username}
-                  onChange={handleFormChange('username')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                  placeholder="Enter username (letters, numbers, underscore only)"
-                  disabled={loading}
-                />
-                <p className="text-xs text-gray-500 mt-1">Only letters, numbers, and underscores allowed</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={handleFormChange('email')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                  placeholder="Enter email address"
-                  disabled={loading}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={formData.password}
-                    onChange={handleFormChange('password')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10 text-sm"
-                    placeholder="Enter password (minimum 6 characters)"
-                    disabled={loading}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
-                    disabled={loading}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
+          {/* System Statistics */}
+          <Card className="bg-white/70 backdrop-blur-sm shadow-lg border-0 hover:shadow-xl transition-all duration-300">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-6 w-6 text-purple-600" />
+                System Statistics
+              </CardTitle>
+              <CardDescription>Overall platform metrics and insights</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700">Shooters</span>
+                    <span className="text-sm font-semibold text-blue-600">
+                      {counts.loading ? (
+                        <div className="animate-pulse bg-blue-200 h-4 w-16 rounded"></div>
+                      ) : (
+                        `${counts.shooters} (${shootersPercentage}%)`
+                      )}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-1000 ease-out"
+                      style={{ width: `${shootersPercentage}%` }}
+                    ></div>
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Password must be at least 6 characters long</p>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700">Range Owners</span>
+                    <span className="text-sm font-semibold text-green-600">
+                      {counts.loading ? (
+                        <div className="animate-pulse bg-green-200 h-4 w-16 rounded"></div>
+                      ) : (
+                        `${counts.rangeOwners} (${rangeOwnersPercentage}%)`
+                      )}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-1000 ease-out"
+                      style={{ width: `${rangeOwnersPercentage}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700">Total Ranges</span>
+                    <span className="text-sm font-semibold text-red-600">
+                      {counts.loading ? (
+                        <div className="animate-pulse bg-red-200 h-4 w-12 rounded"></div>
+                      ) : (
+                        counts.ranges
+                      )}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div className="bg-gradient-to-r from-red-500 to-red-600 h-3 rounded-full w-full transition-all duration-1000 ease-out"></div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700">Total Events</span>
+                    <span className="text-sm font-semibold text-purple-600">
+                      {counts.loading ? (
+                        <div className="animate-pulse bg-purple-200 h-4 w-12 rounded"></div>
+                      ) : (
+                        counts.events
+                      )}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div className="bg-gradient-to-r from-purple-500 to-purple-600 h-3 rounded-full w-full transition-all duration-1000 ease-out"></div>
+                  </div>
+                </div>
+
+                <div className="pt-6 border-t border-gray-200">
+                  <h3 className="text-sm font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                    <Package className="h-4 w-4 text-indigo-600" />
+                    Collection Summary
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                      <p className="text-blue-700 font-medium">Shooters</p>
+                      <p className="text-blue-900 font-bold text-lg">
+                        {counts.loading ? "..." : counts.shooters}
+                      </p>
+                    </div>
+                    <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                      <p className="text-green-700 font-medium">Range Owners</p>
+                      <p className="text-green-900 font-bold text-lg">
+                        {counts.loading ? "..." : counts.rangeOwners}
+                      </p>
+                    </div>
+                    <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                      <p className="text-red-700 font-medium">Ranges</p>
+                      <p className="text-red-900 font-bold text-lg">
+                        {counts.loading ? "..." : counts.ranges}
+                      </p>
+                    </div>
+                    <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                      <p className="text-purple-700 font-medium">Events</p>
+                      <p className="text-purple-900 font-bold text-lg">
+                        {counts.loading ? "..." : counts.events}
+                      </p>
+                    </div>
+                    <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-200">
+                      <p className="text-emerald-700 font-medium">CMB Accounts</p>
+                      <p className="text-emerald-900 font-bold text-lg">
+                        {loadingCmbAccounts ? "..." : cmbAccounts.length}
+                      </p>
+                    </div>
+                    <div className="bg-cyan-50 p-3 rounded-lg border border-cyan-200">
+                      <p className="text-cyan-700 font-medium">KYC Requests</p>
+                      <p className="text-cyan-900 font-bold text-lg">
+                        {counts.loading ? "..." : counts.kycRequests}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
-              
-              {/* Modal Error/Success Messages */}
-              {error && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm flex items-center gap-2">
-                  <AlertCircle size={14} />
-                  {error}
-                </div>
-              )}
-              {success && (
-                <div className="bg-green-100 border border-green-400 text-green-700 px-3 py-2 rounded text-sm flex items-center gap-2">
-                  <CheckCircle size={14} />
-                  {success}
-                </div>
-              )}
-            </div>
-            <div className="flex gap-3 p-4 sm:p-6 border-t">
-              <button
-                onClick={handleModalClose}
-                className="flex-1 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
-                disabled={loading}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateAccount}
-                disabled={loading || !formData.username || !formData.email || !formData.password}
-                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
-              >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Creating...
-                  </>
-                ) : (
-                  'Create Account'
-                )}
-              </button>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
-      )}
+      </main>
     </div>
-  )
-}
+  );
+};
+
+export default SubAdminDashboard;

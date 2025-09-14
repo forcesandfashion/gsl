@@ -59,6 +59,8 @@ const createRoleBasedDocument = async (user: User, fullName: string, email: stri
         fullName,
         uid: user.uid,
         email,
+        wallet: false,
+        kyc: false,
         premium: false,
         createdAt: timestamp
       });
