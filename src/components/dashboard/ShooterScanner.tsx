@@ -72,11 +72,11 @@ export default function ShooterScanner() {
   const [todaysAttendance, setTodaysAttendance] = useState<Attendance | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
+  const [qrDetected, setQrDetected] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameId = useRef<number | null>(null);
-  const scanningIntervalId = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -95,6 +95,13 @@ export default function ShooterScanner() {
       stopCamera();
     };
   }, [scanning]);
+
+  // Add vibration function
+  const vibrate = (pattern = [100]) => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate(pattern);
+    }
+  };
 
   const loadAttendance = async () => {
     if (!user) return;
@@ -191,8 +198,8 @@ export default function ShooterScanner() {
     const context = canvas.getContext('2d');
     if (!context) return;
 
-    // Use interval instead of requestAnimationFrame for better performance
-    scanningIntervalId.current = setInterval(() => {
+    // Use requestAnimationFrame for smoother scanning
+    const scanFrame = () => {
       if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
         canvas.width = videoRef.current.videoWidth;
         canvas.height = videoRef.current.videoHeight;
@@ -203,12 +210,19 @@ export default function ShooterScanner() {
         
         if (code) {
           console.log('QR Code detected:', code.data);
-          handleScanRange(code.data);
-          setScanning(false);
+          setQrDetected(true);
+          setTimeout(() => {
+            handleScanRange(code.data);
+            setScanning(false);
+            setQrDetected(false);
+          }, 1000); // Show success indicator for 1 second before processing
           return;
         }
       }
-    }, 100); // Check every 100ms
+      animationFrameId.current = requestAnimationFrame(scanFrame);
+    };
+    
+    animationFrameId.current = requestAnimationFrame(scanFrame);
   };
 
   const startCamera = async () => {
@@ -309,11 +323,6 @@ export default function ShooterScanner() {
     console.log('Stopping camera...');
     
     // Stop QR detection
-    if (scanningIntervalId.current) {
-      clearInterval(scanningIntervalId.current);
-      scanningIntervalId.current = null;
-    }
-
     if (animationFrameId.current) {
       cancelAnimationFrame(animationFrameId.current);
       animationFrameId.current = null;
@@ -335,6 +344,7 @@ export default function ShooterScanner() {
 
     setCameraReady(false);
     setCameraError(null);
+    setQrDetected(false);
   };
 
   const validateSubscriptionAndMarkAttendance = async (rangeId: string): Promise<ValidationResult> => {
@@ -530,8 +540,11 @@ export default function ShooterScanner() {
     setCurrentSubscription(result.subscription);
 
     if (result.isValid) {
+      // Vibrate on success
+      vibrate([100, 50, 100]);
+      
       toast({
-        title: "Success!",
+        title: "Attendance Successful!",
         description: result.message,
         duration: 5000
       });
@@ -718,6 +731,16 @@ export default function ShooterScanner() {
                   style={{ display: 'none' }}
                 />
                 
+                {qrDetected && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-green-500 bg-opacity-70">
+                    <div className="text-white text-center p-4">
+                      <Check className="w-16 h-16 mx-auto mb-2" />
+                      <p className="text-lg font-bold">QR Code Scanned!</p>
+                      <p className="text-sm">Processing attendance...</p>
+                    </div>
+                  </div>
+                )}
+                
                 {cameraError && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-80">
                     <div className="text-white text-center p-4">
@@ -734,7 +757,7 @@ export default function ShooterScanner() {
                   </div>
                 )}
                 
-                {!cameraError && cameraReady && (
+                {!cameraError && cameraReady && !qrDetected && (
                   <>
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="relative w-48 h-48 border-4 border-white border-dashed rounded-lg opacity-70">
@@ -755,7 +778,7 @@ export default function ShooterScanner() {
                   </>
                 )}
 
-                {!cameraError && !cameraReady && (
+                {!cameraError && !cameraReady && !qrDetected && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-80">
                     <div className="text-white text-center p-4">
                       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-2"></div>

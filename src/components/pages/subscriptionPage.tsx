@@ -161,7 +161,7 @@ export default function SubscriptionPage() {
             description: "This range doesn't offer premium subscriptions yet.",
             variant: "destructive",
           });
-          navigate(`/range/${rangeId}`);
+          navigate(`/ranges/${rangeId}`);
           return;
         }
 
@@ -361,7 +361,7 @@ export default function SubscriptionPage() {
       await createBill(subscriptionId, isExtension);
 
       // Navigate back to range page
-      navigate(`/range/${rangeId}?subscribed=true`);
+      navigate(`/ranges/${rangeId}`);
 
     } catch (error: any) {
       toast({
