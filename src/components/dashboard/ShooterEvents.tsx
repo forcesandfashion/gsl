@@ -10,7 +10,9 @@ import {
   Target,
   CheckCircle,
   AlertCircle,
-  XCircle
+  XCircle,
+  User,
+  Building
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,15 +20,21 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { db } from '@/firebase/config';
-import { collection, query as firestoreQuery, orderBy, getDocs, DocumentData } from 'firebase/firestore';
+import { collection, query as firestoreQuery, orderBy, getDocs, DocumentData, where } from 'firebase/firestore';
+import EventParticipation from './EventParticipation';
 
 interface Event {
   id: string;
   name: string;
   rangeId: string;
+  rangeName: string;
   description: string;
   date: string;
+  startDate: string;
+  endDate: string;
   time: string;
+  startTime: string;
+  endTime: string;
   location: string;
   entryfees: string;
   availableseats: string;
@@ -47,6 +55,9 @@ export default function ShooterEvents() {
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [statusFilter, setStatusFilter] = useState('all');
   const [locationFilter, setLocationFilter] = useState('all');
+  const [rangeFilter, setRangeFilter] = useState('all');
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [showParticipationModal, setShowParticipationModal] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Fetch events from Firebase
@@ -60,19 +71,41 @@ export default function ShooterEvents() {
         );
 
         const querySnapshot = await getDocs(eventsQuery);
-        const eventsData: Event[] = querySnapshot.docs.map(doc => {
+        const eventsData: Event[] = [];
+        
+        for (const doc of querySnapshot.docs) {
           const data = doc.data() as DocumentData;
-          return {
+          
+          // Get range name
+          let rangeName = "Unknown Range";
+          if (data.rangeId) {
+            const rangeDoc = await getDocs(
+              firestoreQuery(
+                collection(db, "ranges"),
+                where("__name__", "==", data.rangeId)
+              )
+            );
+            if (!rangeDoc.empty) {
+              rangeName = rangeDoc.docs[0].data().name || "Unknown Range";
+            }
+          }
+          
+          eventsData.push({
             id: doc.id,
             name: data.name || '',
             rangeId: data.rangeId || '',
+            rangeName: rangeName,
             description: data.description || '',
             date: data.date || '',
+            startDate: data.startDate || data.date || '',
+            endDate: data.endDate || data.date || '',
             time: data.time || '',
+            startTime: data.startTime || data.time || '',
+            endTime: data.endTime || data.time || '',
             location: data.location || '',
             entryfees: data.entryfees || '0',
             availableseats: data.availableseats || '0',
-            currentParticipants: data.currentParticipants || 0,
+            currentParticipants: data.participants || 0,
             image: data.image || '',
             images: data.images || [],
             status: data.status || 'active',
@@ -81,8 +114,8 @@ export default function ShooterEvents() {
             userName: data.userName || '',
             createdAt: data.createdAt || '',
             updatedAt: data.updatedAt || ''
-          } as Event;
-        });
+          } as Event);
+        }
 
         setEvents(eventsData);
       } catch (error) {
@@ -105,7 +138,8 @@ export default function ShooterEvents() {
         event.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         event.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
         event.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        event.description.toLowerCase().includes(searchQuery.toLowerCase())
+        event.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        event.rangeName.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -119,8 +153,13 @@ export default function ShooterEvents() {
       filtered = filtered.filter(event => event.location.toLowerCase().includes(locationFilter.toLowerCase()));
     }
 
+    // Range filter
+    if (rangeFilter !== 'all') {
+      filtered = filtered.filter(event => event.rangeName.toLowerCase().includes(rangeFilter.toLowerCase()));
+    }
+
     setFilteredEvents(filtered);
-  }, [events, searchQuery, statusFilter, locationFilter]);
+  }, [events, searchQuery, statusFilter, locationFilter, rangeFilter]);
 
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
@@ -145,7 +184,8 @@ export default function ShooterEvents() {
 
   const getEventStatus = (event: Event) => {
     if (event.status === 'cancelled') return 'cancelled';
-    if (isEventPast(event.date)) return 'completed';
+    if (event.status === 'blocked') return 'cancelled';
+    if (isEventPast(event.endDate || event.date)) return 'completed';
     if (event.status === 'active') return 'active';
     return 'upcoming';
   };
@@ -154,14 +194,27 @@ export default function ShooterEvents() {
     setSearchQuery('');
     setStatusFilter('all');
     setLocationFilter('all');
+    setRangeFilter('all');
   };
 
   const getUniqueLocations = () => {
-    const locations = events.map(event => {
-      const parts = event.location.split(' ');
-      return parts[0]; // Get first word (usually city)
-    });
-    return [...new Set(locations)];
+    const locations = events.map(event => event.location);
+    return [...new Set(locations)].filter(location => location);
+  };
+
+  const getUniqueRanges = () => {
+    const ranges = events.map(event => event.rangeName);
+    return [...new Set(ranges)].filter(range => range);
+  };
+
+  const handleParticipateClick = (event: Event) => {
+    setSelectedEvent(event);
+    setShowParticipationModal(true);
+  };
+
+  const handleParticipationClose = () => {
+    setShowParticipationModal(false);
+    setSelectedEvent(null);
   };
 
   if (loading) {
@@ -223,7 +276,7 @@ export default function ShooterEvents() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
               <Input
                 type="text"
-                placeholder="Search events, locations, organizers..."
+                placeholder="Search events, locations, ranges, organizers..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 bg-white/80 backdrop-blur-sm border-white/50 focus:bg-white"
@@ -257,6 +310,19 @@ export default function ShooterEvents() {
                 ))}
               </SelectContent>
             </Select>
+
+            {/* Range Filter */}
+            <Select value={rangeFilter} onValueChange={setRangeFilter}>
+              <SelectTrigger className="bg-white/80 backdrop-blur-sm border-white/50">
+                <SelectValue placeholder="Range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Ranges</SelectItem>
+                {getUniqueRanges().map(range => (
+                  <SelectItem key={range} value={range}>{range}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
@@ -282,7 +348,7 @@ export default function ShooterEvents() {
                 <div>
                   <p className="text-green-100 text-sm font-medium">Active Events</p>
                   <p className="text-3xl font-bold">
-                    {filteredEvents.filter(e => e.status === 'active').length}
+                    {filteredEvents.filter(e => getEventStatus(e) === 'active').length}
                   </p>
                 </div>
                 <CheckCircle className="h-8 w-8 text-green-200" />
@@ -294,12 +360,12 @@ export default function ShooterEvents() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-purple-100 text-sm font-medium">Completed</p>
+                  <p className="text-purple-100 text-sm font-medium">Available Seats</p>
                   <p className="text-3xl font-bold">
-                    {filteredEvents.filter(e => getEventStatus(e) === 'completed').length}
+                    {filteredEvents.reduce((sum, event) => sum + (parseInt(event.availableseats) || 0), 0)}
                   </p>
                 </div>
-                <CheckCircle className="h-8 w-8 text-purple-200" />
+                <Users className="h-8 w-8 text-purple-200" />
               </div>
             </CardContent>
           </Card>
@@ -308,12 +374,12 @@ export default function ShooterEvents() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-orange-100 text-sm font-medium">Available Seats</p>
+                  <p className="text-orange-100 text-sm font-medium">Participants</p>
                   <p className="text-3xl font-bold">
-                    {filteredEvents.reduce((sum, event) => sum + (parseInt(event.availableseats) || 0), 0)}
+                    {filteredEvents.reduce((sum, event) => sum + (event.currentParticipants || 0), 0)}
                   </p>
                 </div>
-                <Users className="h-8 w-8 text-orange-200" />
+                <User className="h-8 w-8 text-orange-200" />
               </div>
             </CardContent>
           </Card>
@@ -361,19 +427,31 @@ export default function ShooterEvents() {
                       <span className="text-sm text-gray-600">{event.location}</span>
                     </div>
                     <div className="flex items-center gap-2">
+                      <Building className="h-4 w-4 text-purple-500" />
+                      <span className="text-sm text-gray-600">{event.rangeName}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-purple-500" />
                       <span className="text-sm text-gray-600">
-                        {new Date(event.date).toLocaleDateString('en-US', { 
-                          weekday: 'short', 
+                        {new Date(event.startDate).toLocaleDateString('en-US', { 
                           month: 'short', 
                           day: 'numeric',
                           year: 'numeric'
                         })}
+                        {event.endDate && event.endDate !== event.startDate && (
+                          <> - {new Date(event.endDate).toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}</>
+                        )}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-green-500" />
-                      <span className="text-sm text-gray-600">{event.time}</span>
+                      <span className="text-sm text-gray-600">
+                        {event.startTime} {event.endTime && `- ${event.endTime}`}
+                      </span>
                     </div>
                   </div>
 
@@ -383,6 +461,11 @@ export default function ShooterEvents() {
                       <Users className="h-4 w-4 text-green-500" />
                       <span className="text-sm text-gray-600">
                         {event.availableseats} seats available
+                        {event.currentParticipants > 0 && (
+                          <span className="ml-1 text-xs text-gray-500">
+                            ({event.currentParticipants} registered)
+                          </span>
+                        )}
                       </span>
                     </div>
                     <div className="text-lg font-bold text-green-600">
@@ -406,6 +489,7 @@ export default function ShooterEvents() {
                       getEventStatus(event) === 'cancelled' ||
                       parseInt(event.availableseats) <= 0
                     }
+                    onClick={() => handleParticipateClick(event)}
                   >
                     {getEventStatus(event) === 'completed' ? 'Event Completed' : 
                      getEventStatus(event) === 'cancelled' ? 'Event Cancelled' :
@@ -418,6 +502,19 @@ export default function ShooterEvents() {
           </div>
         )}
       </div>
+
+      {/* Participation Modal */}
+      {showParticipationModal && selectedEvent && (
+        <EventParticipation
+          event={selectedEvent}
+          isOpen={showParticipationModal}
+          onClose={handleParticipationClose}
+          onSuccess={() => {
+            // Refresh events after successful participation
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 }

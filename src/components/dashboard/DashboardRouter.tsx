@@ -38,8 +38,10 @@ import BillsAndSubscriptions from "./BillsAndSubscriptions";
 import DeletionRequestComponent from "./DeletionRequestComponent";
 import BillsSubscriptionsComponent from "./BillsSubscriptionsComponent";
 import KYCRequests from "./KycRequests";
-
-
+import BillsComponent from "./BillComponent";
+import AttendanceComponent from "./AttendanceComponent";
+import SubscriptionsComponent from "./SubscriptionComponent";
+import SubAdminProducts from "./SubAdminProducts";
 const DashboardRouter = () => {
   const { userRole, loading } = useAuth();
   
@@ -93,7 +95,7 @@ const DashboardRouter = () => {
       <Route path="sub-admin/ranges" element={<SubAdminRanges />} />
       <Route path="sub-admin/events" element={<SubAdminEvent />} />
       <Route path="sub-admin/shooters-data" element={<SubAdminShooterData />} />
-      <Route path="sub-admin/shop" element={<AdminProducts />} />
+      <Route path="sub-admin/shop" element={<SubAdminProducts />} />
       <Route path="sub-admin/deletion-requests" element={<DeletionRequestComponent />} />
       <Route path="sub-admin/billing" element={<BillsSubscriptionsComponent />} />
       <Route path="sub-admin/kyc-requests" element={<KYCRequests />} />
@@ -135,7 +137,9 @@ const DashboardRouter = () => {
       <Route path="cmb/ranges" element={<CmbRanges />} />
       <Route path="cmb/cmb-bookings" element={<CmbBookings />} />
       <Route path="cmb/cmb-events" element={<CmbEvents />} />
-      <Route path="cmb/billing" element={<BillsSubscriptionsComponent />} />
+      <Route path="cmb/bills" element={<BillsComponent />} />
+      <Route path="cmb/subscriptions" element={<SubscriptionsComponent />} />
+      <Route path="cmb/attendance" element={<AttendanceComponent />} />
       
       {/* Manager sub-routes */}
       {/* Add manager-specific routes here when needed:

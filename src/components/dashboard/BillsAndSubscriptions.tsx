@@ -856,9 +856,10 @@ export default function BillsAndSubscriptions() {
         }
 
         if (subscriptionId) {
+          // Update subscription payment status to "done" instead of "paid"
           await updateDoc(doc(db, "subscriptions", subscriptionId), {
             subscriptionStatus: "active",
-            paymentStatus: "paid",
+            paymentStatus: "done", // Changed from "paid" to "done"
             updatedAt: Timestamp.now()
           });
 
@@ -868,7 +869,7 @@ export default function BillsAndSubscriptions() {
               ? { 
                   ...sub, 
                   subscriptionStatus: "active", 
-                  paymentStatus: "paid",
+                  paymentStatus: "done", // Changed from "paid" to "done"
                   updatedAt: Timestamp.now() 
                 }
               : sub
@@ -1442,7 +1443,7 @@ export default function BillsAndSubscriptions() {
                           </span>
                           <span className="text-xs sm:text-sm">
                             Status: <Badge variant="outline" className={`text-xs ${
-                              subscription.paymentStatus === "paid" 
+                              subscription.paymentStatus === "done" 
                                 ? "bg-green-100 text-green-800" 
                                 : "bg-yellow-100 text-yellow-800"
                             }`}>

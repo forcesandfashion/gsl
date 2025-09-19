@@ -42,7 +42,11 @@ interface Event {
   rangeId: string;
   description: string;
   date: string;
+  startDate: string;
+  endDate: string;
   time: string;
+  startTime: string;
+  endTime: string;
   location: string;
   entryfees: string;
   availableseats: string;
@@ -52,6 +56,9 @@ interface Event {
   createdAt: string;
   updatedAt: string;
   userId: string;
+  participants: number;
+  userEmail: string;
+  userName: string;
 }
 
 export default function EventDisplay() {
@@ -93,22 +100,30 @@ export default function EventDisplay() {
       const eventsData: Event[] = [];
       
       querySnapshot.forEach((doc) => {
+        const data = doc.data();
         eventsData.push({
           id: doc.id,
-          name: doc.data().name,
-          description: doc.data().description,
-          date: doc.data().date,
-          time: doc.data().time,
-          rangeId: doc.data().rangeId,
-          location: doc.data().location,
-          entryfees: doc.data().entryfees,
-          availableseats: doc.data().availableseats,
-          image: doc.data().image,
-          images: doc.data().images,
-          status: doc.data().status || 'active',
-          createdAt: doc.data().createdAt,
-          updatedAt: doc.data().updatedAt,
-          userId: doc.data().userId,
+          name: data.name,
+          description: data.description,
+          date: data.date,
+          startDate: data.startDate,
+          endDate: data.endDate,
+          time: data.time,
+          startTime: data.startTime,
+          endTime: data.endTime,
+          rangeId: data.rangeId,
+          location: data.location,
+          entryfees: data.entryfees,
+          availableseats: data.availableseats,
+          image: data.image,
+          images: data.images,
+          status: data.status || 'active',
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt,
+          userId: data.userId,
+          participants: data.participants || 0,
+          userEmail: data.userEmail,
+          userName: data.userName
         });
       });
       
@@ -301,6 +316,21 @@ export default function EventDisplay() {
     }
   };
 
+  // Check if event is multi-day
+  const isMultiDayEvent = (startDate: string, endDate: string) => {
+    return startDate !== endDate;
+  };
+
+  // Format date range for display
+  const formatDateRange = (startDate: string, endDate: string) => {
+    if (!startDate || !endDate) return formatDate(startDate || endDate);
+    
+    if (isMultiDayEvent(startDate, endDate)) {
+      return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+    }
+    return formatDate(startDate);
+  };
+
   useEffect(() => {
     fetchEvents();
   }, [rangeId]);
@@ -418,7 +448,7 @@ export default function EventDisplay() {
 
                   {/* Date Badge */}
                   <div className="absolute bottom-3 left-3 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded-full">
-                    {formatDate(event.date)}
+                    {formatDateRange(event.startDate, event.endDate)}
                   </div>
                 </div>
 
@@ -442,7 +472,12 @@ export default function EventDisplay() {
                   <div className="grid grid-cols-1 gap-2 text-sm">
                     <div className="flex items-center text-gray-600">
                       <Clock className="w-4 h-4 mr-2 text-blue-500" />
-                      {formatTime(event.time)}
+                      {event.startTime && event.endTime 
+                        ? `${formatTime(event.startTime)} - ${formatTime(event.endTime)}`
+                        : event.time 
+                        ? formatTime(event.time)
+                        : 'Time not specified'
+                      }
                     </div>
                     <div className="flex items-center text-gray-600">
                       <DollarSign className="w-4 h-4 mr-2 text-green-500" />
@@ -451,6 +486,11 @@ export default function EventDisplay() {
                     <div className="flex items-center text-gray-600">
                       <Users className="w-4 h-4 mr-2 text-purple-500" />
                       {event.availableseats} seats available
+                      {event.participants > 0 && (
+                        <span className="ml-2 text-xs text-gray-500">
+                          ({event.participants} registered)
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -530,9 +570,9 @@ export default function EventDisplay() {
               </div>
               <div className="text-center p-4 bg-orange-50 rounded-xl">
                 <div className="text-2xl font-bold text-orange-600">
-                  ₹{events.reduce((total, event) => total + parseInt(event.entryfees || '0'), 0)}
+                  {events.reduce((total, event) => total + (event.participants || 0), 0)}
                 </div>
-                <div className="text-sm text-orange-800">Total Entry Fees</div>
+                <div className="text-sm text-orange-800">Total Participants</div>
               </div>
             </div>
           </div>

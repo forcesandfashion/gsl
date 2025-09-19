@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart, Line, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Home, Users, Calendar, Target, TrendingUp } from 'lucide-react';
+import { Home, Users, Calendar, Target, TrendingUp, FileText, CreditCard, Clock, CheckCircle, Crown, MapPin, DollarSign, UserCheck } from 'lucide-react';
 import { getFirestore, collection, getDocs, query, orderBy, where, Timestamp, DocumentData } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { useNavigate } from 'react-router';
+import { db } from '@/firebase/config';
 
-// Initialize Firestore (assumes Firebase app is configured elsewhere)
-const db = getFirestore();
 
 // TypeScript interfaces
 interface DashboardData {
@@ -14,6 +13,9 @@ interface DashboardData {
   ranges: number;
   bookings: number;
   events: number;
+  bills: number;
+  subscriptions: number;
+  attendance: number;
 }
 
 interface BookingAnalytics {
@@ -37,7 +39,7 @@ interface MonthData {
 
 interface Activity {
   id: string;
-  type: 'booking' | 'shooter' | 'event';
+  type: 'booking' | 'shooter' | 'event' | 'bill' | 'subscription' | 'attendance';
   createdAt?: any;
   name?: string;
   firstName?: string;
@@ -56,12 +58,75 @@ interface StatCardProps {
   loading?: boolean;
 }
 
+interface Bill {
+  id: string;
+  amountPaid: number;
+  billDate: any;
+  billId: string;
+  billStatus: string;
+  billType: string;
+  createdAt: any;
+  currency: string;
+  description: string;
+  paymentMethod: string;
+  paymentStatus: string;
+  planDuration: string;
+  planMonths: number;
+  rangeId: string;
+  rangeName: string;
+  rangeOwnerEmail: string;
+  rangeOwnerId: string;
+  subscriptionId: string;
+  updatedAt: any;
+  userEmail: string;
+  userId: string;
+  userName: string;
+}
+
+interface Subscription {
+  id: string;
+  createdAt: any;
+  endDate: any;
+  extensions: any[];
+  features: string[];
+  paymentMethod: string;
+  paymentStatus: string;
+  planDuration: string;
+  planMonths: number;
+  price: number;
+  rangeId: string;
+  rangeName: string;
+  startDate: any;
+  subscriptionStatus: string;
+  updatedAt: any;
+  userEmail: string;
+  userId: string;
+  userName?: string;
+}
+
+interface Attendance {
+  id: string;
+  checkInTime: string;
+  date: string;
+  rangeId: string;
+  rangeName: string;
+  status: string;
+  subscriptionId: string;
+  timestamp: any;
+  userEmail: string;
+  userId: string;
+  userName: string;
+}
+
 const CmbDashboard: React.FC = () => {
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     shooters: 0,
     ranges: 0,
     bookings: 0,
-    events: 0
+    events: 0,
+    bills: 0,
+    subscriptions: 0,
+    attendance: 0
   });
   
   const navigate = useNavigate();
@@ -109,6 +174,15 @@ const CmbDashboard: React.FC = () => {
       case 'events':
         navigate('/dashboard/cmb/cmb-events');
         break;
+      case 'bills':
+        navigate('/dashboard/cmb/bills');
+        break;
+      case 'subscriptions':
+        navigate('/dashboard/cmb/subscriptions');
+        break;
+      case 'attendance':
+        navigate('/dashboard/cmb/attendance');
+        break;
       default:
         console.log(`Navigation for ${type} not configured`);
     }
@@ -117,18 +191,32 @@ const CmbDashboard: React.FC = () => {
   // Fetch dashboard stats
   const fetchDashboardStats = async (): Promise<void> => {
     try {
-      const [shootersSnapshot, rangesSnapshot, bookingsSnapshot, eventsSnapshot] = await Promise.all([
+      const [
+        shootersSnapshot, 
+        rangesSnapshot, 
+        bookingsSnapshot, 
+        eventsSnapshot,
+        billsSnapshot,
+        subscriptionsSnapshot,
+        attendanceSnapshot
+      ] = await Promise.all([
         getDocs(collection(db, 'shooters')),
         getDocs(collection(db, 'ranges')),
         getDocs(collection(db, 'bookings')),
-        getDocs(collection(db, 'events'))
+        getDocs(collection(db, 'events')),
+        getDocs(collection(db, 'bills')),
+        getDocs(collection(db, 'subscriptions')),
+        getDocs(collection(db, 'attendance'))
       ]);
 
       setDashboardData({
         shooters: shootersSnapshot.size,
         ranges: rangesSnapshot.size,
         bookings: bookingsSnapshot.size,
-        events: eventsSnapshot.size
+        events: eventsSnapshot.size,
+        bills: billsSnapshot.size,
+        subscriptions: subscriptionsSnapshot.size,
+        attendance: attendanceSnapshot.size
       });
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
@@ -211,41 +299,54 @@ const CmbDashboard: React.FC = () => {
   // Fetch recent activity from multiple collections
   const fetchRecentActivity = async (): Promise<Activity[]> => {
     try {
-      // Get recent bookings
-      const recentBookingsQuery = query(
-        collection(db, 'bookings'),
+      // Get recent bills
+      const recentBillsQuery = query(
+        collection(db, 'bills'),
         orderBy('createdAt', 'desc')
       );
       
-      const bookingsSnapshot = await getDocs(recentBookingsQuery);
-      const recentBookings: Activity[] = bookingsSnapshot.docs.slice(0, 3).map(doc => ({
+      const billsSnapshot = await getDocs(recentBillsQuery);
+      const recentBills: Activity[] = billsSnapshot.docs.slice(0, 2).map(doc => ({
         id: doc.id,
-        type: 'booking' as const,
+        type: 'bill' as const,
         ...doc.data()
       }));
 
-      // Get recent shooter registrations
-      const recentShootersQuery = query(
-        collection(db, 'shooters'),
+      // Get recent subscriptions
+      const recentSubscriptionsQuery = query(
+        collection(db, 'subscriptions'),
         orderBy('createdAt', 'desc')
       );
       
-      const shootersSnapshot = await getDocs(recentShootersQuery);
-      const recentShooters: Activity[] = shootersSnapshot.docs.slice(0, 2).map(doc => ({
+      const subscriptionsSnapshot = await getDocs(recentSubscriptionsQuery);
+      const recentSubscriptions: Activity[] = subscriptionsSnapshot.docs.slice(0, 2).map(doc => ({
         id: doc.id,
-        type: 'shooter' as const,
+        type: 'subscription' as const,
+        ...doc.data()
+      }));
+
+      // Get recent attendance
+      const recentAttendanceQuery = query(
+        collection(db, 'attendance'),
+        orderBy('timestamp', 'desc')
+      );
+      
+      const attendanceSnapshot = await getDocs(recentAttendanceQuery);
+      const recentAttendance: Activity[] = attendanceSnapshot.docs.slice(0, 2).map(doc => ({
+        id: doc.id,
+        type: 'attendance' as const,
         ...doc.data()
       }));
 
       // Combine and sort by date
-      const allActivity: Activity[] = [...recentBookings, ...recentShooters];
+      const allActivity: Activity[] = [...recentBills, ...recentSubscriptions, ...recentAttendance];
       allActivity.sort((a, b) => {
         const dateA = a.createdAt?.toDate() || new Date(0);
         const dateB = b.createdAt?.toDate() || new Date(0);
         return dateB.getTime() - dateA.getTime();
       });
 
-      return allActivity.slice(0, 3);
+      return allActivity.slice(0, 5);
     } catch (error) {
       console.error('Error fetching recent activity:', error);
       return [];
@@ -279,7 +380,7 @@ const CmbDashboard: React.FC = () => {
 
   const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, color, onClick, loading: cardLoading }) => (
     <div 
-      className={`bg-white rounded-lg shadow-md p-6 border-l-4 transition-all duration-200 ${
+      className={`bg-white rounded-lg shadow-md p-4 sm:p-6 border-l-4 transition-all duration-200 ${
         onClick ? 'cursor-pointer hover:shadow-lg hover:scale-105 hover:border-opacity-80' : ''
       }`}
       style={{borderLeftColor: color}}
@@ -287,21 +388,21 @@ const CmbDashboard: React.FC = () => {
     >
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
-          <p className="text-3xl font-bold text-gray-900">
+          <p className="text-xs sm:text-sm font-medium text-gray-600 mb-1">{title}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900">
             {cardLoading ? (
-              <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-6 sm:h-8 w-12 sm:w-16 bg-gray-200 rounded animate-pulse"></div>
             ) : (
-              value
+              value.toLocaleString()
             )}
           </p>
         </div>
-        <div className="p-3 rounded-full" style={{backgroundColor: color + '20'}}>
-          <Icon className="h-6 w-6" style={{color: color}} />
+        <div className="p-2 sm:p-3 rounded-full" style={{backgroundColor: color + '20'}}>
+          <Icon className="h-4 w-4 sm:h-6 sm:w-6" style={{color: color}} />
         </div>
       </div>
       {onClick && (
-        <div className="mt-2 text-xs text-gray-500">
+        <div className="mt-1 sm:mt-2 text-xs text-gray-500">
           Click to view details
         </div>
       )}
@@ -344,14 +445,14 @@ const CmbDashboard: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-md p-8 max-w-md">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-md p-6 max-w-md w-full">
           <div className="text-red-600 text-center">
             <h2 className="text-xl font-semibold mb-2">Error Loading Dashboard</h2>
             <p className="text-gray-600 mb-4">{error}</p>
             <button 
               onClick={handleRetry}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg w-full sm:w-auto"
             >
               Retry
             </button>
@@ -366,11 +467,11 @@ const CmbDashboard: React.FC = () => {
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <h1 className="text-3xl font-bold text-gray-900">CMB Dashboard</h1>
+          <div className="flex flex-col sm:flex-row justify-between items-center py-4 gap-4">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">CMB Dashboard</h1>
             <button 
               onClick={handleHomeClick}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors w-full sm:w-auto justify-center"
             >
               <Home className="h-4 w-4" />
               Home
@@ -379,9 +480,9 @@ const CmbDashboard: React.FC = () => {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard 
             title="Total Shooters" 
             value={dashboardData.shooters} 
@@ -414,15 +515,39 @@ const CmbDashboard: React.FC = () => {
             onClick={() => handleCardClick('events')}
             loading={loading}
           />
+          <StatCard 
+            title="Total Bills" 
+            value={dashboardData.bills} 
+            icon={FileText} 
+            color="#8b5cf6"
+            onClick={() => handleCardClick('bills')}
+            loading={loading}
+          />
+          <StatCard 
+            title="Active Subscriptions" 
+            value={dashboardData.subscriptions} 
+            icon={CreditCard} 
+            color="#ec4899"
+            onClick={() => handleCardClick('subscriptions')}
+            loading={loading}
+          />
+          <StatCard 
+            title="Attendance Records" 
+            value={dashboardData.attendance} 
+            icon={UserCheck} 
+            color="#06b6d4"
+            onClick={() => handleCardClick('attendance')}
+            loading={loading}
+          />
         </div>
 
         {/* Analytics Graphs */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Bookings Analytics */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Monthly Bookings</h2>
+          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">Monthly Bookings</h2>
             {loading ? (
-              <div className="h-80 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-64 sm:h-80 bg-gray-200 rounded animate-pulse"></div>
             ) : (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={bookingAnalytics}>
@@ -438,10 +563,10 @@ const CmbDashboard: React.FC = () => {
           </div>
 
           {/* Shooters Registration Trend */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">New Shooter Registrations</h2>
+          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">New Shooter Registrations</h2>
             {loading ? (
-              <div className="h-80 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-64 sm:h-80 bg-gray-200 rounded animate-pulse"></div>
             ) : (
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={shooterAnalytics}>
@@ -461,71 +586,53 @@ const CmbDashboard: React.FC = () => {
               </ResponsiveContainer>
             )}
           </div>
-
-          {/* Combined Analytics */}
-          <div className="bg-white rounded-lg shadow-md p-6 lg:col-span-2">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Monthly Overview</h2>
-            {loading ? (
-              <div className="h-80 bg-gray-200 rounded animate-pulse"></div>
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={bookingAnalytics.map((booking, index) => ({
-                  ...booking,
-                  shooters: shooterAnalytics[index]?.shooters || 0
-                }))}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="bookings" fill="#3b82f6" name="Bookings" />
-                  <Bar dataKey="shooters" fill="#10b981" name="New Shooters" />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
         </div>
 
         {/* Recent Activity */}
-        <div className="mt-8 bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Activity</h2>
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">Recent Activity</h2>
           {loading ? (
             <div className="space-y-3">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="h-16 bg-gray-200 rounded animate-pulse"></div>
+              {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} className="h-12 sm:h-16 bg-gray-200 rounded animate-pulse"></div>
               ))}
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {recentActivity.length > 0 ? (
                 recentActivity.map((activity, index) => (
                   <div key={index} className={`flex items-center gap-3 p-3 rounded-lg ${
-                    activity.type === 'booking' ? 'bg-blue-50' : 
-                    activity.type === 'shooter' ? 'bg-green-50' : 
-                    'bg-yellow-50'
+                    activity.type === 'bill' ? 'bg-purple-50' : 
+                    activity.type === 'subscription' ? 'bg-pink-50' : 
+                    activity.type === 'attendance' ? 'bg-cyan-50' : 
+                    'bg-gray-50'
                   }`}>
-                    {activity.type === 'booking' ? (
-                      <Calendar className="h-5 w-5 text-blue-600" />
-                    ) : activity.type === 'shooter' ? (
-                      <Users className="h-5 w-5 text-green-600" />
+                    {activity.type === 'bill' ? (
+                      <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
+                    ) : activity.type === 'subscription' ? (
+                      <CreditCard className="h-4 w-4 sm:h-5 sm:w-5 text-pink-600" />
+                    ) : activity.type === 'attendance' ? (
+                      <UserCheck className="h-4 w-4 sm:h-5 sm:w-5 text-cyan-600" />
                     ) : (
-                      <TrendingUp className="h-5 w-5 text-yellow-600" />
+                      <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600" />
                     )}
-                    <span className="text-sm text-gray-700">
-                      {activity.type === 'booking' ?
-                        `New booking ${activity.rangeName ? `for ${activity.rangeName}` : ''}${activity.timeSlot ? ` - ${activity.timeSlot}` : ''}` :
-                        activity.type === 'shooter' ?
-                        `New shooter registered${activity.name ? ` - ${activity.name}` : ''}${activity.firstName && activity.lastName ? ` - ${activity.firstName} ${activity.lastName}` : ''}` :
+                    <span className="text-xs sm:text-sm text-gray-700 flex-1">
+                      {activity.type === 'bill' ?
+                        `New bill ${activity.billId ? `- ${activity.billId}` : ''} for ${activity.amountPaid ? `${activity.currency || 'INR'} ${activity.amountPaid}` : ''}` :
+                        activity.type === 'subscription' ?
+                        `New subscription ${activity.planDuration ? `- ${activity.planDuration}` : ''} for ${activity.userName || activity.userEmail}` :
+                        activity.type === 'attendance' ?
+                        `Attendance recorded for ${activity.userName || activity.userEmail} at ${activity.rangeName}` :
                         'New activity'
                       }
                     </span>
-                    <span className="ml-auto text-xs text-gray-500">
-                      {formatRelativeTime(activity.createdAt)}
+                    <span className="text-xs text-gray-500 whitespace-nowrap">
+                      {formatRelativeTime(activity.createdAt || activity.timestamp)}
                     </span>
                   </div>
                 ))
               ) : (
-                <div className="text-center text-gray-500 py-8">
+                <div className="text-center text-gray-500 py-6 sm:py-8">
                   No recent activity found
                 </div>
               )}

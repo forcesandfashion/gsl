@@ -8,22 +8,18 @@ import {
   DollarSign, 
   Users, 
   Star, 
-  Eye, 
-  Edit, 
-  Trash2,
+  Eye,
   ArrowLeft,
-  Calendar,
   Target,
   Image as ImageIcon,
   X,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
-import { getFirestore, collection, getDocs, query, orderBy, where, deleteDoc, doc } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, query, orderBy, where } from 'firebase/firestore';
 import { useNavigate } from 'react-router';
+import {db} from '@/firebase/config';
 
-// Initialize Firestore
-const db = getFirestore();
 
 // TypeScript interfaces
 interface OpeningHours {
@@ -31,6 +27,25 @@ interface OpeningHours {
     start: string;
     end: string;
   };
+}
+
+interface SubscriptionPlan {
+  duration: string;
+  enabled: boolean;
+  months: number;
+  price: number;
+}
+
+interface SubscriptionSettings {
+  createdAt: any;
+  description: string;
+  features: string[];
+  isActive: boolean;
+  ownerId: string;
+  plans: SubscriptionPlan[];
+  rangeId: string;
+  title: string;
+  updatedAt: any;
 }
 
 interface Range {
@@ -55,6 +70,9 @@ interface Range {
   youtubeUrl?: string;
   createdAt: any;
   updatedAt: any;
+  qrCodeId?: string;
+  qrCodeUrl?: string;
+  subscriptionSettings?: SubscriptionSettings;
 }
 
 interface FilterState {
@@ -179,19 +197,6 @@ const CmbRanges: React.FC = () => {
       const dayHours = hours[day];
       return `${day}: ${dayHours.start} - ${dayHours.end}`;
     }).join(', ');
-  };
-
-  // Handle range deletion
-  const handleDeleteRange = async (rangeId: string): Promise<void> => {
-    if (window.confirm('Are you sure you want to delete this range?')) {
-      try {
-        await deleteDoc(doc(db, 'ranges', rangeId));
-        setRanges(ranges.filter(range => range.id !== rangeId));
-      } catch (error) {
-        console.error('Error deleting range:', error);
-        alert('Failed to delete range');
-      }
-    }
   };
 
   // Handle view details
@@ -459,12 +464,6 @@ const CmbRanges: React.FC = () => {
                         <ImageIcon className="h-4 w-4" />
                       </button>
                     )}
-                    <button
-                      onClick={() => handleDeleteRange(range.id)}
-                      className="flex items-center justify-center bg-red-100 hover:bg-red-200 text-red-600 px-3 py-2 rounded-lg transition-colors"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
                   </div>
                 </div>
               </div>
@@ -526,6 +525,19 @@ const CmbRanges: React.FC = () => {
                       <div><strong>Longitude:</strong> {selectedRange.longitude}</div>
                     </div>
                   </div>
+
+                  {selectedRange.qrCodeUrl && (
+                    <div>
+                      <h3 className="font-semibold text-lg mb-2">QR Code</h3>
+                      <div className="text-sm">
+                        <img 
+                          src={selectedRange.qrCodeUrl} 
+                          alt="QR Code" 
+                          className="w-32 h-32 object-contain"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Additional Info */}
@@ -546,6 +558,42 @@ const CmbRanges: React.FC = () => {
                       {formatOpeningHours(selectedRange.structuredOpeningHours)}
                     </div>
                   </div>
+
+                  {selectedRange.videoUrl && (
+                    <div>
+                      <h3 className="font-semibold text-lg mb-2">Video</h3>
+                      <div className="text-sm">
+                        <video controls className="w-full max-h-48 rounded-lg">
+                          <source src={selectedRange.videoUrl} type="video/mp4" />
+                          Your browser does not support the video tag.
+                        </video>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedRange.subscriptionSettings && (
+                    <div>
+                      <h3 className="font-semibold text-lg mb-2">Subscription Plans</h3>
+                      <div className="space-y-2 text-sm">
+                        <div><strong>Title:</strong> {selectedRange.subscriptionSettings.title}</div>
+                        <div><strong>Description:</strong> {selectedRange.subscriptionSettings.description}</div>
+                        <div><strong>Features:</strong> {selectedRange.subscriptionSettings.features.join(', ')}</div>
+                        <div><strong>Active:</strong> {selectedRange.subscriptionSettings.isActive ? 'Yes' : 'No'}</div>
+                        
+                        <div className="mt-2">
+                          <strong>Plans:</strong>
+                          {selectedRange.subscriptionSettings.plans
+                            .filter(plan => plan.enabled)
+                            .map((plan, index) => (
+                              <div key={index} className="ml-4 mt-1">
+                                {plan.duration}: ₹{plan.price}
+                              </div>
+                            ))
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div>
                     <h3 className="font-semibold text-lg mb-2">Timestamps</h3>

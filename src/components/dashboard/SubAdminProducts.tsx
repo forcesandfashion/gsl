@@ -44,7 +44,7 @@ interface AdminUser {
   createdAt: Date;
 }
 
-const AdminProducts = () => {
+const SubAdminProducts = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [rangeOwners, setRangeOwners] = useState<RangeOwner[]>([]);
   const [admins, setAdmins] = useState<AdminUser[]>([]);
@@ -162,23 +162,6 @@ const AdminProducts = () => {
 
     return matchesSearch && matchesStatus && matchesCategory && matchesOwner && matchesPriceRange && matchesDateRange;
   });
-
-  // Update product status in Firebase
-  const updateProductStatus = async (productId: string, newStatus: 'active' | 'blocked') => {
-    try {
-      const productRef = doc(db, 'products', productId);
-      await updateDoc(productRef, { 
-        status: newStatus,
-        statusUpdatedAt: new Date()
-      });
-      
-      setProducts(prev => prev.map(product => 
-        product.id === productId ? { ...product, status: newStatus } : product
-      ));
-    } catch (error) {
-      console.error('Error updating product status:', error);
-    }
-  };
 
   // Delete product
   const deleteProduct = async (productId: string) => {
@@ -559,7 +542,7 @@ const AdminProducts = () => {
                     </button>
                     
                     {product.adminApproved ? (
-                      // Admin product actions - Admin can edit/delete
+                      // Admin product actions - Sub-admin can edit/delete
                       <>
                         <button
                           onClick={() => handleEditAdminProduct(product)}
@@ -577,17 +560,10 @@ const AdminProducts = () => {
                         </button>
                       </>
                     ) : (
-                      // Range owner product actions - Admin can manage all
+                      // Range owner product actions - Sub-admin can only reject/delete pending products
                       <>
                         {product.status === 'pending' && (
                           <>
-                            <button
-                              onClick={() => product.id && updateProductStatus(product.id, 'active')}
-                              className="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 flex items-center gap-1"
-                            >
-                              <Check className="w-4 h-4" />
-                              Approve
-                            </button>
                             <button
                               onClick={() => product.id && deleteProduct(product.id)}
                               className="px-3 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 flex items-center gap-1"
@@ -598,42 +574,15 @@ const AdminProducts = () => {
                           </>
                         )}
                         
-                        {product.status === 'active' && (
-                          <>
-                            <button
-                              onClick={() => product.id && updateProductStatus(product.id, 'blocked')}
-                              className="px-3 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 flex items-center gap-1"
-                            >
-                              <X className="w-4 h-4" />
-                              Block
-                            </button>
-                            <button
-                              onClick={() => product.id && deleteProduct(product.id)}
-                              className="px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Delete
-                            </button>
-                          </>
-                        )}
-                        
-                        {product.status === 'blocked' && (
-                          <>
-                            <button
-                              onClick={() => product.id && updateProductStatus(product.id, 'active')}
-                              className="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 flex items-center gap-1"
-                            >
-                              <Check className="w-4 h-4" />
-                              Activate
-                            </button>
-                            <button
-                              onClick={() => product.id && deleteProduct(product.id)}
-                              className="px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Delete
-                            </button>
-                          </>
+                        {(product.status === 'active' || product.status === 'blocked') && (
+                          // Sub-admin can only view active/blocked products, not modify them
+                          <button
+                            onClick={() => setSelectedProduct(product)}
+                            className="px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700"
+                          >
+                            <Eye className="w-4 h-4" />
+                            View Only
+                          </button>
                         )}
                       </>
                     )}
@@ -690,7 +639,7 @@ const AdminProducts = () => {
                         </button>
                         
                         {product.adminApproved ? (
-                          // Admin product actions - Admin can edit/delete
+                          // Admin product actions - Sub-admin can edit/delete
                           <>
                             <button
                               onClick={() => handleEditAdminProduct(product)}
@@ -706,16 +655,10 @@ const AdminProducts = () => {
                             </button>
                           </>
                         ) : (
-                          // Range owner product actions - Admin can manage all
+                          // Range owner product actions - Sub-admin can only reject/delete pending products
                           <>
                             {product.status === 'pending' && (
                               <>
-                                <button
-                                  onClick={() => product.id && updateProductStatus(product.id, 'active')}
-                                  className="text-green-600 hover:text-green-900"
-                                >
-                                  Approve
-                                </button>
                                 <button
                                   onClick={() => product.id && deleteProduct(product.id)}
                                   className="text-red-600 hover:text-red-900"
@@ -726,23 +669,8 @@ const AdminProducts = () => {
                             )}
                             
                             {(product.status === 'active' || product.status === 'blocked') && (
-                              <>
-                                <button
-                                  onClick={() => product.id && updateProductStatus(
-                                    product.id, 
-                                    product.status === 'active' ? 'blocked' : 'active'
-                                  )}
-                                  className={product.status === 'active' ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}
-                                >
-                                  {product.status === 'active' ? 'Block' : 'Activate'}
-                                </button>
-                                <button
-                                  onClick={() => product.id && deleteProduct(product.id)}
-                                  className="text-red-600 hover:text-red-900"
-                                >
-                                  Delete
-                                </button>
-                              </>
+                              // Sub-admin can only view active/blocked products, not modify them
+                              <span className="text-gray-400">View Only</span>
                             )}
                           </>
                         )}
@@ -823,94 +751,20 @@ const AdminProducts = () => {
                     <p className="mt-1 text-gray-600">{selectedProduct.description}</p>
                   </div>
 
-                  {!selectedProduct.adminApproved && (
+                  {!selectedProduct.adminApproved && selectedProduct.status === 'pending' && (
                     <div className="flex gap-3 pt-4 border-t">
-                      {selectedProduct.status === 'pending' && (
-                        <>
-                          <button
-                            onClick={() => {
-                              if (selectedProduct.id) {
-                                updateProductStatus(selectedProduct.id, 'active');
-                              }
-                              setSelectedProduct(null);
-                            }}
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
-                          >
-                            <Check className="w-4 h-4" />
-                            Approve Product
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (selectedProduct.id) {
-                                deleteProduct(selectedProduct.id);
-                              }
-                              setSelectedProduct(null);
-                            }}
-                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
-                          >
-                            <X className="w-4 h-4" />
-                            Reject Product
-                          </button>
-                        </>
-                      )}
-                      
-                      {selectedProduct.status === 'active' && (
-                        <>
-                          <button
-                            onClick={() => {
-                              if (selectedProduct.id) {
-                                updateProductStatus(selectedProduct.id, 'blocked');
-                              }
-                              setSelectedProduct(null);
-                            }}
-                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
-                          >
-                            <X className="w-4 h-4" />
-                            Block Product
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (selectedProduct.id) {
-                                deleteProduct(selectedProduct.id);
-                              }
-                              setSelectedProduct(null);
-                            }}
-                            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            Delete Product
-                          </button>
-                        </>
-                      )}
-                      
-                      {selectedProduct.status === 'blocked' && (
-                        <>
-                          <button
-                            onClick={() => {
-                              if (selectedProduct.id) {
-                                updateProductStatus(selectedProduct.id, 'active');
-                              }
-                              setSelectedProduct(null);
-                            }}
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
-                          >
-                            <Check className="w-4 h-4" />
-                            Activate Product
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (selectedProduct.id) {
-                                deleteProduct(selectedProduct.id);
-                              }
-                              setSelectedProduct(null);
-                            }}
-                            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            Delete Product
-                          </button>
-                        </>
-                      )}
+                      <button
+                        onClick={() => {
+                          if (selectedProduct.id) {
+                            deleteProduct(selectedProduct.id);
+                          }
+                          setSelectedProduct(null);
+                        }}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
+                      >
+                        <X className="w-4 h-4" />
+                        Reject Product
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1050,4 +904,4 @@ const AdminProducts = () => {
   );
 };
 
-export default AdminProducts;
+export default SubAdminProducts;
