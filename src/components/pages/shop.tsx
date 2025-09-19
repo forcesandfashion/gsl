@@ -25,7 +25,7 @@ interface CustomerInfo {
   fullName: string;
   email: string;
   phone: string;
-  address: {
+  address?: {
     street: string;
     city: string;
     state: string;
@@ -136,7 +136,6 @@ const ShopPage: React.FC = () => {
         const q = query(
           productsRef, 
           where('status', '==', 'active'),
-
         );
         
         const querySnapshot = await getDocs(q);
@@ -260,14 +259,19 @@ const ShopPage: React.FC = () => {
 
   const validateForm = (): boolean => {
     const { customerInfo } = orderForm;
+    
+    // Check if address exists and has all required fields
+    const hasValidAddress = customerInfo.address && 
+      customerInfo.address.street?.trim() !== '' &&
+      customerInfo.address.city?.trim() !== '' &&
+      customerInfo.address.state?.trim() !== '' &&
+      customerInfo.address.zipCode?.trim() !== '';
+    
     return (
       customerInfo.fullName.trim() !== '' &&
       customerInfo.email.trim() !== '' &&
       customerInfo.phone.trim() !== '' &&
-      customerInfo.address.street.trim() !== '' &&
-      customerInfo.address.city.trim() !== '' &&
-      customerInfo.address.state.trim() !== '' &&
-      customerInfo.address.zipCode.trim() !== ''
+      hasValidAddress
     );
   };
 
@@ -945,7 +949,7 @@ const ShopPage: React.FC = () => {
                     </label>
                     <input
                       type="text"
-                      value={orderForm.customerInfo.address.street}
+                      value={orderForm.customerInfo.address?.street || ''}
                       onChange={(e) => handleInputChange('customerInfo.address.street', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="123 Main Street"
@@ -959,7 +963,7 @@ const ShopPage: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        value={orderForm.customerInfo.address.city}
+                        value={orderForm.customerInfo.address?.city || ''}
                         onChange={(e) => handleInputChange('customerInfo.address.city', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Mumbai"
@@ -972,7 +976,7 @@ const ShopPage: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        value={orderForm.customerInfo.address.state}
+                        value={orderForm.customerInfo.address?.state || ''}
                         onChange={(e) => handleInputChange('customerInfo.address.state', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Maharashtra"
@@ -987,7 +991,7 @@ const ShopPage: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        value={orderForm.customerInfo.address.zipCode}
+                        value={orderForm.customerInfo.address?.zipCode || ''}
                         onChange={(e) => handleInputChange('customerInfo.address.zipCode', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="400001"
@@ -999,7 +1003,7 @@ const ShopPage: React.FC = () => {
                         Country *
                       </label>
                       <select
-                        value={orderForm.customerInfo.address.country}
+                        value={orderForm.customerInfo.address?.country || 'India'}
                         onChange={(e) => handleInputChange('customerInfo.address.country', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
