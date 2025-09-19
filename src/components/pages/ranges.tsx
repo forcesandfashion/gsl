@@ -102,9 +102,24 @@ export default function ShootingRanges() {
   const [loading, setLoading] = useState(true);
   const [selectedRange, setSelectedRange] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isMobile, setIsMobile] = useState(false);
   const rangesPerPage = 4;
   const { toast } = useToast();
   const navigate = useNavigate();
+  
+  // Check if device is mobile
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkIsMobile);
+    };
+  }, []);
   
   // Fetch ranges from Firebase
   const fetchRanges = async () => {
@@ -184,10 +199,10 @@ export default function ShootingRanges() {
     <Layout>
       <div className="container mx-auto p-4 max-w-7xl">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             Shooting Ranges Finder
           </h1>
-          <p className="text-gray-600 text-lg">
+          <p className="text-gray-600 text-base md:text-lg">
             Discover and explore shooting ranges near you
           </p>
         </div>
@@ -197,7 +212,7 @@ export default function ShootingRanges() {
             <input
               type="text"
               placeholder="Search by name or location..."
-              className="border-2 border-blue-300 p-3 w-full rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-10"
+              className="border-2 border-blue-300 p-3 w-full rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-10 text-base"
               onChange={(e) => setSearch(e.target.value)}
             />
             <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -206,10 +221,10 @@ export default function ShootingRanges() {
 
         {ranges.length === 0 ? (
           <div className="text-center py-16">
-            <div className="bg-white rounded-2xl shadow-xl p-12 max-w-md mx-auto">
-              <MapPin className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No Ranges Available</h3>
-              <p className="text-gray-500">
+            <div className="bg-white rounded-2xl shadow-xl p-6 md:p-12 max-w-md mx-auto">
+              <MapPin className="w-12 h-12 md:w-16 md:h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-2">No Ranges Available</h3>
+              <p className="text-gray-500 text-sm md:text-base">
                 No shooting ranges are currently listed. Check back later!
               </p>
             </div>
@@ -218,41 +233,41 @@ export default function ShootingRanges() {
           <>
             {/* Map section - larger and more prominent */}
             <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-8">
-              <h2 className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 text-xl font-semibold flex items-center gap-2">
+              <h2 className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 text-lg md:text-xl font-semibold flex items-center gap-2">
                 <MapPin className="w-5 h-5" />
                 Location Map
               </h2>
-              <div className="h-96 w-full">
+              <div className="h-64 md:h-96 w-full">
                 <Map ranges={filteredRanges} selectedRange={selectedRange} />
               </div>
             </div>
 
             {/* Ranges section - now below the map */}
             <div className="bg-white rounded-lg shadow-lg overflow-hidden ranges-section">
-              <h2 className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 text-xl font-semibold flex items-center justify-between">
+              <h2 className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 text-lg md:text-xl font-semibold flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <Star className="w-5 h-5" />
                   Available Ranges
                 </span>
-                <span className="bg-white bg-opacity-20 px-3 py-1 rounded-full text-sm">
+                <span className="bg-white bg-opacity-20 px-2 md:px-3 py-1 rounded-full text-xs md:text-sm">
                   {filteredRanges.length} found
                 </span>
               </h2>
 
-              <div className="p-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="p-4 md:p-6">
+                <div className="grid grid-cols-1 gap-4 md:gap-6">
                   {currentRanges.map((range) => (
                     <button
                       key={range.id}
                       onClick={() => setSelectedRange(range)}
-                      className={`flex flex-col md:flex-row items-start gap-4 p-4 rounded-xl w-full text-left transition-all duration-200 hover:shadow-lg group ${
+                      className={`flex flex-col items-start gap-4 p-4 rounded-xl w-full text-left transition-all duration-200 hover:shadow-lg group ${
                         selectedRange?.id === range.id
                           ? "bg-blue-50 border-2 border-blue-500 shadow-lg"
                           : "bg-gray-50 border border-gray-200 hover:bg-gray-100"
                       }`}
                     >
                       {/* Range Image */}
-                      <div className="relative w-full md:w-2/5 h-48 md:h-32 rounded-lg overflow-hidden bg-gray-200">
+                      <div className="relative w-full h-40 md:h-48 rounded-lg overflow-hidden bg-gray-200">
                         {range.image && range.image !== '/placeholder-range.jpg' ? (
                           <img
                             src={range.image}
@@ -300,23 +315,23 @@ export default function ShootingRanges() {
                       </div>
 
                       {/* Range Details */}
-                      <div className="w-full md:w-3/5 space-y-2" >
-                        <h3 className="text-xl font-bold text-blue-800 group-hover:text-blue-900">
+                      <div className="w-full space-y-2" >
+                        <h3 className="text-lg md:text-xl font-bold text-blue-800 group-hover:text-blue-900">
                           {range.name}
                         </h3>
                         
                         <div className="flex items-start gap-1 text-gray-600">
                           <MapPin className="w-4 h-4 mt-0.5 text-gray-400 flex-shrink-0" />
-                          <span className="text-sm">{range.address}</span>
+                          <span className="text-xs md:text-sm">{range.address}</span>
                         </div>
 
                         {range.description && (
-                          <p className="text-gray-600 text-sm line-clamp-2">
+                          <p className="text-gray-600 text-xs md:text-sm line-clamp-2">
                             {range.description}
                           </p>
                         )}
 
-                        <div className="flex items-center gap-4 text-sm">
+                        <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 text-xs md:text-sm">
                           <div className="flex items-center gap-1 text-gray-600">
                             <Clock className="w-4 h-4 text-blue-500" />
                             <span>{range.openingHours}</span>
@@ -346,12 +361,20 @@ export default function ShootingRanges() {
                           </div>
                         )}
 
-                        <div className="pt-1 flex items-center justify-between">
-                          <span className="text-green-600 font-semibold text-sm flex">
-                            <IndianRupee className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                        <div className="pt-1 flex items-center justify-between w-full">
+                          <span className="text-green-600 font-semibold text-xs md:text-sm flex items-center">
+                            <IndianRupee className="w-3 h-3 md:w-4 md:h-4 mt-0.5 flex-shrink-0" />
                             {range.price}
                           </span>
-                          <button  onClick={()=>{navigate(`/ranges/${range.id}`)}} className=" p-2 rounded-md bg-blue-600 text-white hover:bg-purple-600 font-semibold text-sm mr-8">Info</button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/ranges/${range.id}`);
+                            }} 
+                            className="px-3 py-1.5 md:px-4 md:py-2 rounded-md bg-blue-600 text-white hover:bg-purple-600 font-semibold text-xs md:text-sm"
+                          >
+                            Info
+                          </button>
                         </div>
                       </div>
                     </button>
@@ -360,53 +383,115 @@ export default function ShootingRanges() {
 
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
-                  <div className="mt-8 flex items-center justify-center gap-4">
+                  <div className="mt-6 md:mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-4">
                     <button
                       onClick={() => handlePageChange(currentPage - 1)}
                       disabled={currentPage === 1}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                      className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-medium transition-all duration-200 text-sm ${
                         currentPage === 1
                           ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                           : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
                       }`}
                     >
                       <ChevronLeft className="w-4 h-4" />
-                      Previous
+                      <span className="hidden sm:inline">Previous</span>
                     </button>
 
-                    <div className="flex items-center gap-2">
-                      {Array.from({ length: totalPages }, (_, index) => (
-                        <button
-                          key={index + 1}
-                          onClick={() => handlePageChange(index + 1)}
-                          className={`w-10 h-10 rounded-lg font-medium transition-all duration-200 ${
-                            currentPage === index + 1
-                              ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg"
-                              : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
-                          }`}
-                        >
-                          {index + 1}
-                        </button>
-                      ))}
+                    <div className="flex items-center gap-1 md:gap-2">
+                      {Array.from({ length: totalPages }, (_, index) => {
+                        // Show limited page numbers on mobile
+                        if (isMobile && totalPages > 5) {
+                          // Always show first page
+                          if (index === 0) {
+                            return (
+                              <button
+                                key={index + 1}
+                                onClick={() => handlePageChange(index + 1)}
+                                className={`w-8 h-8 md:w-10 md:h-10 rounded-lg font-medium transition-all duration-200 text-xs md:text-base ${
+                                  currentPage === index + 1
+                                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg"
+                                    : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
+                                }`}
+                              >
+                                {index + 1}
+                              </button>
+                            );
+                          }
+                          
+                          // Show current page and neighbors
+                          if (index >= currentPage - 2 && index <= currentPage) {
+                            return (
+                              <button
+                                key={index + 1}
+                                onClick={() => handlePageChange(index + 1)}
+                                className={`w-8 h-8 md:w-10 md:h-10 rounded-lg font-medium transition-all duration-200 text-xs md:text-base ${
+                                  currentPage === index + 1
+                                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg"
+                                    : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
+                                }`}
+                              >
+                                {index + 1}
+                              </button>
+                            );
+                          }
+                          
+                          // Show last page
+                          if (index === totalPages - 1) {
+                            return (
+                              <>
+                                <span className="px-1">...</span>
+                                <button
+                                  key={index + 1}
+                                  onClick={() => handlePageChange(index + 1)}
+                                  className={`w-8 h-8 md:w-10 md:h-10 rounded-lg font-medium transition-all duration-200 text-xs md:text-base ${
+                                    currentPage === index + 1
+                                      ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg"
+                                      : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
+                                  }`}
+                                >
+                                  {index + 1}
+                                </button>
+                              </>
+                            );
+                          }
+                          
+                          return null;
+                        }
+                        
+                        // Show all pages on desktop or when there are few pages
+                        return (
+                          <button
+                            key={index + 1}
+                            onClick={() => handlePageChange(index + 1)}
+                            className={`w-8 h-8 md:w-10 md:h-10 rounded-lg font-medium transition-all duration-200 text-xs md:text-base ${
+                              currentPage === index + 1
+                                ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg"
+                                : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
+                            }`}
+                          >
+                            {index + 1}
+                          </button>
+                        );
+                      })}
                     </div>
 
                     <button
                       onClick={() => handlePageChange(currentPage + 1)}
                       disabled={currentPage === totalPages}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                      className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-medium transition-all duration-200 text-sm ${
                         currentPage === totalPages
                           ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                           : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
                       }`}
                     >
-                      Next
+                      <span className="hidden sm:inline">Next</span>
                       <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
                 )}
 
                 {/* Results summary */}
-                <div className="mt-6 text-center text-gray-600 text-sm">
+                <div className="mt-4 md:mt-6 text-center text-gray-600 text-xs md:text-sm">
                   Showing {startIndex + 1} to {Math.min(endIndex, filteredRanges.length)} of {filteredRanges.length} ranges
                 </div>
               </div>

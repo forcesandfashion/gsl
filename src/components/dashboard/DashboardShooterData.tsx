@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Trash2, FileText, Target, Calendar, User, MapPin, Star, Trophy, Clock, AlertCircle } from 'lucide-react';
-import { Button } from '../ui/button';
+import { Download, Trash2, FileText, Target, Calendar, User, MapPin, Star, Trophy, Clock, AlertCircle, Search, Filter, ChevronDown } from 'lucide-react';
 import { db } from "@/firebase/config";
-
 import { getFirestore, collection, getDocs, doc, deleteDoc, query, orderBy } from 'firebase/firestore';
 
 // TypeScript interfaces
@@ -59,7 +57,12 @@ const DashboardShooterData: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
-  const [filterType, setFilterType] = useState<'all' | 'range' | 'shooter'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'range' | 'shooter'>('all');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    search: '',
+    dateRange: { start: '', end: '' }
+  });
 
   const fetchFirebaseData = async (): Promise<void> => {
     try {
@@ -99,7 +102,6 @@ const DashboardShooterData: React.FC = () => {
         }));
         
         allData.push(...rangeData);
-        console.log('Range data fetched:', rangeData.length);
       } catch (rangeError) {
         console.error('Error fetching range data:', rangeError);
       }
@@ -107,27 +109,23 @@ const DashboardShooterData: React.FC = () => {
       // Fetch Shooter Data from shooters/{id}/shootingSession/{randomId}
       try {
         const shootersSnapshot = await getDocs(collection(db, 'shooters'));
-        console.log('Found shooters:', shootersSnapshot.docs.length);
         
         for (const shooterDoc of shootersSnapshot.docs) {
           try {
-            // First get all session IDs in the shootingSession collection
             const sessionsSnapshot = await getDocs(
               collection(db, `shooters/${shooterDoc.id}/shootingSession`)
             );
             
-            console.log(`Found ${sessionsSnapshot.docs.length} sessions for shooter ${shooterDoc.id}`);
-            
-            // For each session document (which contains the actual session data)
             for (const sessionDoc of sessionsSnapshot.docs) {
               try {
                 const sessionData = sessionDoc.data();
+                const shooterData = shooterDoc.data();
                 
-                // Create shooter data object
                 const shooterSession: ShooterData = {
                   id: `${shooterDoc.id}_${sessionDoc.id}`,
                   type: 'shooter' as const,
                   shooterId: shooterDoc.id,
+                  shooterName: shooterData.name || shooterData.fullName || 'Unknown Shooter',
                   fileName: sessionData.fileName || '',
                   fileType: sessionData.fileType || '',
                   fileUrl: sessionData.fileUrl || '',
@@ -141,16 +139,14 @@ const DashboardShooterData: React.FC = () => {
                     totalScore: sessionData.sessionStats?.totalScore || 0,
                   },
                   uploadDate: sessionData.uploadDate?.toDate() || new Date(),
+                  rangeName: sessionData.rangeName || '',
                 };
                 
                 allData.push(shooterSession);
-                console.log(`Added session ${sessionDoc.id} for shooter ${shooterDoc.id}`);
-                
               } catch (sessionDocError) {
-                console.error(`Error processing session ${sessionDoc.id} for shooter ${shooterDoc.id}:`, sessionDocError);
+                console.error(`Error processing session ${sessionDoc.id}:`, sessionDocError);
               }
             }
-            
           } catch (sessionError) {
             console.error(`Error fetching sessions for shooter ${shooterDoc.id}:`, sessionError);
           }
@@ -167,7 +163,6 @@ const DashboardShooterData: React.FC = () => {
       });
 
       setData(allData);
-      console.log('Total data fetched:', allData.length);
       
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -181,20 +176,16 @@ const DashboardShooterData: React.FC = () => {
   const deleteFromFirebase = async (item: DataItem): Promise<void> => {
     try {
       if (item.type === 'range') {
-        // Delete from shootingData collection
         await deleteDoc(doc(db, 'shootingData', item.id));
       } else {
-        // Delete from shooters/{shooterId}/shootingSession subcollection
         const shooterId = item.shooterId;
         if (!shooterId) {
           throw new Error('Shooter ID not found');
         }
-        // Extract the session document ID from the composite ID
         const sessionId = item.id.replace(`${shooterId}_`, '');
         await deleteDoc(doc(db, `shooters/${shooterId}/shootingSession`, sessionId));
       }
       
-      // Remove from local state after successful deletion
       setData(prev => prev.filter(d => d.id !== item.id));
       
     } catch (err) {
@@ -208,8 +199,33 @@ const DashboardShooterData: React.FC = () => {
   }, []);
 
   const filteredData: DataItem[] = data.filter(item => {
-    if (filterType === 'all') return true;
-    return item.type === filterType;
+    // Tab filtering
+    if (activeTab !== 'all' && item.type !== activeTab) return false;
+    
+    // Search filter
+    if (filters.search) {
+      const searchTerm = filters.search.toLowerCase();
+      const matchesSearch = 
+        (item.type === 'range' && 
+          (item.rangeName?.toLowerCase().includes(searchTerm) || 
+           item.userName?.toLowerCase().includes(searchTerm))) ||
+        (item.type === 'shooter' && 
+          (item.shooterName?.toLowerCase().includes(searchTerm) || 
+           item.rangeName?.toLowerCase().includes(searchTerm)));
+      
+      if (!matchesSearch) return false;
+    }
+    
+    // Date range filter
+    if (filters.dateRange.start || filters.dateRange.end) {
+      const itemDate = item.type === 'shooter' ? item.uploadDate : item.createdAt;
+      const itemDateStr = itemDate.toISOString().split('T')[0];
+      
+      if (filters.dateRange.start && itemDateStr < filters.dateRange.start) return false;
+      if (filters.dateRange.end && itemDateStr > filters.dateRange.end) return false;
+    }
+    
+    return true;
   });
 
   const handleSelectItem = (id: string): void => {
@@ -237,9 +253,7 @@ const DashboardShooterData: React.FC = () => {
         return;
       }
       
-      // Open the file URL in a new tab/window so user can download from there
       window.open(item.fileUrl, '_blank');
-      
     } catch (error) {
       console.error('Download failed:', error);
       alert('Failed to open download link. Please try again.');
@@ -279,7 +293,6 @@ const DashboardShooterData: React.FC = () => {
     selectedItems.forEach(id => {
       const item = data.find(d => d.id === id);
       if (item && item.fileUrl) {
-        // Open each file in a new tab with a small delay to prevent popup blocker
         setTimeout(() => {
           window.open(item.fileUrl, '_blank');
         }, 100);
@@ -309,7 +322,7 @@ const DashboardShooterData: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-6">
         <div className="max-w-7xl mx-auto">
           <div className="animate-pulse space-y-6">
             <div className="h-8 bg-gray-300 rounded w-1/3"></div>
@@ -326,7 +339,7 @@ const DashboardShooterData: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-6">
         <div className="max-w-7xl mx-auto">
           <div className="bg-white rounded-xl shadow-lg p-6 border border-red-200">
             <div className="flex items-center gap-3 text-red-600 mb-4">
@@ -355,63 +368,134 @@ const DashboardShooterData: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="bg-white rounded-xl shadow-lg p-6 border border-blue-100">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-                <Target className="text-blue-600" size={32} />
-                Shooter Data Dashboard
-              </h1>
-              <p className="text-gray-600 mt-2">Manage shooting session data from ranges and shooters</p>
+        <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border border-blue-100">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-800 flex items-center gap-3">
+                  <Target className="text-blue-600" size={32} />
+                  Shooter Data Dashboard
+                </h1>
+                <p className="text-gray-600 mt-2">Manage shooting session data from ranges and shooters</p>
+              </div>
+              
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={fetchFirebaseData}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
+                >
+                  <Clock size={16} />
+                  Refresh
+                </button>
+                
+                {selectedItems.size > 0 && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleBulkDownload}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                    >
+                      <Download size={16} />
+                      Open Selected ({selectedItems.size})
+                    </button>
+                    <button
+                      onClick={handleBulkDelete}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+                    >
+                      <Trash2 size={16} />
+                      Delete Selected ({selectedItems.size})
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
-            
-            <div className="flex flex-wrap gap-3">
-              <select 
-                value={filterType} 
-                onChange={(e) => setFilterType(e.target.value as 'all' | 'range' | 'shooter')}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">All Data</option>
-                <option value="range">Range Data</option>
-                <option value="shooter">Shooter Data</option>
-              </select>
+
+            {/* Search and Tabs */}
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search by range name, shooter name..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={filters.search}
+                  onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                />
+              </div>
               
-              <button
-                onClick={fetchFirebaseData}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
-              >
-                <Clock size={16} />
-                Refresh
-              </button>
-              
-              {selectedItems.size > 0 && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleBulkDownload}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
-                  >
-                    <Download size={16} />
-                    Open Selected ({selectedItems.size})
-                  </button>
-                  <button
-                    onClick={handleBulkDelete}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
-                  >
-                    <Trash2 size={16} />
-                    Delete Selected ({selectedItems.size})
-                  </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <Filter className="h-4 w-4" />
+                  Filters
+                  <ChevronDown className={`h-4 w-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
+            </div>
+
+            {/* Advanced Filters */}
+            {showFilters && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date Range (Start)</label>
+                  <input
+                    type="date"
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    value={filters.dateRange.start}
+                    onChange={(e) => setFilters(prev => ({ 
+                      ...prev, 
+                      dateRange: { ...prev.dateRange, start: e.target.value }
+                    }))}
+                  />
                 </div>
-              )}
-            </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date Range (End)</label>
+                  <input
+                    type="date"
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    value={filters.dateRange.end}
+                    onChange={(e) => setFilters(prev => ({ 
+                      ...prev, 
+                      dateRange: { ...prev.dateRange, end: e.target.value }
+                    }))}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border border-blue-100">
+          <div className="flex border-b border-gray-200">
+            <button
+              className={`py-2 px-4 font-medium text-sm md:text-base ${activeTab === 'all' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+              onClick={() => setActiveTab('all')}
+            >
+              All Data
+            </button>
+            <button
+              className={`py-2 px-4 font-medium text-sm md:text-base ${activeTab === 'range' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+              onClick={() => setActiveTab('range')}
+            >
+              Range Data
+            </button>
+            <button
+              className={`py-2 px-4 font-medium text-sm md:text-base ${activeTab === 'shooter' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+              onClick={() => setActiveTab('shooter')}
+            >
+              Shooter Data
+            </button>
           </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6">
+          <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border-l-4 border-blue-500">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 uppercase tracking-wide">Total Records</p>
@@ -421,7 +505,7 @@ const DashboardShooterData: React.FC = () => {
             </div>
           </div>
           
-          <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500">
+          <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border-l-4 border-green-500">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 uppercase tracking-wide">Range Data</p>
@@ -431,7 +515,7 @@ const DashboardShooterData: React.FC = () => {
             </div>
           </div>
           
-          <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
+          <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border-l-4 border-purple-500">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 uppercase tracking-wide">Shooter Data</p>
@@ -441,7 +525,7 @@ const DashboardShooterData: React.FC = () => {
             </div>
           </div>
           
-          <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-orange-500">
+          <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border-l-4 border-orange-500">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 uppercase tracking-wide">Selected</p>
@@ -454,8 +538,8 @@ const DashboardShooterData: React.FC = () => {
 
         {/* Data Table */}
         <div className="bg-white rounded-xl shadow-lg border border-blue-100 overflow-hidden">
-          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-            <div className="flex items-center justify-between">
+          <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <h2 className="text-xl font-semibold text-gray-800">Data Records</h2>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -471,21 +555,21 @@ const DashboardShooterData: React.FC = () => {
           
           <div className="overflow-x-auto">
             {filteredData.length === 0 ? (
-              <div className="p-12 text-center text-gray-500">
+              <div className="p-8 md:p-12 text-center text-gray-500">
                 <Target size={48} className="mx-auto text-gray-300 mb-4" />
                 <p className="text-lg">No data records found</p>
                 <p className="text-sm">Try adjusting your filter settings or refresh the data</p>
               </div>
             ) : (
-              <div className="space-y-4 p-6">
+              <div className="space-y-4 p-4 md:p-6">
                 {filteredData.map((item) => (
                   <div
                     key={item.id}
-                    className={`border rounded-lg p-6 transition-all duration-200 hover:shadow-md ${
+                    className={`border rounded-lg p-4 md:p-6 transition-all duration-200 hover:shadow-md ${
                       selectedItems.has(item.id) ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'
                     }`}
                   >
-                    <div className="flex items-start justify-between mb-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
                       <div className="flex items-center gap-3">
                         <input
                           type="checkbox"
@@ -519,7 +603,7 @@ const DashboardShooterData: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                       {/* File Information */}
                       <div className="space-y-3">
                         <h3 className="font-semibold text-gray-800 flex items-center gap-2">
@@ -529,7 +613,7 @@ const DashboardShooterData: React.FC = () => {
                         <div className="space-y-2 text-sm">
                           <div className="flex justify-between">
                             <span className="text-gray-600">Name:</span>
-                            <span className="font-medium">{item.fileName || 'N/A'}</span>
+                            <span className="font-medium truncate max-w-xs">{item.fileName || 'N/A'}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Type:</span>
@@ -589,7 +673,7 @@ const DashboardShooterData: React.FC = () => {
                               <span className="font-medium">{item.sessionName}</span>
                             </div>
                           )}
-                          {item.type === 'shooter' && item.rangeName && (
+                          {item.type === 'range' && item.rangeName && (
                             <div className="flex justify-between">
                               <span className="text-gray-600">Range:</span>
                               <span className="font-medium">{item.rangeName}</span>
@@ -601,42 +685,10 @@ const DashboardShooterData: React.FC = () => {
                               <span className="font-medium">{item.shooterName}</span>
                             </div>
                           )}
-                          {item.type === 'range' && item.rangeName && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Range:</span>
-                              <span className="font-medium">{item.rangeName}</span>
-                            </div>
-                          )}
                           {item.type === 'range' && item.userName && (
                             <div className="flex justify-between">
                               <span className="text-gray-600">User:</span>
                               <span className="font-medium">{item.userName}</span>
-                            </div>
-                          )}
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Date:</span>
-                            <span className="font-medium">
-                              {formatDate(item.type === 'shooter' ? item.uploadDate : item.createdAt)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="space-y-3">
-                        <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                          <Clock size={16} />
-                          Additional Info
-                        </h3>
-                        <div className="space-y-2 text-sm">
-                          {item.type === 'shooter' && item.sessionName && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Session:</span>
-                              <span className="font-medium">{item.sessionName}</span>
-                            </div>
-                          )}
-                          {item.type === 'range' && item.rangeName && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Range:</span>
-                              <span className="font-medium">{item.rangeName}</span>
                             </div>
                           )}
                           <div className="flex justify-between">

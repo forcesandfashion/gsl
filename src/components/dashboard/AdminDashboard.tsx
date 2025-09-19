@@ -13,7 +13,8 @@ import {
   Timestamp,
   where,
   onSnapshot,
-  Unsubscribe 
+  Unsubscribe,
+  deleteDoc
 } from "firebase/firestore";
 import { User } from "firebase/auth";
 import {
@@ -708,34 +709,46 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Handle deleting CMB account
-  const handleDeleteCmbAccount = async (accountId: string, username: string): Promise<void> => {
-    if (!confirm(`Are you sure you want to delete the CMB account "${username}"? This action cannot be undone.`)) {
-      return;
+const handleDeleteCmbAccount = async (accountId: string, username: string): Promise<void> => {
+  if (!confirm(`Are you sure you want to delete the CMB account "${username}"? This action cannot be undone.`)) {
+    return;
+  }
+
+  try {
+    setError('');
+    setSuccess('');
+    
+    // First, delete the authentication account via Cloud Function
+    const response = await makeAuthenticatedRequest(`${API_BASE_URL}/deleteCmbAccount`, {
+      method: 'POST',
+      body: JSON.stringify({ cmbAccountId: accountId })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to delete CMB account');
     }
 
+    // If auth deletion was successful, now delete the Firestore document
     try {
-      setError('');
-      setSuccess('');
-
-      const response = await makeAuthenticatedRequest(`${API_BASE_URL}/deleteCmbAccount`, {
-        method: 'POST',
-        body: JSON.stringify({ cmbAccountId: accountId })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete CMB account');
-      }
-
+      await deleteDoc(doc(db, 'cmb', accountId));
       setSuccess(`CMB account "${username}" deleted successfully!`);
-
-    } catch (err) {
-      console.error('Error deleting CMB account:', err);
-      setError((err as Error).message || 'Failed to delete CMB account');
+      
+      // Also update local state to remove the deleted account
+      setCmbAccounts(prev => prev.filter(account => account.id !== accountId));
+      
+    } catch (firestoreError) {
+      console.error('Error deleting CMB account from Firestore:', firestoreError);
+      // Even if Firestore deletion fails, we still show success for auth deletion
+      setSuccess(`CMB account "${username}" authentication deleted, but there was an issue removing the data record.`);
     }
-  };
+
+  } catch (err) {
+    console.error('Error deleting CMB account:', err);
+    setError((err as Error).message || 'Failed to delete CMB account');
+  }
+};
 
   // Update CMB account status
   const handleCmbStatusUpdate = async (accountId: string, newStatus: Exclude<AccountStatus, 'deleted'>): Promise<void> => {

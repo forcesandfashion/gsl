@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { db } from "../../firebase/config";
-import { collection, getDocs, updateDoc, doc, query, where, deleteDoc, getDoc } from "firebase/firestore";
+import { collection, getDocs, updateDoc, doc, query, where, writeBatch, getDoc } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 import { sendWelcomeEmail } from "../../lib/emailService"; // adjust path
 
 interface RangeOwner {
@@ -85,18 +86,138 @@ export default function PendingRanges() {
     }
   };
 
-  const deleteOwner = async (id: string) => {
+  // Complete delete function from ActiveRanges component
+  const deleteUser = async (uid: string) => {
     const confirmDelete = window.confirm(
-      "⚠ Are you sure you want to delete this pending range owner? This action cannot be undone."
+      "⚠ Are you sure you want to delete this user? This will also delete all their ranges, managers, and related bookings. This action cannot be undone."
     );
+    
     if (!confirmDelete) return;
 
     try {
-      await deleteDoc(doc(db, "range-owners", id));
-      setPendingRanges((prev) => prev.filter((owner) => owner.id !== id));
-      alert("🗑 Pending range owner deleted successfully.");
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      
+      if (!currentUser) {
+        alert("❌ You must be logged in as an admin to perform this action.");
+        return;
+      }
+
+      const idToken = await currentUser.getIdToken();
+
+      // 🔹 Call backend Cloud Function to delete auth user + users collection doc
+      const response = await fetch(
+        "https://admindeleteuser-5uzq5pp2ia-uc.a.run.app",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({ uid }),
+        }
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        console.error("Error deleting user:", data);
+        alert(`❌ Failed to delete user: ${data}`);
+        return;
+      }
+
+      // 🔹 Get all ranges owned by this user first (needed for booking deletion)
+      const rangesQuery = query(collection(db, "ranges"), where("ownerId", "==", uid));
+      const rangesSnapshot = await getDocs(rangesQuery);
+      const rangeIds = rangesSnapshot.docs.map(doc => doc.id);
+
+      console.log(`Found ${rangeIds.length} ranges owned by user ${uid}`);
+
+      // 🔹 Start batch operations for better performance
+      const batches = [];
+      let currentBatch = writeBatch(db);
+      let operationCount = 0;
+      const maxBatchSize = 500; // Firestore batch limit
+
+      // Helper function to add operation to batch
+      const addToBatch = (operation: () => void) => {
+        if (operationCount >= maxBatchSize) {
+          batches.push(currentBatch);
+          currentBatch = writeBatch(db);
+          operationCount = 0;
+        }
+        operation();
+        operationCount++;
+      };
+
+      // 🔹 Delete the user's document from range-owners
+      addToBatch(() => {
+        currentBatch.delete(doc(db, "range-owners", uid));
+      });
+
+      // 🔹 Delete all ranges owned by this user
+      rangesSnapshot.docs.forEach((rangeDoc) => {
+        addToBatch(() => {
+          currentBatch.delete(rangeDoc.ref);
+        });
+      });
+
+      // 🔹 Delete all managers with ownerId matching the range owner's id
+      const managersQuery = query(collection(db, "managers"), where("ownerId", "==", uid));
+      const managersSnapshot = await getDocs(managersQuery);
+      
+      console.log(`Found ${managersSnapshot.docs.length} managers for user ${uid}`);
+      
+      managersSnapshot.docs.forEach((managerDoc) => {
+        addToBatch(() => {
+          currentBatch.delete(managerDoc.ref);
+        });
+      });
+
+      // 🔹 Delete all bookings for ranges owned by this user
+      if (rangeIds.length > 0) {
+        // Note: Firestore 'in' queries are limited to 10 items, so we need to chunk if more ranges
+        const rangeIdChunks = [];
+        for (let i = 0; i < rangeIds.length; i += 10) {
+          rangeIdChunks.push(rangeIds.slice(i, i + 10));
+        }
+
+        for (const chunk of rangeIdChunks) {
+          const bookingsQuery = query(collection(db, "bookings"), where("rangeId", "in", chunk));
+          const bookingsSnapshot = await getDocs(bookingsQuery);
+          
+          console.log(`Found ${bookingsSnapshot.docs.length} bookings for range chunk`);
+          
+          bookingsSnapshot.docs.forEach((bookingDoc) => {
+            addToBatch(() => {
+              currentBatch.delete(bookingDoc.ref);
+            });
+          });
+        }
+      }
+
+      // 🔹 Add the last batch if it has operations
+      if (operationCount > 0) {
+        batches.push(currentBatch);
+      }
+
+      // 🔹 Execute all batches
+      console.log(`Executing ${batches.length} batches with total operations`);
+      await Promise.all(batches.map(batch => batch.commit()));
+
+      // 🔹 Update local state
+      setPendingRanges((prev) => prev.filter((user) => user.id !== uid));
+
+      alert(`✅ User ${uid} and all associated data (ranges, managers, bookings) have been deleted successfully.`);
+      
+      console.log(`Successfully deleted:
+        - User document from range-owners
+        - ${rangeIds.length} ranges
+        - ${managersSnapshot.docs.length} managers
+        - All related bookings`);
+
     } catch (err) {
-      console.error("Error deleting pending owner:", err);
+      console.error("Error deleting user and associated data:", err);
+      alert("❌ An error occurred while deleting user. Please try again.");
     }
   };
 
@@ -157,7 +278,7 @@ export default function PendingRanges() {
                 </button>
 
                 <button
-                  onClick={() => deleteOwner(owner.id)}
+                  onClick={() => deleteUser(owner.id)}
                   className="px-4 py-2 bg-gray-700 text-white rounded-xl hover:bg-gray-800 transition font-medium shadow-sm"
                 >
                   Delete

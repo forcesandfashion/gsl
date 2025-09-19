@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, ChevronDown, Check, X, Clock, Eye, Plus, Edit, Trash2, Grid, List } from 'lucide-react';
+import { Search, Filter, ChevronDown, Check, X, Clock, Eye, Plus, Edit, Trash2, Grid, List, Upload, Image as ImageIcon } from 'lucide-react';
 import { 
   collection, 
   getDocs, 
@@ -11,7 +11,8 @@ import {
   where,
   orderBy
 } from 'firebase/firestore';
-import { db } from '../../firebase/config';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { db, storage } from '../../firebase/config';
 import { useAuth } from '@/firebase/auth';
 
 interface Product {
@@ -70,6 +71,7 @@ const AdminProducts = () => {
     category: '',
     images: [] as string[]
   });
+  const [uploadingImages, setUploadingImages] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const auth = useAuth();
@@ -183,11 +185,74 @@ const AdminProducts = () => {
   // Delete product
   const deleteProduct = async (productId: string) => {
     try {
+      // First, delete any associated images from storage
+      const product = products.find(p => p.id === productId);
+      if (product && product.images && product.images.length > 0) {
+        for (const imageUrl of product.images) {
+          try {
+            // Extract the path from the URL or use a consistent path pattern
+            const imageRef = ref(storage, imageUrl);
+            await deleteObject(imageRef);
+          } catch (error) {
+            console.error('Error deleting image:', error);
+          }
+        }
+      }
+      
+      // Then delete the product document
       await deleteDoc(doc(db, 'products', productId));
       setProducts(prev => prev.filter(product => product.id !== productId));
     } catch (error) {
       console.error('Error deleting product:', error);
     }
+  };
+
+  // Upload images to Firebase Storage
+  const uploadImages = async (files: FileList): Promise<string[]> => {
+    const uploadPromises = [];
+    const uploadedUrls = [];
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const storageRef = ref(storage, `products/${Date.now()}_${file.name}`);
+      uploadPromises.push(
+        uploadBytes(storageRef, file)
+          .then(snapshot => getDownloadURL(snapshot.ref))
+          .then(url => {
+            uploadedUrls.push(url);
+            return url;
+          })
+      );
+    }
+    
+    return Promise.all(uploadPromises).then(() => uploadedUrls);
+  };
+
+  // Handle image upload
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    try {
+      setUploadingImages(true);
+      const uploadedUrls = await uploadImages(e.target.files);
+      setFormData(prev => ({
+        ...prev,
+        images: [...prev.images, ...uploadedUrls]
+      }));
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      alert('Failed to upload images. Please try again.');
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  // Remove image from form data
+  const removeImage = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
   };
 
   // Create or update admin product
@@ -1012,6 +1077,63 @@ const AdminProducts = () => {
                         <option key={category} value={category}>{category}</option>
                       ))}
                     </select>
+                  </div>
+
+                  {/* Image Upload Section */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Product Images</label>
+                    
+                    {/* Image Upload Input */}
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors">
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <Upload className="w-8 h-8 mb-3 text-gray-400" />
+                        <p className="mb-2 text-sm text-gray-500">
+                          <span className="font-semibold">Click to upload</span> or drag and drop
+                        </p>
+                        <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                      </div>
+                      <input
+                        type="file"
+                        className="hidden"
+                        multiple
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        disabled={uploadingImages}
+                      />
+                    </label>
+                    
+                    {/* Uploading Indicator */}
+                    {uploadingImages && (
+                      <div className="mt-2 text-sm text-blue-600 flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                        Uploading images...
+                      </div>
+                    )}
+                    
+                    {/* Image Preview */}
+                    {formData.images.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-sm font-medium text-gray-700 mb-2">Uploaded Images:</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {formData.images.map((image, index) => (
+                            <div key={index} className="relative group">
+                              <img
+                                src={image}
+                                alt={`Product preview ${index + 1}`}
+                                className="h-20 w-full object-cover rounded-md"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeImage(index)}
+                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex gap-3 pt-4">
