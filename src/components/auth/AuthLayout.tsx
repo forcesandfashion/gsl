@@ -106,11 +106,10 @@ export default function AuthLayout({ children, title }: { children: ReactNode, t
               <div className="mt-6 md:hidden text-center">
                 <p className="text-gray-600 text-sm">
                   {title === "Sign In" 
-                    ? "Don't have an account? " 
-                    : "Already have an account? "
+                    
                   }
                   <Link 
-                    to={title === "Sign In" ? "/signup" : "/signin"} 
+                    to={title === "Sign In" ? "/signup" : "/login"} 
                     className="text-blue-600 font-medium hover:text-blue-700"
                   >
                     {title === "Sign In" ? "Sign Up" : "Sign In"}
