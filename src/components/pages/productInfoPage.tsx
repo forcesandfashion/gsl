@@ -235,7 +235,7 @@ const ProductInfoPage: React.FC = () => {
         paymentMethod: orderForm.paymentMethod,
         paymentStatus: orderForm.paymentMethod === 'cash' ? 'pending' : 'paid',
         customerInfo: orderForm.customerInfo,
-        userId: user?.uid || '', // Use the current user's ID from auth context
+        userId: user.uid , // Use the current user's ID from auth context
         products: [{
           productId: product.id,
           productName: product.name,
