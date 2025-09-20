@@ -409,7 +409,7 @@ export default function SubscriptionPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button 
-                onClick={() => navigate(`/range/${rangeId}`)}
+                onClick={() => navigate(`/ranges/${rangeId}`)}
                 variant="ghost"
                 className="text-gray-600 hover:text-gray-800"
               >

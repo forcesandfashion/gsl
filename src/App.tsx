@@ -32,6 +32,8 @@ import CommunityPage from "./components/pages/community";
 import ForgetPassword from "./components/pages/ForgetPassword";
 import ShopPage from "./components/pages/shop";
 import SubscriptionPage from "./components/pages/subscriptionPage";
+import ProductInfoPage from "./components/pages/productInfoPage";
+
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -73,6 +75,7 @@ function App() {
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/forgot-password" element={< ForgetPassword/>} />
+          <Route path="/product/:productId" element={<ProductInfoPage />} />
           <Route path="/subscription/:rangeId" element={<SubscriptionPage />} />
           <Route path="/shop" element={<ShopPage />} />
            <Route 
