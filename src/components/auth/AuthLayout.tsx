@@ -30,7 +30,7 @@ export default function AuthLayout({ children, title }: { children: ReactNode, t
                 </Link>
               ) : (
                 <Link
-                  to="/signin"
+                  to="/login"
                   className="inline-block px-6 py-3 border-2 border-white text-white font-semibold rounded-full hover:bg-white hover:text-blue-600 transition-all duration-300 shadow-lg hover:shadow-xl"
                 >
                   SIGN IN
@@ -66,7 +66,7 @@ export default function AuthLayout({ children, title }: { children: ReactNode, t
               <div className="md:hidden flex justify-center mb-6">
                 <div className="flex bg-gray-100 rounded-xl p-1 shadow-inner">
                   <Link
-                    to="/signin"
+                    to="/login"
                     className={`px-5 py-2 rounded-xl text-sm font-medium transition-all ${
                       title === "Sign In" 
                         ? "bg-white text-blue-600 shadow-sm" 
