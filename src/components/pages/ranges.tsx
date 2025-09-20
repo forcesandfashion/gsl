@@ -103,7 +103,8 @@ export default function ShootingRanges() {
   const [selectedRange, setSelectedRange] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [isMobile, setIsMobile] = useState(false);
-  const rangesPerPage = 4;
+  const [userLocation, setUserLocation] = useState(null);
+  const rangesPerPage = 6; // Changed to 6 to work better with 3 columns
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -183,6 +184,61 @@ export default function ShootingRanges() {
     document.querySelector('.ranges-section')?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Handle location found from Map component
+  const handleLocationFound = (location) => {
+    setUserLocation(location);
+    console.log("User location found:", location);
+    toast({
+      title: "Location Found",
+      description: "Your current location has been marked on the map",
+    });
+  };
+
+  // Function to trigger location request
+  const requestUserLocation = () => {
+    if (navigator.geolocation) {
+      toast({
+        title: "Requesting Location",
+        description: "Please allow location access to find shooting ranges near you",
+      });
+      
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          handleLocationFound({ latitude, longitude });
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          let errorMessage = "Could not get your current location.";
+          
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = "Location access denied. Please enable location services and refresh the page.";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = "Location information is unavailable.";
+              break;
+            case error.TIMEOUT:
+              errorMessage = "Location request timed out. Please try again.";
+              break;
+          }
+          
+          toast({
+            title: "Location Error",
+            description: errorMessage,
+            variant: "destructive"
+          });
+        }
+      );
+    } else {
+      toast({
+        title: "Location Not Supported",
+        description: "Geolocation is not supported by this browser.",
+        variant: "destructive"
+      });
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -212,11 +268,27 @@ export default function ShootingRanges() {
             <input
               type="text"
               placeholder="Search by name or location..."
-              className="border-2 border-blue-300 p-3 w-full rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-10 text-base"
+              className="border-2 border-blue-300 p-3 w-full rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-10 pr-32 text-base"
               onChange={(e) => setSearch(e.target.value)}
             />
             <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            
+            {/* Location button in search bar */}
+            <button
+              onClick={requestUserLocation}
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1"
+            >
+              <MapPin className="w-4 h-4" />
+              Find Near Me
+            </button>
           </div>
+          
+          {userLocation && (
+            <div className="mt-2 text-sm text-green-600 flex items-center gap-1">
+              <MapPin className="w-4 h-4" />
+              Location found! Showing ranges near you.
+            </div>
+          )}
         </div>
 
         {ranges.length === 0 ? (
@@ -236,9 +308,18 @@ export default function ShootingRanges() {
               <h2 className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 text-lg md:text-xl font-semibold flex items-center gap-2">
                 <MapPin className="w-5 h-5" />
                 Location Map
+                {userLocation && (
+                  <span className="bg-white bg-opacity-20 px-2 md:px-3 py-1 rounded-full text-xs md:text-sm ml-auto">
+                    Location Found
+                  </span>
+                )}
               </h2>
               <div className="h-64 md:h-96 w-full">
-                <Map ranges={filteredRanges} selectedRange={selectedRange} />
+                <Map 
+                  ranges={filteredRanges} 
+                  selectedRange={selectedRange} 
+                  onLocationFound={handleLocationFound}
+                />
               </div>
             </div>
 
@@ -255,19 +336,20 @@ export default function ShootingRanges() {
               </h2>
 
               <div className="p-4 md:p-6">
-                <div className="grid grid-cols-1 gap-4 md:gap-6">
+                {/* Updated grid layout: 1 column on mobile, 2 on tablet, 3 on desktop */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                   {currentRanges.map((range) => (
                     <button
                       key={range.id}
                       onClick={() => setSelectedRange(range)}
-                      className={`flex flex-col items-start gap-4 p-4 rounded-xl w-full text-left transition-all duration-200 hover:shadow-lg group ${
+                      className={`flex flex-col items-start gap-3 p-4 rounded-xl w-full text-left transition-all duration-200 hover:shadow-lg group h-full ${
                         selectedRange?.id === range.id
                           ? "bg-blue-50 border-2 border-blue-500 shadow-lg"
                           : "bg-gray-50 border border-gray-200 hover:bg-gray-100"
                       }`}
                     >
-                      {/* Range Image */}
-                      <div className="relative w-full h-40 md:h-48 rounded-lg overflow-hidden bg-gray-200">
+                      {/* Range Image - Made more compact */}
+                      <div className="relative w-full h-32 md:h-40 rounded-lg overflow-hidden bg-gray-200 flex-shrink-0">
                         {range.image && range.image !== '/placeholder-range.jpg' ? (
                           <img
                             src={range.image}
@@ -280,7 +362,7 @@ export default function ShootingRanges() {
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
-                            <ImageIcon className="w-8 h-8 text-gray-400" />
+                            <ImageIcon className="w-6 h-6 text-gray-400" />
                           </div>
                         )}
                         
@@ -290,7 +372,7 @@ export default function ShootingRanges() {
                             <img
                               src={range.logoUrl}
                               alt={`${range.name} logo`}
-                              className="w-8 h-8 rounded-full border-2 border-white shadow-lg object-cover"
+                              className="w-6 h-6 rounded-full border-2 border-white shadow-lg object-cover"
                             />
                           </div>
                         )}
@@ -314,39 +396,39 @@ export default function ShootingRanges() {
                         </div>
                       </div>
 
-                      {/* Range Details */}
-                      <div className="w-full space-y-2" >
-                        <h3 className="text-lg md:text-xl font-bold text-blue-800 group-hover:text-blue-900">
+                      {/* Range Details - Made more compact and flexible */}
+                      <div className="w-full space-y-2 flex-grow">
+                        <h3 className="text-base md:text-lg font-bold text-blue-800 group-hover:text-blue-900 line-clamp-1">
                           {range.name}
                         </h3>
                         
                         <div className="flex items-start gap-1 text-gray-600">
-                          <MapPin className="w-4 h-4 mt-0.5 text-gray-400 flex-shrink-0" />
-                          <span className="text-xs md:text-sm">{range.address}</span>
+                          <MapPin className="w-3 h-3 mt-0.5 text-gray-400 flex-shrink-0" />
+                          <span className="text-xs line-clamp-2">{range.address}</span>
                         </div>
 
                         {range.description && (
-                          <p className="text-gray-600 text-xs md:text-sm line-clamp-2">
+                          <p className="text-gray-600 text-xs line-clamp-2">
                             {range.description}
                           </p>
                         )}
 
-                        <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 text-xs md:text-sm">
+                        <div className="space-y-1 text-xs">
                           <div className="flex items-center gap-1 text-gray-600">
-                            <Clock className="w-4 h-4 text-blue-500" />
-                            <span>{range.openingHours}</span>
+                            <Clock className="w-3 h-3 text-blue-500 flex-shrink-0" />
+                            <span className="line-clamp-1">{range.openingHours}</span>
                           </div>
                           
                           {range.contactNumber && (
                             <div className="flex items-center gap-1 text-gray-600">
-                              <Phone className="w-4 h-4 text-green-500" />
+                              <Phone className="w-3 h-3 text-green-500 flex-shrink-0" />
                               <span>{range.contactNumber}</span>
                             </div>
                           )}
                         </div>
 
                         {range.facilities && (
-                          <div className="bg-blue-50 rounded-lg p-2 mt-2">
+                          <div className="bg-blue-50 rounded-lg p-2">
                             <p className="text-xs text-blue-800 font-medium">Facilities:</p>
                             <p className="text-xs text-blue-600 line-clamp-1">
                               {range.facilities}
@@ -360,22 +442,23 @@ export default function ShootingRanges() {
                             <span>{range.rangeImages.length} photos</span>
                           </div>
                         )}
+                      </div>
 
-                        <div className="pt-1 flex items-center justify-between w-full">
-                          <span className="text-green-600 font-semibold text-xs md:text-sm flex items-center">
-                            <IndianRupee className="w-3 h-3 md:w-4 md:h-4 mt-0.5 flex-shrink-0" />
-                            {range.price}
-                          </span>
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/ranges/${range.id}`);
-                            }} 
-                            className="px-3 py-1.5 md:px-4 md:py-2 rounded-md bg-blue-600 text-white hover:bg-purple-600 font-semibold text-xs md:text-sm"
-                          >
-                            Info
-                          </button>
-                        </div>
+                      {/* Bottom section with price and button */}
+                      <div className="w-full flex items-center justify-between pt-2 border-t border-gray-200 mt-auto">
+                        <span className="text-green-600 font-semibold text-xs flex items-center">
+                          <IndianRupee className="w-3 h-3 flex-shrink-0" />
+                          <span className="line-clamp-1">{range.price}</span>
+                        </span>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/ranges/${range.id}`);
+                          }} 
+                          className="px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-purple-600 font-semibold text-xs transition-colors"
+                        >
+                          Info
+                        </button>
                       </div>
                     </button>
                   ))}
