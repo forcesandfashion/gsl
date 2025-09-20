@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { collection, doc, getDoc, increment, updateDoc, addDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import Layout from './Layout';
 import { ArrowLeft, Crown, CheckCircle, MapPin, DollarSign, Smartphone, CreditCard, Wallet, Loader2, X, Package } from 'lucide-react';
+import { useAuth } from '../../firebase/auth'; // Import your auth context
 
-// Interfaces (same as in ShopPage)
 interface Product {
   id: string;
   name: string;
@@ -59,6 +59,7 @@ interface Bill {
   paymentMethod: string;
   paymentStatus: string;
   customerInfo: CustomerInfo;
+  userId: string; // This will store the current user's ID
   products: {
     productId: string;
     productName: string;
@@ -93,6 +94,9 @@ const ProductInfoPage: React.FC = () => {
       }
     }
   });
+
+  // Use the auth context to get the current user
+  const { user } = useAuth();
 
   // Payment methods
   const paymentMethods: PaymentMethod[] = [
@@ -231,6 +235,7 @@ const ProductInfoPage: React.FC = () => {
         paymentMethod: orderForm.paymentMethod,
         paymentStatus: orderForm.paymentMethod === 'cash' ? 'pending' : 'paid',
         customerInfo: orderForm.customerInfo,
+        userId: user?.uid || '', // Use the current user's ID from auth context
         products: [{
           productId: product.id,
           productName: product.name,
@@ -271,6 +276,13 @@ const ProductInfoPage: React.FC = () => {
   const handlePlaceOrder = async () => {
     if (!validateForm() || !product) return;
     
+    // Check if user is authenticated
+    if (!user) {
+      alert('Please log in to place an order');
+      navigate('/login');
+      return;
+    }
+    
     // Check stock availability
     if (orderForm.quantity > product.stock) {
       alert(`Only ${product.stock} items available in stock.`);
@@ -295,6 +307,7 @@ const ProductInfoPage: React.FC = () => {
         paymentMethod: orderForm.paymentMethod,
         customerInfo: orderForm.customerInfo,
         billId,
+        userId: user.uid, // Include user ID in order as well
         status: orderForm.paymentMethod === 'cash' ? 'pending_payment' : 'confirmed',
         createdAt: new Date(),
         updatedAt: new Date()
@@ -488,7 +501,14 @@ const ProductInfoPage: React.FC = () => {
                   
                   <div className="space-y-3">
                     <button
-                      onClick={() => setShowModal(true)}
+                      onClick={() => {
+                        if (!user) {
+                          alert('Please log in to place an order');
+                          navigate('/login');
+                          return;
+                        }
+                        setShowModal(true);
+                      }}
                       disabled={product.stock <= 0}
                       className={`w-full py-3 font-semibold rounded-lg transition-all duration-300 ${
                         product.stock <= 0 
