@@ -33,6 +33,7 @@ import {
   ShieldCheck,
   ShieldOff
 } from 'lucide-react';
+import { sendWelcomeEmail } from '@/lib/emailService'; // Adjust path as needed
 
 const AdminActiveRanges = () => {
   const [ranges, setRanges] = useState([]);
@@ -82,6 +83,41 @@ const AdminActiveRanges = () => {
     }
   };
 
+  // Send email notification
+  const sendStatusEmail = async (range, status, action) => {
+    try {
+      const emailSubject = `Range ${status} - ${range.name}`;
+      const emailText = `
+        Dear ${range.ownerName},
+        
+        Your range "${range.name}" has been ${status} by the administrator.
+        
+        Action: ${action}
+        Range: ${range.name}
+        Address: ${range.address}
+        Status: ${status}
+        
+        ${status === 'active' ? 'Your range is now active and visible to users.' : 
+          status === 'blocked' ? 'Your range has been temporarily blocked. Please contact support for more information.' :
+          'Your range has been removed from the platform.'}
+        
+        Thank you,
+        Global Shooting League Team
+      `;
+
+      // Using the existing sendWelcomeEmail function
+      const emailSent = await sendWelcomeEmail(range.ownerEmail, emailSubject);
+      
+      if (emailSent) {
+        console.log(`Email sent successfully for range ${status}`);
+      } else {
+        console.warn(`Failed to send email for range ${status}`);
+      }
+    } catch (error) {
+      console.error('Error sending status email:', error);
+    }
+  };
+
   // Filter ranges by tab and search
   const getFilteredRanges = (status) => {
     let filtered = ranges.filter(range => range.status === status);
@@ -125,6 +161,8 @@ const AdminActiveRanges = () => {
       setActionLoading(prev => ({ ...prev, [rangeId]: true }));
       
       const rangeRef = doc(db, 'ranges', rangeId);
+      const range = ranges.find(r => r.id === rangeId);
+      
       await updateDoc(rangeRef, {
         status: 'active',
         updatedAt: new Date()
@@ -136,7 +174,10 @@ const AdminActiveRanges = () => {
           : range
       ));
 
-      alert('Range accepted successfully!');
+      // Send email notification
+      await sendStatusEmail(range, 'activated', 'Range approved and activated');
+
+      alert('Range accepted successfully! Email notification sent.');
     } catch (error) {
       console.error('Error accepting range:', error);
       alert('Error accepting range. Please try again.');
@@ -151,6 +192,8 @@ const AdminActiveRanges = () => {
       setActionLoading(prev => ({ ...prev, [rangeId]: true }));
       
       const rangeRef = doc(db, 'ranges', rangeId);
+      const range = ranges.find(r => r.id === rangeId);
+      
       await updateDoc(rangeRef, {
         status: 'blocked',
         updatedAt: new Date()
@@ -162,7 +205,10 @@ const AdminActiveRanges = () => {
           : range
       ));
 
-      alert('Range blocked successfully!');
+      // Send email notification
+      await sendStatusEmail(range, 'blocked', 'Range temporarily blocked');
+
+      alert('Range blocked successfully! Email notification sent.');
     } catch (error) {
       console.error('Error blocking range:', error);
       alert('Error blocking range. Please try again.');
@@ -177,6 +223,8 @@ const AdminActiveRanges = () => {
       setActionLoading(prev => ({ ...prev, [rangeId]: true }));
       
       const rangeRef = doc(db, 'ranges', rangeId);
+      const range = ranges.find(r => r.id === rangeId);
+      
       await updateDoc(rangeRef, {
         status: 'active',
         updatedAt: new Date()
@@ -188,7 +236,10 @@ const AdminActiveRanges = () => {
           : range
       ));
 
-      alert('Range unblocked successfully!');
+      // Send email notification
+      await sendStatusEmail(range, 'activated', 'Range unblocked and reactivated');
+
+      alert('Range unblocked successfully! Email notification sent.');
     } catch (error) {
       console.error('Error unblocking range:', error);
       alert('Error unblocking range. Please try again.');
@@ -204,6 +255,11 @@ const AdminActiveRanges = () => {
     try {
       setActionLoading(prev => ({ ...prev, [selectedRange.id]: true }));
       
+      // Send email notification before deletion
+      await sendStatusEmail(selectedRange, 'deleted', 
+        activeTab === 'pending' ? 'Range application rejected' : 'Range permanently deleted'
+      );
+
       const rangeRef = doc(db, 'ranges', selectedRange.id);
       await deleteDoc(rangeRef);
 
@@ -211,7 +267,7 @@ const AdminActiveRanges = () => {
       
       setShowDeleteModal(false);
       setSelectedRange(null);
-      alert('Range deleted successfully!');
+      alert('Range deleted successfully! Email notification sent.');
     } catch (error) {
       console.error('Error deleting range:', error);
       alert('Error deleting range. Please try again.');
