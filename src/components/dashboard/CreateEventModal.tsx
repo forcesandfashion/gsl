@@ -304,6 +304,7 @@ export default function CreateEventModal({ isOpen, onClose, title, rangeId }: Cr
         participants: 0,
         image: imageUrls[0] || "", // Primary image URL
         images: imageUrls, // All image URLs
+        participantsAcceptance: 'true', // Default to true
         status: "pending",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

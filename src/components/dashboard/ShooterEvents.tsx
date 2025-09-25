@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { db } from '@/firebase/config';
 import { collection, query as firestoreQuery, orderBy, getDocs, DocumentData, where } from 'firebase/firestore';
+import { useAuth } from '@/firebase/auth';
 import EventParticipation from './EventParticipation';
 
 interface Event {
@@ -47,9 +48,19 @@ interface Event {
   userName: string;
   createdAt: string;
   updatedAt: string;
+  participantsAcceptance?: string; // 'true' or 'false'
+  participants?: Array<{
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    userId: string;
+    joinedAt: string;
+  }>;
 }
 
 export default function ShooterEvents() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [events, setEvents] = useState<Event[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
@@ -113,7 +124,9 @@ export default function ShooterEvents() {
             userEmail: data.userEmail || '',
             userName: data.userName || '',
             createdAt: data.createdAt || '',
-            updatedAt: data.updatedAt || ''
+            updatedAt: data.updatedAt || '',
+            participantsAcceptance: data.participantsAcceptance || 'false',
+            participants: data.participants || []
           } as Event);
         }
 
@@ -160,6 +173,17 @@ export default function ShooterEvents() {
 
     setFilteredEvents(filtered);
   }, [events, searchQuery, statusFilter, locationFilter, rangeFilter]);
+
+  // Check if user is already a participant
+  const isUserParticipant = (event: Event): boolean => {
+    if (!user || !event.participants) return false;
+    return event.participants.some(participant => participant.userId === user.uid);
+  };
+
+  // Check if event accepts participants
+  const acceptsParticipants = (event: Event): boolean => {
+    return event.participantsAcceptance === 'true';
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
@@ -215,6 +239,35 @@ export default function ShooterEvents() {
   const handleParticipationClose = () => {
     setShowParticipationModal(false);
     setSelectedEvent(null);
+  };
+
+  // Determine button text and state
+  const getParticipationButtonProps = (event: Event) => {
+    const eventStatus = getEventStatus(event);
+    const isParticipant = isUserParticipant(event);
+    const acceptsParticipation = acceptsParticipants(event);
+
+    if (eventStatus === 'completed') {
+      return { text: 'Event Completed', disabled: true, show: true };
+    }
+    
+    if (eventStatus === 'cancelled') {
+      return { text: 'Event Cancelled', disabled: true, show: true };
+    }
+    
+    if (parseInt(event.availableseats) <= 0) {
+      return { text: 'Event Full', disabled: true, show: true };
+    }
+
+    if (isParticipant) {
+      return { text: 'Already Participated', disabled: true, show: true };
+    }
+
+    if (!acceptsParticipation) {
+      return { text: 'Registration Closed', disabled: true, show: false };
+    }
+
+    return { text: 'Register Now', disabled: false, show: true };
   };
 
   if (loading) {
@@ -376,7 +429,7 @@ export default function ShooterEvents() {
                 <div>
                   <p className="text-orange-100 text-sm font-medium">Participants</p>
                   <p className="text-3xl font-bold">
-                    {filteredEvents.reduce((sum, event) => sum + (event.currentParticipants || 0), 0)}
+                    {filteredEvents.reduce((sum, event) => sum + (event.participants?.length || 0), 0)}
                   </p>
                 </div>
                 <User className="h-8 w-8 text-orange-200" />
@@ -396,109 +449,108 @@ export default function ShooterEvents() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredEvents.map((event) => (
-              <Card key={event.id} className="bg-white/80 backdrop-blur-md shadow-xl border-white/50 hover:shadow-2xl transition-all duration-200 hover:scale-105 hover:bg-white/90">
-                <CardHeader className="pb-3">
-                  {/* Event Image */}
-                  {event.image && (
-                    <div className="w-full h-48 mb-3 rounded-lg overflow-hidden">
-                      <img
-                        src={event.image}
-                        alt={event.name}
-                        className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
-                      />
+            {filteredEvents.map((event) => {
+              const buttonProps = getParticipationButtonProps(event);
+              
+              return (
+                <Card key={event.id} className="bg-white/80 backdrop-blur-md shadow-xl border-white/50 hover:shadow-2xl transition-all duration-200 hover:scale-105 hover:bg-white/90">
+                  <CardHeader className="pb-3">
+                    {/* Event Image */}
+                    {event.image && (
+                      <div className="w-full h-48 mb-3 rounded-lg overflow-hidden">
+                        <img
+                          src={event.image}
+                          alt={event.name}
+                          className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
+                        />
+                      </div>
+                    )}
+                    
+                    <div className="flex items-start justify-between mb-2">
+                      <CardTitle className="text-lg font-bold text-gray-800 leading-tight">
+                        {event.name}
+                      </CardTitle>
+                      {getStatusBadge(getEventStatus(event))}
                     </div>
-                  )}
+                    <p className="text-sm text-gray-600 line-clamp-2">{event.description}</p>
+                  </CardHeader>
                   
-                  <div className="flex items-start justify-between mb-2">
-                    <CardTitle className="text-lg font-bold text-gray-800 leading-tight">
-                      {event.name}
-                    </CardTitle>
-                    {getStatusBadge(getEventStatus(event))}
-                  </div>
-                  <p className="text-sm text-gray-600 line-clamp-2">{event.description}</p>
-                </CardHeader>
-                
-                <CardContent className="space-y-4">
-                  {/* Location and Date */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-blue-500" />
-                      <span className="text-sm text-gray-600">{event.location}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Building className="h-4 w-4 text-purple-500" />
-                      <span className="text-sm text-gray-600">{event.rangeName}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-purple-500" />
-                      <span className="text-sm text-gray-600">
-                        {new Date(event.startDate).toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}
-                        {event.endDate && event.endDate !== event.startDate && (
-                          <> - {new Date(event.endDate).toLocaleDateString('en-US', { 
+                  <CardContent className="space-y-4">
+                    {/* Location and Date */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-blue-500" />
+                        <span className="text-sm text-gray-600">{event.location}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Building className="h-4 w-4 text-purple-500" />
+                        <span className="text-sm text-gray-600">{event.rangeName}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-purple-500" />
+                        <span className="text-sm text-gray-600">
+                          {new Date(event.startDate).toLocaleDateString('en-US', { 
                             month: 'short', 
                             day: 'numeric',
                             year: 'numeric'
-                          })}</>
-                        )}
-                      </span>
+                          })}
+                          {event.endDate && event.endDate !== event.startDate && (
+                            <> - {new Date(event.endDate).toLocaleDateString('en-US', { 
+                              month: 'short', 
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}</>
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-green-500" />
+                        <span className="text-sm text-gray-600">
+                          {event.startTime} {event.endTime && `- ${event.endTime}`}
+                        </span>
+                      </div>
                     </div>
+
+                    {/* Available Seats and Entry Fee */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-green-500" />
+                        <span className="text-sm text-gray-600">
+                          {event.availableseats} seats available
+                          {event.participants && event.participants.length > 0 && (
+                            <span className="ml-1 text-xs text-gray-500">
+                              ({event.participants.length} registered)
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="text-lg font-bold text-green-600">
+                        ₹{event.entryfees}
+                      </div>
+                    </div>
+
+                    {/* Organizer */}
                     <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-green-500" />
-                      <span className="text-sm text-gray-600">
-                        {event.startTime} {event.endTime && `- ${event.endTime}`}
-                      </span>
+                      <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                        <span className="text-xs text-white font-bold">{event.userName.charAt(0).toUpperCase()}</span>
+                      </div>
+                      <span className="text-sm text-gray-600">by {event.userName}</span>
                     </div>
-                  </div>
 
-                  {/* Available Seats and Entry Fee */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-green-500" />
-                      <span className="text-sm text-gray-600">
-                        {event.availableseats} seats available
-                        {event.currentParticipants > 0 && (
-                          <span className="ml-1 text-xs text-gray-500">
-                            ({event.currentParticipants} registered)
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                    <div className="text-lg font-bold text-green-600">
-                      ₹{event.entryfees}
-                    </div>
-                  </div>
-
-                  {/* Organizer */}
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                      <span className="text-xs text-white font-bold">{event.userName.charAt(0).toUpperCase()}</span>
-                    </div>
-                    <span className="text-sm text-gray-600">by {event.userName}</span>
-                  </div>
-
-                  {/* Register Button */}
-                  <Button 
-                    className="w-full mt-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
-                    disabled={
-                      getEventStatus(event) === 'completed' || 
-                      getEventStatus(event) === 'cancelled' ||
-                      parseInt(event.availableseats) <= 0
-                    }
-                    onClick={() => handleParticipateClick(event)}
-                  >
-                    {getEventStatus(event) === 'completed' ? 'Event Completed' : 
-                     getEventStatus(event) === 'cancelled' ? 'Event Cancelled' :
-                     parseInt(event.availableseats) <= 0 ? 'Event Full' : 
-                     'Register Now'}
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+                    {/* Register Button - Only show if buttonProps.show is true */}
+                    {buttonProps.show && (
+                      <Button 
+                        className="w-full mt-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
+                        disabled={buttonProps.disabled}
+                        onClick={() => !buttonProps.disabled && handleParticipateClick(event)}
+                      >
+                        {buttonProps.text}
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
