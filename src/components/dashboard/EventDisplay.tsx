@@ -35,6 +35,22 @@ import {
 } from "firebase/firestore";
 import { useParams } from 'react-router-dom';
 import EditEventModal from './EditEventModal';
+import EventParticipantsModal from './EventParticipantsModal';
+
+// Types
+interface Participant {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  userId: string;
+  joinedAt: string;
+  billId?: string;
+  paymentMethod?: string;
+  paymentStatus?: string;
+  points?: number;
+  position?: number;
+}
 
 interface Event {
   id: string;
@@ -56,21 +72,25 @@ interface Event {
   createdAt: string;
   updatedAt: string;
   userId: string;
-  participants: number;
+  participants: Participant[];
   userEmail: string;
   userName: string;
 }
 
+// Main Component
 export default function EventDisplay() {
   const rangeId = useParams<{ id: string }>().id;
   const { toast } = useToast();
   const [editModal, setEditModal] = useState(false);
+  const [participantsModal, setParticipantsModal] = useState(false);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const { user } = useAuth();
 
+  // Fetch events from Firebase
   const fetchEvents = async () => {
     try {
       const rangesQuery = query(
@@ -89,14 +109,12 @@ export default function EventDisplay() {
         return;
       }
 
-      // Get all events for these ranges
       const eventsQuery = query(
         collection(db, "events"),
         where("rangeId", "in", rangeIds)
       );
 
       const querySnapshot = await getDocs(eventsQuery);
-
       const eventsData: Event[] = [];
       
       querySnapshot.forEach((doc) => {
@@ -121,7 +139,7 @@ export default function EventDisplay() {
           createdAt: data.createdAt,
           updatedAt: data.updatedAt,
           userId: data.userId,
-          participants: data.participants || 0,
+          participants: data.participants || [],
           userEmail: data.userEmail,
           userName: data.userName
         });
@@ -150,8 +168,19 @@ export default function EventDisplay() {
   const handleEditModalClose = () => {
     setEditModal(false);
     setEditingEvent(null);
-    // Refresh events after editing
     fetchEvents();
+  };
+
+  // Handle view participants
+  const handleViewParticipants = (event: Event) => {
+    setSelectedEvent(event);
+    setParticipantsModal(true);
+  };
+
+  // Handle participants modal close
+  const handleParticipantsModalClose = () => {
+    setParticipantsModal(false);
+    setSelectedEvent(null);
   };
 
   // Create delete request in actions collection
@@ -180,7 +209,6 @@ export default function EventDisplay() {
   // Delete event or create delete request based on status
   const handleDelete = async (eventId: string, eventName: string, status: string, rangeId: string) => {
     if (status === "pending") {
-      // Directly delete if status is pending
       if (!confirm(`Are you sure you want to delete "${eventName}"? This action cannot be undone.`)) {
         return;
       }
@@ -204,24 +232,20 @@ export default function EventDisplay() {
         setDeleteLoading(null);
       }
     } else if (status === "active") {
-      // For active events, block them and create delete request
       if (!confirm(`Are you sure you want to request deletion for "${eventName}"? The event will be blocked until admin approval.`)) {
         return;
       }
 
       setDeleteLoading(eventId);
       try {
-        // Update status to blocked
         await updateDoc(doc(db, "events", eventId), {
           status: "blocked",
           updatedAt: serverTimestamp()
         });
         
-        // Create delete request
         const requestCreated = await createDeleteRequest(eventId, eventName, rangeId);
         
         if (requestCreated) {
-          // Update local state
           setEvents(prev => prev.map(event => 
             event.id === eventId 
               ? { ...event, status: "blocked" }
@@ -250,14 +274,12 @@ export default function EventDisplay() {
         setDeleteLoading(null);
       }
     } else if (status === "blocked") {
-      // For already blocked events, just create a delete request
       if (!confirm(`Are you sure you want to request deletion for "${eventName}"? This event is already blocked.`)) {
         return;
       }
 
       setDeleteLoading(eventId);
       try {
-        // Create delete request
         const requestCreated = await createDeleteRequest(eventId, eventName, rangeId);
         
         if (requestCreated) {
@@ -331,6 +353,11 @@ export default function EventDisplay() {
     return formatDate(startDate);
   };
 
+  // Get total participants count
+  const getTotalParticipants = (event: Event) => {
+    return event.participants ? event.participants.length : 0;
+  };
+
   useEffect(() => {
     fetchEvents();
   }, [rangeId]);
@@ -373,12 +400,21 @@ export default function EventDisplay() {
         </div>
       </div>
 
-      {/* Edit Event Modal */}
+      {/* Modals */}
       {editModal && editingEvent && (
         <EditEventModal
           event={editingEvent}
           isOpen={editModal}
           onClose={handleEditModalClose}
+        />
+      )}
+
+      {participantsModal && selectedEvent && (
+        <EventParticipantsModal
+          event={selectedEvent}
+          isOpen={participantsModal}
+          onClose={handleParticipantsModalClose}
+          onUpdate={fetchEvents}
         />
       )}
 
@@ -406,7 +442,7 @@ export default function EventDisplay() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {events.map((event) => (
               <Card key={event.id} className="group hover:shadow-2xl transition-all duration-300 hover:scale-105 bg-white border border-gray-200 rounded-2xl overflow-hidden">
-                  {/* Event Image */}
+                {/* Event Image */}
                 <div className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200">
                   {(event.image || (event.images && event.images.length > 0)) ? (
                     <img
@@ -486,29 +522,40 @@ export default function EventDisplay() {
                     <div className="flex items-center text-gray-600">
                       <Users className="w-4 h-4 mr-2 text-purple-500" />
                       {event.availableseats} seats available
-                      {event.participants > 0 && (
+                      {getTotalParticipants(event) > 0 && (
                         <span className="ml-2 text-xs text-gray-500">
-                          ({event.participants} registered)
+                          ({getTotalParticipants(event)} registered)
                         </span>
                       )}
                     </div>
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex gap-2 pt-2">
+                  <div className="flex flex-col gap-2 pt-2">
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 hover:bg-blue-50 hover:border-blue-300"
+                        onClick={() => handleEditClick(event)}
+                      >
+                        <Edit className="w-4 h-4 mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 hover:bg-green-50 hover:border-green-300"
+                        onClick={() => handleViewParticipants(event)}
+                      >
+                        <Users className="w-4 h-4 mr-1" />
+                        Participants
+                      </Button>
+                    </div>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 hover:bg-blue-50 hover:border-blue-300"
-                      onClick={() => handleEditClick(event)}
-                    >
-                      <Edit className="w-4 h-4 mr-1" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={`flex-1 ${
+                      className={`${
                         event.status === "pending" 
                           ? "hover:bg-red-50 hover:border-red-300 hover:text-red-600" 
                           : "hover:bg-orange-50 hover:border-orange-300 hover:text-orange-600"
@@ -570,7 +617,7 @@ export default function EventDisplay() {
               </div>
               <div className="text-center p-4 bg-orange-50 rounded-xl">
                 <div className="text-2xl font-bold text-orange-600">
-                  {events.reduce((total, event) => total + (event.participants || 0), 0)}
+                  {events.reduce((total, event) => total + getTotalParticipants(event), 0)}
                 </div>
                 <div className="text-sm text-orange-800">Total Participants</div>
               </div>
