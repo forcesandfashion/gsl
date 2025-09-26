@@ -143,6 +143,8 @@ const ShooterAttendanceAndData = ({ shooter, onClose, ranges }: {
     return today.toISOString().split('T')[0];
   };
 
+  console.log("hello world")
+
   // Format date for display
   const formatDate = (dateString: string) => {
     if (!dateString) return "N/A";
