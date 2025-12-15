@@ -49,7 +49,7 @@ const ShootingSessionUpload = () => {
   };
 
   const handleViewDocuments = () => {
-    navigate("/dashboard/shooter/documents");
+    navigate("/dashboard/documents");
   };
 
   // Enhanced CSV parsing function to extract total points
@@ -258,24 +258,49 @@ const ShootingSessionUpload = () => {
         return;
       }
 
-      // Get shooter profile info
+      // Get profile info
       const shooterDocRef = doc(db, "shooters", user.uid);
+      const coacherDocRef = doc(db, "technical-coaches", user.uid);
       const shooterDoc = await getDoc(shooterDocRef);
+      const coacherDoc = await getDoc(coacherDocRef);
       
-      if (!shooterDoc.exists()) {
-        setError("Shooter profile not found. Please create your profile first.");
+      // Determine user role based on existing documents
+      const isShooter = shooterDoc.exists();
+      const isCoach = coacherDoc.exists();
+      
+      if (!isShooter && !isCoach) {
+        setError("Profile not found. User must have a shooter or coach profile to upload sessions.");
         return;
       }
+      
+      // --- FIX STARTS HERE ---
+      // We assume if a user uploads a session, it is for their own profile (if they are a shooter).
+      // If they are a coach, they should ideally be choosing a student, but since that logic 
+      // is not in the original code, we only allow updating the score IF a shooter profile exists.
 
       const shooterData = shooterDoc.data();
+      const coacherData = coacherDoc.data();
+      console.log("Shooter Data:", coacherData);
+      
+      // Define the target shooter ID and Name (for self-upload case)
+      const targetShooterId = user.uid;
+      const targetShooterName = isShooter ? (shooterData?.name || 'Unknown Shooter') : 'N/A (Coach Upload)';
 
-      // Update shooter's total points
-      await updateDoc(shooterDocRef, {
-        totalPoints: increment(totalPoints)
-      });
+      // Update shooter's total points ONLY IF the shooter document exists
+      if (isShooter) {
+          await updateDoc(shooterDocRef, {
+              totalPoints: increment(totalPoints)
+          });
+      } else {
+          // If the user is a coach but not a shooter, their score is not updated.
+          // In a multi-user system, a coach should select a target student.
+          // Since that logic isn't here, we just log a warning for now.
+          console.warn("User is a coach, score update skipped. Session logged but points not added to self.");
+      }
+      // --- FIX ENDS HERE ---
 
       // Upload file to storage
-      const fileName = `${user.uid}/${Date.now()}_${file.name}`;
+      const fileName = `${targetShooterId}/${Date.now()}_${file.name}`;
       const storageRef = ref(storage, `shooting-sessions/${fileName}`);
       await uploadBytes(storageRef, file);
       const fileDownloadURL = await getDownloadURL(storageRef);
@@ -290,8 +315,10 @@ const ShootingSessionUpload = () => {
         pointsEarned: totalPoints,
         uploadDate: new Date(),
         fileUrl: fileDownloadURL,
-        shooterId: user.uid,
-        shooterName: shooterData.name || 'Unknown Shooter',
+        shooterId: targetShooterId, // Use the current user's ID
+        shooterName: targetShooterName,
+        coacherName: coacherData?.fullName || 'N/A',
+        uploadedBy: isCoach ? `Coach (${user.uid})` : `Shooter`, // Add who uploaded it
         sessionStats: {
           totalScore: parsedSessionData.totalScore,
           innerTens: parsedSessionData.innerTens,
@@ -306,7 +333,7 @@ const ShootingSessionUpload = () => {
       const mainSessionDocRef = await addDoc(mainSessionsCollectionRef, sessionDocData);
 
       // 2. Save to shooters/{id}/shootingSessions subcollection
-      const userSessionsCollectionRef = collection(db, "shooters", user.uid, "shootingSessions");
+      const userSessionsCollectionRef = collection(db, "shooters", targetShooterId, "shootingSessions");
       await addDoc(userSessionsCollectionRef, {
         ...sessionDocData,
         mainSessionId: mainSessionDocRef.id // Reference to the main collection document

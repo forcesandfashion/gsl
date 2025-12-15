@@ -42,6 +42,11 @@ import BillsComponent from "./BillComponent";
 import AttendanceComponent from "./AttendanceComponent";
 import SubscriptionsComponent from "./SubscriptionComponent";
 import SubAdminProducts from "./SubAdminProducts";
+import TechnicalCoachDashboard from "./TechCoach";
+import CoachProfilePage from "./TeachCoachProfile";
+import InvestorDashboard from "./InvestorDashboard";
+import OpportunityDetail from "./OpportunityDetail";
+
 const DashboardRouter = () => {
   const { userRole, loading } = useAuth();
   
@@ -70,11 +75,13 @@ const DashboardRouter = () => {
           ) : userRole === "cmb" ? (
             <Navigate to="/dashboard/cmb" replace />
           ): userRole === "technical_coach" ? (
-            <Navigate to="/dashboard/managers" replace />
+            <Navigate to="/dashboard/technical-coach" replace />
           ) : userRole === "dietician" ? (
             <Navigate to="/dashboard/managers" replace />
           ) : userRole === "mental_trainer" ? (
             <Navigate to="/dashboard/managers" replace />
+          ) : userRole === "investor" ? (
+            <Navigate to="/dashboard/investor" replace />
           ) : (
             <Navigate to="/dashboard/shooter" replace />
           )
@@ -88,6 +95,8 @@ const DashboardRouter = () => {
       <Route path="managers" element={<ManagerDashboard />} />
       <Route path="cmb" element={<CmbDashboard />} />
       <Route path= "sub-admin" element={<SubAdminDashboard/>} />
+      <Route path="technical-coach" element={<TechnicalCoachDashboard />} />
+      <Route path="investor" element={<InvestorDashboard />} />
 
 
       {/* Sub admin sub routes */}
@@ -115,7 +124,7 @@ const DashboardRouter = () => {
       {/* Shooter sub-routes */}
       <Route path="shooter/bookings" element={<ShooterBooking />} />
       <Route path="shooter/events" element={<ShooterEvents />} />
-      <Route path="shooter/documents" element={<UserDocumentsPage />} />
+      <Route path="/documents" element={<UserDocumentsPage />} />
       
       
       {/* Range owner sub-routes */}
@@ -130,7 +139,14 @@ const DashboardRouter = () => {
       <Route path="range-owner/subscription" element={<Payment />} />
       <Route path="range-owner/shop" element={<RangeOwnerShop />} />
 
+      {/* TechCoach sub-routes */}
+      <Route path="technical-coach/profile" element={<CoachProfilePage />} />
+      {/* <Route path="technical-coach/bookings" element={<TechCoachBookings />} />
+      <Route path="technical-coach/events" element={<TechCoachEvents />} />
+      <Route path="technical-coach/documents" element={<TechCoachDocuments />} /> */}
 
+      {/* Investor sub-routes */}
+      <Route path="investor/opportunities/:opportunityId" element={<OpportunityDetail />} />
 
       {/* cmb sub path  */}
       <Route path="cmb/shooters-data" element={<CmbShooterData />} />

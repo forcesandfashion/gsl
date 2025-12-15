@@ -16,6 +16,7 @@ type UserRole =
   | "dietician"
   | "mental_trainer"
   | "franchise_owner"
+  | "investor"
   | "admin";
 
 export default function SignUpForm() {
@@ -249,6 +250,16 @@ const handleGoogleSignUp = async () => {
                     className="form-radio h-4 w-4 sm:h-5 sm:w-5 text-blue-600 focus:ring-blue-500 border-gray-300"
                   />{" "}
                   <span className="text-gray-700 text-xs sm:text-sm">Franchise Owner</span>
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                  <input
+                    type="radio"
+                    value="investor"
+                    checked={role === "investor"}
+                    onChange={() => handleRoleChange("investor")}
+                    className="form-radio h-4 w-4 sm:h-5 sm:w-5 text-blue-600 focus:ring-blue-500 border-gray-300"
+                  />{" "}
+                  <span className="text-gray-700 text-xs sm:text-sm">Investor</span>
                 </label>
               </div>
             </div>

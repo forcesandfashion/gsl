@@ -26,6 +26,7 @@ type UserRole =
   | "dietician"
   | "mental_trainer"
   | "franchise_owner"
+  | "investor"
   | "admin"
   | "manager"
   | "sub_admin"
@@ -75,6 +76,18 @@ const createRoleBasedDocument = async (user: User, fullName: string, email: stri
         username: fullName,
         email,
         role: "range_owner",
+        premium: false
+      });
+      break;
+
+    case "investor":
+      await setDoc(doc(db, "investor", user.uid), {
+        uid: user.uid,
+        createdAt: timestamp,
+        // Add any other existing fields from your current code
+        username: fullName,
+        email,
+        role: "investor",
         premium: false
       });
       break;
@@ -141,6 +154,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               'sub-admin',  // Check for sub-admin documents created by backend
               'manager', 
               'technical-coaches', 
+              'investor',
               'dieticians', 
               'mental-trainers', 
               'franchise-owners',
@@ -159,6 +173,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         collection === 'sub-admin' ? 'sub_admin' :
                         collection === 'manager' ? 'manager' :
                         collection === 'cmbs' ? 'cmb' :
+                        collection === 'investor' ? 'investor' :
                         userData.role) as UserRole;
                 break;
               }

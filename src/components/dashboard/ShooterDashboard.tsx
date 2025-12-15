@@ -9,7 +9,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Trophy, Target, Calendar, User, BookOpen, Star, TrendingUp, Clock } from "lucide-react";
+import { Trophy, Target, Calendar, User, BookOpen, Star, TrendingUp, Clock, Zap, Phone } from "lucide-react";
+import CoachListCard from "./CoachListCard";
 import ShooterProfile from "./ShooterProfile";
 import ShootingSessionUpload from "./ShootingSessionUpload";
 import ShootingLeaderboard from "./ShootingLeaderboard";
@@ -522,22 +523,56 @@ const ShooterDashboard = () => {
           </Card>
         </div>
 
-        {/* Session Section */}
-        <Card className="mb-8 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-          <CardHeader className="text-center border-b border-slate-100">
-            <CardTitle className="text-2xl font-bold text-gray-900 flex items-center justify-center gap-2">
-              <Target className="w-6 h-6 text-blue-600" />
-              Shooting Session
-            </CardTitle>
-            <CardDescription>Upload your shooting sessions and manage your profile</CardDescription>
-          </CardHeader>
-          <CardContent className="p-8">
-            <ShooterProfile />
-            <div className="mt-8">
-              <ShootingSessionUpload />
-            </div>
-          </CardContent>
-        </Card>
+        {/* Coach List + Quick Actions Section (replaces old Session Section) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 mb-8">
+          {/* LEFT 2/3 COLUMN: Coach List Card */}
+          <div className="lg:col-span-2">
+            <CoachListCard />
+          </div>
+
+          {/* RIGHT 1/3 COLUMN: Quick Actions Card */}
+          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <CardHeader className="border-b border-slate-100 p-4 md:p-6">
+              <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-indigo-600" />
+                Quick Actions
+              </CardTitle>
+              <CardDescription className="text-slate-600">
+                Manage your profile and upload history.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 md:p-6 space-y-4">
+              {/* <Button
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold flex justify-start items-center"
+                onClick={() => navigate("/session/upload")} // Placeholder route
+              >
+                <Target className="w-4 h-4 mr-3" /> Upload New Session
+              </Button> */}
+              <Button
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold flex justify-start items-center"
+                onClick={handleProfileUpdate}
+              >
+                <User className="w-4 h-4 mr-3" /> Edit My Profile ({profileCompletion}%)
+              </Button>
+              <Button
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold flex justify-start items-center"
+                onClick={() => navigate("/dashboard/history")} // Placeholder route
+              >
+                <Clock className="w-4 h-4 mr-3" /> View Session History
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full border-red-400 text-red-600 hover:bg-red-50/50 font-semibold flex justify-start items-center"
+                onClick={() => console.log("Navigate to /coaches/booking")} 
+              >
+                <Phone className="w-4 h-4 mr-3" /> Book Coach Session
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+        <div>
+          <ShootingSessionUpload />
+        </div>
 
         {/* Global Leaderboard Section */}
         <Card className="mb-8 shadow-lg border-0 bg-gradient-to-br from-blue-600 to-blue-800 text-white overflow-hidden">

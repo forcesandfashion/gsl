@@ -33,6 +33,9 @@ import ForgetPassword from "./components/pages/ForgetPassword";
 import ShopPage from "./components/pages/shop";
 import SubscriptionPage from "./components/pages/subscriptionPage";
 import ProductInfoPage from "./components/pages/productInfoPage";
+import TechCoach from "./components/dashboard/TechCoach";
+import CoachProfilePage from "./components/dashboard/TeachCoachProfile";
+import InvestorDashboard from "./components/dashboard/InvestorDashboard";
 
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {

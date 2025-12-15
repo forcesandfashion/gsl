@@ -14,6 +14,7 @@ type UserRole =
   | "dietician"
   | "mental_trainer"
   | "franchise_owner"
+  | "investor"
   | "admin";
 
 interface GoogleRoleSelectionProps {
@@ -63,6 +64,13 @@ const roleOptions = [
     description: "Owner of franchise locations",
     icon: Crown,
     color: "bg-yellow-100 text-yellow-700 border-yellow-200"
+  },
+  {
+    value: "investor" as UserRole,
+    label: "Investor",
+    description: "Investor in shooting sports facilities or programs",
+    icon: Shield,
+    color: "bg-indigo-100 text-indigo-700 border-indigo-200"
   }
 ];
 
