@@ -80,6 +80,24 @@ const ParallaxScrollPage: React.FC = () => {
   // Articles data - updated
   const articles = [
     {
+      title: "Global Shooting League Magazine Brochure",
+      description: "",
+      image: "/images/GSL-brochure.png",
+      mag: "https://heyzine.com/flip-book/4a86e2c1d3.html",
+    },
+    {
+      title: "Magazine 8",
+      description: "",
+      image: "/images/mag8-img.png",
+      mag: "https://heyzine.com/flip-book/827d5bc5b6.html",
+    },
+    {
+      title: "Magazine 7",
+      description: "",
+      image: "/images/mag7-img.png",
+      mag: "https://heyzine.com/flip-book/8391562bd3.html",
+    },
+    {
       title: "Magazine 6",
       description: "",
       image: "/images/mag6-img.png", // Corrected image path
