@@ -147,13 +147,13 @@ export default function PricingPage() {
         <Layout>
           <main className="pt-16">
             {/* Hero section */}
-            <section className="py-20 bg-gradient-to-br from-blue-700 to-blue-900 text-white">
+            <section className="py-20 bg-[#0f172a] text-white">
               <div className="max-w-6xl mx-auto px-4 text-center">
-                <h1 className="text-4xl md:text-5xl font-bold mb-6">
-                  Membership Plans
+                <h1 className="text-4xl md:text-6xl font-black mb-6 uppercase tracking-tighter">
+                  Membership <span className="text-[#ff6b6b]">PLANS</span>
                 </h1>
                 <div className="text-xl max-w-3xl mx-auto">
-                  <p className="mb-4">
+                  <p className="mb-4 text-white">
                     Join the Global Shooting League and take your shooting skills to the next level with our comprehensive membership options.
                   </p>
                 </div>
@@ -167,7 +167,7 @@ export default function PricingPage() {
                   {membershipPlans.map((plan, index) => (
                     <div key={index} className={`${plan.borderColor} ${plan.bgColor} rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 relative flex flex-col h-full`}>
                       {plan.popular && (
-                        <div className="absolute top-0 right-0 bg-gradient-to-r from-blue-700 to-blue-800 text-white px-4 py-2 text-sm font-semibold rounded-bl-xl shadow-lg">
+                        <div className="absolute top-0 right-0 bg-[#fa5252] text-white px-4 py-2 text-sm font-semibold rounded-bl-xl shadow-lg">
                           <Star className="inline h-4 w-4 mr-1" />
                           Most Popular
                         </div>
@@ -226,7 +226,7 @@ export default function PricingPage() {
                           {/* Alternative Payment Button */}
                           <button
                             onClick={handleCardClick}
-                            className="w-full mt-3 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                            className="w-full mt-3 px-4 py-3 bg-blue-700 text-white rounded-lg hover:bg-[#fa5252] transition-colors text-sm font-medium"
                           >
                             Other Payment Methods
                           </button>
@@ -269,13 +269,13 @@ export default function PricingPage() {
 
                     {/* Bank Details */}
                     <div className="mb-6">
-                      <h4 className="text-lg font-semibold mb-3 text-blue-700 flex items-center">
+                      <h4 className="text-lg font-semibold mb-3 text-[#fa5252] flex items-center">
                         <Building className="h-5 w-5 mr-2" />
                         Bank Account Details
                       </h4>
                       <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                        <p className="mb-2">
-                          <span className="font-semibold">Account Name:</span>{" "}
+                        <p className="mb-2 text-blue-700">
+                          <span className="font-semibold text-[#fa5252]">Account Name:</span>{" "}
                           {bankDetails.accountName}
                         </p>
                         {/* Add additional bank details here */}
@@ -284,30 +284,30 @@ export default function PricingPage() {
 
                     {/* Company Information */}
                     <div className="mb-6">
-                      <h4 className="text-lg font-semibold mb-3 text-blue-700 flex items-center">
+                      <h4 className="text-lg font-semibold mb-3 text-[#fa5252] flex items-center">
                         <Globe className="h-5 w-5 mr-2" />
                         Company Information
                       </h4>
-                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <p className="font-semibold mb-2 text-gray-900">
+                      <div className="bg-gray-50 p-5 rounded-lg border border-blue-700">
+                        <p className="font-semibold mb-2 text-blue-700">
                           {companyDetails.name}
                         </p>
-                        <p className="text-gray-600 mb-4 text-sm">
+                        <p className="text-[#000000] mb-4 text-sm">
                           {companyDetails.address}
                         </p>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                           <div className="text-sm">
-                            <span className="font-semibold text-gray-700">CIN:</span>
-                            <p className="text-gray-600">{companyDetails.cin}</p>
+                            <span className="font-semibold text-blue-700">CIN:</span>
+                            <p className="text-[#000000]">{companyDetails.cin}</p>
                           </div>
                           <div className="text-sm">
-                            <span className="font-semibold text-gray-700">PAN:</span>
-                            <p className="text-gray-600">{companyDetails.pan}</p>
+                            <span className="font-semibold text-blue-700">PAN:</span>
+                            <p className="text-[#000000]">{companyDetails.pan}</p>
                           </div>
                           <div className="text-sm">
-                            <span className="font-semibold text-gray-700">TIN:</span>
-                            <p className="text-gray-600">{companyDetails.tin}</p>
+                            <span className="font-semibold text-blue-700">TIN:</span>
+                            <p className="text-[#000000]">{companyDetails.tin}</p>
                           </div>
                         </div>
                       </div>
@@ -315,17 +315,17 @@ export default function PricingPage() {
 
                     {/* Contact Information */}
                     <div className="mb-6">
-                      <h4 className="text-lg font-semibold mb-3 text-blue-700 flex items-center">
+                      <h4 className="text-lg font-semibold mb-3 text-[#fa5252] flex items-center">
                         <Users className="h-5 w-5 mr-2" />
                         Contact Us
                       </h4>
                       <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-4">
                         {companyDetails.contacts.map((contact, index) => (
                           <div key={index} className="text-sm">
-                            <span className="font-semibold text-gray-700">
+                            <span className="font-semibold text-blue-700">
                               {contact.label}:
                             </span>
-                            <p className="text-gray-600">{contact.value}</p>
+                            <p className="text-[#000000]">{contact.value}</p>
                           </div>
                         ))}
                       </div>
@@ -381,7 +381,7 @@ export default function PricingPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="bg-gradient-to-br from-blue-50 to-white p-8 rounded-xl shadow-lg border border-blue-100">
+                  <div className="bg-blue-50 p-8 rounded-xl shadow-lg border border-blue-100">
                     <div className="flex items-center mb-4">
                       <div className="bg-blue-700 p-3 rounded-lg mr-4">
                         <Star className="h-6 w-6 text-white" />
@@ -398,12 +398,12 @@ export default function PricingPage() {
                     </p>
                   </div>
 
-                  <div className="bg-gradient-to-br from-green-50 to-white p-8 rounded-xl shadow-lg border border-green-100">
+                  <div className="bg-red-50 p-8 rounded-xl shadow-lg border border-red-100">
                     <div className="flex items-center mb-4">
-                      <div className="bg-green-700 p-3 rounded-lg mr-4">
+                      <div className="bg-[#fa5252] p-3 rounded-lg mr-4">
                         <Users className="h-6 w-6 text-white" />
                       </div>
-                      <h3 className="text-xl font-bold text-green-700">
+                      <h3 className="text-xl font-bold text-[#fa5252]">
                         Training Resources
                       </h3>
                     </div>
@@ -415,12 +415,12 @@ export default function PricingPage() {
                     </p>
                   </div>
 
-                  <div className="bg-gradient-to-br from-purple-50 to-white p-8 rounded-xl shadow-lg border border-purple-100">
+                  <div className="bg-blue-50 p-8 rounded-xl shadow-lg border border-blue-100">
                     <div className="flex items-center mb-4">
-                      <div className="bg-purple-700 p-3 rounded-lg mr-4">
+                      <div className="bg-blue-700 p-3 rounded-lg mr-4">
                         <Globe className="h-6 w-6 text-white" />
                       </div>
-                      <h3 className="text-xl font-bold text-purple-700">
+                      <h3 className="text-xl font-bold text-blue-700">
                         Community & Networking
                       </h3>
                     </div>
@@ -432,12 +432,12 @@ export default function PricingPage() {
                     </p>
                   </div>
 
-                  <div className="bg-gradient-to-br from-orange-50 to-white p-8 rounded-xl shadow-lg border border-orange-100">
+                  <div className="bg-red-50 p-8 rounded-xl shadow-lg border border-red-100">
                     <div className="flex items-center mb-4">
-                      <div className="bg-orange-700 p-3 rounded-lg mr-4">
+                      <div className="bg-[#fa5252] p-3 rounded-lg mr-4">
                         <Building className="h-6 w-6 text-white" />
                       </div>
-                      <h3 className="text-xl font-bold text-orange-700">
+                      <h3 className="text-xl font-bold text-[#fa5252]">
                         Equipment Discounts
                       </h3>
                     </div>
@@ -456,8 +456,8 @@ export default function PricingPage() {
             <section className="py-20 bg-gray-50">
               <div className="max-w-4xl mx-auto px-4">
                 <div className="text-center mb-12">
-                  <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                    Frequently Asked Questions
+                  <h2 className="text-3xl md:text-5xl font-black mb-12 uppercase text-[#1d4ed8]">
+                    Frequently Asked <span className="text-[#ff6b6b]">Questions</span>
                   </h2>
                   <p className="text-xl text-gray-600">
                     Find answers to common questions about our membership plans
@@ -488,10 +488,10 @@ export default function PricingPage() {
                     }
                   ].map((faq, index) => (
                     <div key={index} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                      <h3 className="text-xl font-bold mb-3 text-gray-900">
+                      <h3 className="text-xl font-bold mb-3 text-blue-700">
                         {faq.question}
                       </h3>
-                      <p className="text-gray-700">
+                      <p className="text-[#ff6b6b] text-sm leading-relaxed">
                         {faq.answer.includes("contact us") ? (
                           <>
                             {faq.answer.split("contact us")[0]}
@@ -535,22 +535,22 @@ export default function PricingPage() {
             </section>
 
             {/* CTA Section */}
-            <section className="py-20 bg-gradient-to-r from-blue-700 to-blue-900 text-white">
+            <section className="py-20 bg-[#0f172a] text-white">
               <div className="max-w-4xl mx-auto px-4 text-center">
-                <h2 className="text-3xl md:text-4xl font-bold mb-6">
-                  Ready to Join the Global Shooting League?
+                <h2 className="text-3xl md:text-4xl font-bold mb-6 text-white">
+                  READY TO JOIN <span className="text-[#ff6b6b]">GLOBAL SHOOTING LEAGUE?</span>
                 </h2>
-                <p className="text-xl mb-8 opacity-90">
+                <p className="text-xl mb-8 opacity-90 text-white">
                   Take the first step toward improving your shooting skills and joining our worldwide community of enthusiasts.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center gap-4">
                   <Link to="/signup">
-                    <button className="bg-white text-blue-700 hover:bg-gray-100 px-8 py-4 rounded-full font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
+                    <button className="bg-white text-[#1d4ed8] hover:bg-[#ff6b6b] hover:text-white px-10 py-4 rounded-full font-black uppercase tracking-widest text-sm transition-all transform hover:scale-105">
                       Sign Up Today
                     </button>
                   </Link>
                   <Link to="/contact">
-                    <button className="bg-transparent border-2 border-white hover:bg-white hover:text-blue-700 px-8 py-4 rounded-full font-bold text-lg transition-all duration-300 transform hover:scale-105">
+                    <button className="bg-white text-[#1d4ed8] hover:bg-[#ff6b6b] hover:text-white px-10 py-4 rounded-full font-black uppercase tracking-widest text-sm transition-all transform hover:scale-105">
                       Contact Us
                     </button>
                   </Link>

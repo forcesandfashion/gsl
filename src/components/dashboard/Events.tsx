@@ -49,36 +49,49 @@ const EventsSection: React.FC = () => {
   return (
     <section className="py-16 bg-white">
       <div className="max-w-6xl mx-auto px-4">
-        <h2 className="text-3xl md:text-4xl font-bold text-center text-blue-700 mb-10">
+        {/* Header in Blue consistent with Gallery/Founder Desk */}
+        <h2 className="text-3xl md:text-5xl font-black text-center text-[#1d4ed8] mb-2 uppercase tracking-tighter">
           Shooting Events
         </h2>
+        {/* Red accent underline */}
+        <div className="w-20 h-1.5 bg-[#ff6b6b] mx-auto mb-10"></div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {eventCategories.map((category) => (
             <div
               key={category.id}
-              className="bg-gray-50 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+              className="bg-white border border-gray-100 rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group"
             >
-              <div className="h-48 bg-gray-200 relative">
+              <div className="h-48 bg-gray-200 relative overflow-hidden">
                 <img
                   src={category.image}
                   alt={category.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
-                <div className="absolute top-4 left-4 bg-blue-700 text-white px-3 py-1 rounded-full text-sm font-medium">
+                {/* Date badge changed to Red (#ff6b6b) */}
+                <div className="absolute top-4 left-4 bg-[#ff6b6b] text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-lg">
                   {category.date}
                 </div>
               </div>
               <div className="p-6">
-                <h3 className="text-xl font-bold mb-1">{category.title}</h3>
-                <p className="text-blue-600 text-sm font-medium mb-2">
+                <h3 className="text-xl font-black text-gray-900 mb-1 uppercase tracking-tight">
+                  {category.title}
+                </h3>
+                {/* Subtitle changed to Red (#ff6b6b) to add more red as requested */}
+                <p className="text-[#ff6b6b] text-sm font-bold mb-2 uppercase tracking-wide">
                   {category.subtitle}
                 </p>
-                <p className="text-gray-600 mb-2">{category.location}</p>
-                <p className="text-gray-700 mb-4">{category.description}</p>
+                <p className="text-gray-500 text-sm font-medium mb-3 flex items-center">
+                   <span className="w-1 h-1 bg-gray-400 rounded-full mr-2"></span>
+                   {category.location}
+                </p>
+                <p className="text-gray-600 text-sm leading-relaxed mb-4 line-clamp-3">
+                  {category.description}
+                </p>
                 <Link
                   to={`/events/${category.id}`}
-                  className="text-blue-600 hover:underline font-medium inline-flex items-center"
+                  /* Link in Blue */
+                  className="text-[#1d4ed8] hover:text-[#ff6b6b] transition-colors font-black text-xs uppercase tracking-widest inline-flex items-center"
                 >
                   Explore events <ChevronRight className="h-4 w-4 ml-1" />
                 </Link>
@@ -87,8 +100,12 @@ const EventsSection: React.FC = () => {
           ))}
         </div>
 
-        <div className="text-center mt-10">
-          <button className="bg-blue-700 hover:bg-blue-800 text-white rounded-full px-6" onClick={() => {}}>
+        <div className="text-center mt-12">
+          {/* Main Button in Blue */}
+          <button 
+            className="bg-[#1d4ed8] hover:bg-[#ff6b6b] text-white font-black uppercase tracking-widest rounded-full px-10 py-4 transition-all transform hover:-translate-y-1 shadow-lg" 
+            onClick={() => {}}
+          >
             View All Events
           </button>
         </div>

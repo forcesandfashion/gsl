@@ -26,12 +26,16 @@ const images = [
 
 const Gallery = () => {
   return (
-    <div className="bg-gray-100 py-8 px-4 md:px-10 lg:px-16">
+    /* Changed background to white to match your theme */
+    <div className="bg-white py-8 px-4 md:px-10 lg:px-16">
       {/* Title */}
       <div className="mb-6 text-center">
-        <h1 className="text-3xl font-bold text-blue-600 md:text-5xl lg:text-6xl">
+        {/* Keeping font style, changed color to Blue (#1d4ed8 / blue-700) */}
+        <h1 className="text-3xl font-bold text-[#1d4ed8] md:text-5xl lg:text-6xl">
           CLAIM TO FAME
         </h1>
+        {/* Added a Red underline consistent with your LandingPage style */}
+        <div className="w-20 h-1.5 bg-[#ff6b6b] mx-auto mt-3"></div>
       </div>
 
       {/* Two-Row Carousel */}
@@ -54,7 +58,8 @@ const Gallery = () => {
           >
             {images.slice(row * 5, row * 5 + 5).map((src, index) => (
               <SwiperSlide key={index}>
-                <div className="rounded-lg overflow-hidden shadow-md">
+                {/* Changed shadow to a subtle red tint to integrate more red as requested previously */}
+                <div className="rounded-lg overflow-hidden shadow-md hover:shadow-[0_4px_15px_rgba(255,107,107,0.3)] transition-shadow duration-300">
                   <img
                     src={src}
                     alt={`Gallery Image ${index + 1}`}

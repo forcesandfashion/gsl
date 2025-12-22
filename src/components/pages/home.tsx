@@ -45,23 +45,6 @@ export default function LandingPage() {
       range.address.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Sample data for rankings
-  const mensRankings = [
-    { rank: 1, name: "John Smith", country: "USA", score: 598 },
-    { rank: 2, name: "Wei Zhang", country: "China", score: 596 },
-    { rank: 3, name: "Alexei Petrov", country: "Russia", score: 595 },
-    { rank: 4, name: "Rajiv Kumar", country: "India", score: 594 },
-    { rank: 5, name: "Hans Mueller", country: "Germany", score: 593 },
-  ];
-
-  const womensRankings = [
-    { rank: 1, name: "Maria Garcia", country: "Spain", score: 597 },
-    { rank: 2, name: "Li Na", country: "China", score: 596 },
-    { rank: 3, name: "Sarah Johnson", country: "USA", score: 595 },
-    { rank: 4, name: "Aisha Patel", country: "India", score: 594 },
-    { rank: 5, name: "Yuki Tanaka", country: "Japan", score: 592 },
-  ];
-
   // Carousel slide data
   const carouselSlides = [
     {
@@ -106,67 +89,21 @@ export default function LandingPage() {
     },
   ];
 
-  // Add after NewsForum and before Gallery
   const homeMagazines = [
-    {
-      title: "Global Shooting League Magazine Brochure",
-      description: "",
-      image: "/images/GSL-brochure.png",
-      mag: "https://heyzine.com/flip-book/4a86e2c1d3.html",
-    },
-    {
-      title: "Magazine 8",
-      description: "",
-      image: "/images/mag8-img.png",
-      mag: "https://heyzine.com/flip-book/827d5bc5b6.html",
-    },
-    {
-      title: "Magazine 7",
-      description: "",
-      image: "/images/mag7-img.png",
-      mag: "https://heyzine.com/flip-book/8391562bd3.html",
-    },
-    {
-      title: "Magazine 6",
-      description: "",
-      image: "/images/mag6-img.png",
-      mag: "https://heyzine.com/flip-book/485b972e41.html",
-    },
-    {
-      title: "Magazine 5",
-      description: "",
-      image: "/images/mag5img.png",
-      mag: "https://heyzine.com/flip-book/d121dec505.html",
-    },
-    {
-      title: "Magazine 4",
-      description: "",
-      image: "/images/mag4img.png",
-      mag: "https://heyzine.com/flip-book/a1865cff61.html",
-    },
-    {
-      title: "Magazine 3",
-      description: "",
-      image: "/mag3img.png",
-      mag: "https://heyzine.com/flip-book/1a14246600.html",
-    },
-    {
-      title: "Magazine 2",
-      description: "",
-      image: "/mag2img.png",
-      mag: "https://heyzine.com/flip-book/d09a374aec.html",
-    },
-    {
-      title: "Magazine 1",
-      description: "",
-      image: "/mag1img.png",
-      mag: "https://heyzine.com/flip-book/ecc71056ed.html",
-    },
+    { title: "Global Shooting League Magazine Brochure", image: "/images/GSL-brochure.png", mag: "https://heyzine.com/flip-book/4a86e2c1d3.html" },
+    { title: "Magazine 8", image: "/images/mag8-img.png", mag: "https://heyzine.com/flip-book/827d5bc5b6.html" },
+    { title: "Magazine 7", image: "/images/mag7-img.png", mag: "https://heyzine.com/flip-book/8391562bd3.html" },
+    { title: "Magazine 6", image: "/images/mag6-img.png", mag: "https://heyzine.com/flip-book/485b972e41.html" },
+    { title: "Magazine 5", image: "/images/mag5img.png", mag: "https://heyzine.com/flip-book/d121dec505.html" },
+    { title: "Magazine 4", image: "/images/mag4img.png", mag: "https://heyzine.com/flip-book/a1865cff61.html" },
+    { title: "Magazine 3", image: "/mag3img.png", mag: "https://heyzine.com/flip-book/1a14246600.html" },
+    { title: "Magazine 2", image: "/mag2img.png", mag: "https://heyzine.com/flip-book/d09a374aec.html" },
+    { title: "Magazine 1", image: "/mag1img.png", mag: "https://heyzine.com/flip-book/ecc71056ed.html" },
   ];
 
   return (
     <Layout>
-      <div className="min-h-screen bg-white text-black">
+      <div className="min-h-screen bg-white text-gray-900">
         <main>
           {/* Hero Carousel */}
           <section className="relative">
@@ -186,37 +123,27 @@ export default function LandingPage() {
                         backgroundImage: `url(${slide.image})`,
                         backgroundPosition: 'center',
                         backgroundSize: 'contain',
-                        backgroundColor: 'rgb(18, 24, 40)',
-                        backgroundRepeat: 'no-repeat',
+                        backgroundColor: '#1e293b', // Dark blue-gray for letterboxing
                         width: '100%',
                         height: '100%',
-                        transform: 'scale(1)',
-                        transition: 'transform 0.3s ease-in-out'
                       }}
-                    >
-                    </div>
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#121828] via-[#12182880] to-transparent py-8">
-                      <div className={`container mx-auto px-8 ${
-                        slide.align === 'left' 
-                          ? 'text-left' 
-                          : 'text-right'
-                      }`}>
-                        <div className={`${
-                          slide.align === 'left'
-                            ? 'mr-auto'
-                            : 'ml-auto'
-                        } max-w-2xl p-6`}>
-                          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-3 leading-tight text-white">
+                    ></div>
+                    {/* Darker Gradient for text legibility */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent py-8 flex flex-col justify-end">
+                      <div className={`container mx-auto px-8 ${slide.align === 'left' ? 'text-left' : 'text-right'}`}>
+                        <div className={`${slide.align === 'left' ? 'mr-auto' : 'ml-auto'} max-w-2xl p-6`}>
+                          <h2 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tight mb-3 leading-tight text-white uppercase">
                             {slide.title}
                           </h2>
-                          <p className="text-base sm:text-lg md:text-xl mb-6 leading-relaxed text-white/90">
+                          <p className="text-base sm:text-lg md:text-xl mb-6 font-medium text-white/90">
                             {slide.subtitle}
                           </p>
                           <div className={`${slide.align === 'right' ? 'flex justify-end' : ''}`}>
+                            {/* CTA Button in Red */}
                             <a
                               href={slide.url}
                               target="_blank"
-                              className="inline-block bg-blue-700 hover:bg-blue-800 text-white rounded-full px-4 py-3 sm:px-6 sm:py-4 text-sm sm:text-base transition-all duration-300 transform hover:scale-105"
+                              className="inline-block bg-blue-700 hover:bg-[#fa5252] text-white font-bold rounded-full px-6 py-4 text-sm sm:text-base uppercase tracking-widest shadow-xl transition-all duration-300 transform hover:-translate-y-1"
                             >
                               {slide.cta}
                             </a>
@@ -229,60 +156,55 @@ export default function LandingPage() {
               ))}
             </Swiper>
           </section>
-          {/* <HeroSection /> */}
+
           <EventsSection />
-          <div className="text-center mt-8 mb-4">
-            <h2 className="text-3xl md:text-4xl font-bold text-blue-700">GLOBAL RANKINGS</h2>
+
+          <div className="text-center mt-16 mb-8">
+            {/* Global Rankings with Red Header and Blue underline */}
+            <h2 className="text-4xl md:text-5xl font-black text-[#ff6b6b] uppercase tracking-tighter">GLOBAL RANKINGS</h2>
+            <div className="w-20 h-1.5 bg-[#1d4ed8] mx-auto mt-3"></div>
           </div>
           <RankingsSection />
-          <NewsForum />
-          <div className="container mx-auto p-4 max-w-7xl">
-            <h2 className="text-4xl font-extrabold text-center mb-6 text-red-600">MAGAZINES</h2>
+
+          <div className="py-12 bg-gray-50">
+            <NewsForum />
+          </div>
+
+          <div className="container mx-auto p-4 max-w-7xl mt-12">
+            {/* Magazine Header in Red */}
+            <h2 className="text-4xl md:text-5xl font-black text-center mb-10 text-[#ff6b6b] uppercase tracking-tighter">MAGAZINES</h2>
             <Swiper
               modules={[Navigation, Autoplay]}
               slidesPerView={1}
-              spaceBetween={20}
+              spaceBetween={30}
               navigation={true}
-              loop={false}
-              autoplay={false}
               breakpoints={{
                 640: { slidesPerView: 2 },
                 1024: { slidesPerView: 3 },
-                1280: { slidesPerView: 3 },
               }}
-              className="pb-8"
+              className="pb-12"
             >
               {homeMagazines.map((article, index) => (
                 <SwiperSlide key={index}>
                   <div
-                    className="mx-2 min-w-[250px] max-w-[300px] md:mx-4 md:min-w-[400px] group cursor-pointer"
+                    className="group cursor-pointer bg-white p-2 rounded-xl border border-transparent hover:border-[#ff6b6b]/30 transition-all shadow-sm hover:shadow-xl"
                     onClick={() => window.open(article.mag, "_blank")}
                   >
-                    <div className="overflow-hidden rounded-lg shadow-md">
+                    <div className="overflow-hidden rounded-lg aspect-[3/4]">
                       <img
                         src={article.image}
                         alt={article.title}
-                        className="w-full rounded-lg object-cover h-full transition-transform duration-500 group-hover:scale-105"
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       />
                     </div>
-                    <div className="mt-3 flex justify-between items-center">
-                      <p className="font-bold text-gray-900 md:text-base truncate flex-1">
+                    <div className="mt-5 flex justify-between items-center px-2">
+                      <p className="font-extrabold text-gray-800 uppercase text-sm truncate flex-1 tracking-tight">
                         {article.title}
                       </p>
-                      <span className="text-green-600 text-sm flex items-center">
-                        Read
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4 ml-1"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
+                      {/* Read Link in Red */}
+                      <span className="text-[#ff6b6b] font-black text-xs uppercase flex items-center ml-4 group-hover:underline">
+                        Read Now
+                        <ChevronRight className="h-4 w-4 ml-1" />
                       </span>
                     </div>
                   </div>
@@ -290,39 +212,33 @@ export default function LandingPage() {
               ))}
             </Swiper>
           </div>
+
           <Gallery />
-          {/* Watch Our Story Video Section */}
-          <section className="py-6 bg-white px-4">
+
+          {/* Founder's Desk with Red Accents */}
+          <section className="py-20 bg-white px-4 border-t border-gray-100">
             <div className="max-w-6xl mx-auto text-center">
-              <h2 className="text-3xl md:text-4xl font-bold text-blue-700 mb-2">
-                FOUNDER'S DESK
+              <h2 className="text-4xl md:text-5xl font-black text-[#1d4ed8] mb-10 uppercase tracking-tighter">
+                FOUNDER'S <span className="text-[#ff6b6b]">DESK</span>
               </h2>
               <div className="flex justify-center">
-                <div className="relative w-full h-[400px] rounded-lg overflow-hidden shadow-lg">
+                <div className="relative w-full max-w-4xl aspect-video rounded-3xl overflow-hidden shadow-[0_20px_50px_rgba(255,107,107,0.2)] group border-8 border-white">
                   <a
                     href="https://www.youtube.com/watch?v=iLd34M-SboQ"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block w-full h-full group"
+                    className="block w-full h-full"
                   >
                     <img
                       src="/featured-cover.png"
                       alt="Watch Our Story Video"
-                      className="w-full h-full object-cover transition-opacity duration-300 group-hover:opacity-80"
+                      className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
                     />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="bg-red-600 bg-opacity-80 rounded-full w-16 h-16 flex items-center justify-center">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-8 w-8 text-white"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                            clipRule="evenodd"
-                          />
+                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                      {/* Play Button in Red */}
+                      <div className="bg-[#ff6b6b] text-white rounded-full w-24 h-24 flex items-center justify-center shadow-2xl transition-transform duration-300 group-hover:scale-110">
+                        <svg className="h-12 w-12 fill-current ml-2" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
                         </svg>
                       </div>
                     </div>
@@ -331,37 +247,37 @@ export default function LandingPage() {
               </div>
             </div>
           </section>
-          {/* <TeamVictorySection /> */}
-          <section className="py-20 bg-white">
-            <div className="max-w-6xl mx-auto text-center px-4">
-              <h2 className="text-3xl md:text-4xl font-bold text-blue-700 mb-6">
-                Our Mission
-              </h2>
-              <div className="text-lg md:text-2xl text-gray-700 leading-relaxed mb-8 text-justify max-w-4xl mx-auto">
-                <p className="mb-6">
-                  Our mission is to build a thriving ecosystem for sports shooting by bringing together all key stakeholders—shooters, coaches, range operators, manufacturers, media professionals, and fans—under one unified digital and physical platform. Through our cutting-edge website, mobile applications, and on-ground initiatives, we aim to:
-                </p>
-                <ul className="list-none space-y-4 text-left">
-                  <li className="flex items-start">
-                    <span className="text-blue-700 mr-2">●</span>
-                    <span>Promote awareness and participation in shooting sports across India and the world.</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-blue-700 mr-2">●</span>
-                    <span>Identify and nurture young talent while establishing world-class infrastructure and centers of excellence in every region.</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-blue-700 mr-2">●</span>
-                    <span>Drive professional development through competitions, training, and data-driven talent management.</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-blue-700 mr-2">●</span>
-                    <span>Facilitate the growth of indigenous manufacturing for top-tier shooting equipment, supporting the Make-in-India initiative.</span>
-                  </li>
-                </ul>
-                <p className="mt-6">
-                  With a strong foundation in research, technology, and community collaboration, GSL is committed to shaping the future of shooting sports with purpose, precision, and passion.
-                </p>
+
+          {/* Mission Section with heavy Red/Blue theme */}
+          <section className="py-24 bg-[#f8fafc]">
+            <div className="max-w-5xl mx-auto px-6">
+              <div className="bg-white rounded-[3rem] p-10 md:p-20 shadow-xl border-t-8 border-[#ff6b6b]">
+                <h2 className="text-4xl md:text-6xl font-black text-[#1d4ed8] mb-12 text-center uppercase tracking-tighter">
+                  Our <span className="text-[#ff6b6b]">Mission</span>
+                </h2>
+                <div className="text-lg md:text-xl text-gray-600 leading-relaxed text-justify">
+                  <p className="mb-10 font-bold text-gray-800 text-2xl border-l-8 border-[#ff6b6b] pl-8">
+                    Building a thriving ecosystem for sports shooting by uniting shooters, coaches, and manufacturers under one roof.
+                  </p>
+                  <ul className="grid md:grid-cols-2 gap-8 text-left mt-12">
+                    {[
+                      "Promote awareness and participation globally.",
+                      "Establish world-class infrastructure in every region.",
+                      "Drive professional development via data-driven talent management.",
+                      "Facilitate indigenous manufacturing for top-tier equipment."
+                    ].map((item, i) => (
+                      <li key={i} className="flex items-start bg-gray-50 p-6 rounded-2xl border-b-4 border-[#1d4ed8]">
+                        <span className="bg-[#ff6b6b] text-white p-1 rounded-full mr-4 mt-1">
+                          <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
+                        </span>
+                        <span className="font-bold text-gray-800">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-16 text-center text-[#ff6b6b] font-black text-xl uppercase tracking-widest italic">
+                    Precision • Purpose • Passion
+                  </p>
+                </div>
               </div>
             </div>
           </section>

@@ -27,7 +27,7 @@ const Athletes = () => {
 
   return (
     <Layout>
-      <div className=" min-h-screen py-16 px-4 sm:px-12">
+      <div className="bg-white min-h-screen py-16 px-4 sm:px-12">
         {/* Page Header */}
         <motion.div
           initial={{ opacity: 0, y: -50 }}
@@ -35,10 +35,12 @@ const Athletes = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <h1 className="text-5xl font-extrabold   text-blue-700 mb-4">
-            ELITE SHOOTERS
+          {/* Main Title in Blue */}
+          <h1 className="text-5xl md:text-6xl font-black text-[#1d4ed8] mb-4 uppercase tracking-tighter">
+            ELITE <span className="text-[#ff6b6b]">SHOOTERS</span>
           </h1>
-          <p className="text-blue-700 max-w-2xl mx-auto">
+          <div className="w-24 h-1.5 bg-[#ff6b6b] mx-auto mb-6"></div>
+          <p className="text-gray-500 font-medium max-w-2xl mx-auto uppercase tracking-widest text-sm">
             Discover the incredible athletes who define excellence in shooting
             sports
           </p>
@@ -49,12 +51,12 @@ const Athletes = () => {
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
-          className="flex justify-center mb-12"
+          className="flex justify-center mb-16"
         >
           <input
             type="text"
-            placeholder="Search athletes..."
-            className="w-full max-w-md px-4 py-3  text-black rounded-full border-2 border-transparent focus:border-red-500 focus:outline-none transition-all duration-300 ease-in-out"
+            placeholder="Search athletes by name..."
+            className="w-full max-w-md px-6 py-4 text-gray-900 rounded-full border-2 border-gray-100 bg-gray-50 focus:bg-white focus:border-[#1d4ed8] focus:ring-4 focus:ring-[#1d4ed8]/10 focus:outline-none transition-all duration-300 shadow-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -67,37 +69,54 @@ const Athletes = () => {
             animate={{ opacity: 1 }}
             className="text-center text-gray-400 mt-12"
           >
-            <p className="text-2xl">No athletes found</p>
+            <p className="text-2xl font-black uppercase tracking-tighter">No athletes found</p>
           </motion.div>
         ) : (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ staggerChildren: 0.1 }}
-            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8"
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-10"
           >
             {filteredAthletes.map((athlete) => (
               <motion.div
                 key={athlete.id}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.98 }}
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-gray-800 rounded-2xl overflow-hidden shadow-2xl transform transition-all duration-300 hover:shadow-red-500/50"
+                className="bg-white rounded-[2rem] overflow-hidden border border-gray-100 shadow-lg hover:shadow-[0_20px_40px_rgba(255,107,107,0.15)] transition-all duration-300"
               >
-                <div className="relative">
+                <div className="relative h-72 overflow-hidden">
                   <img
                     src={athlete.image}
                     alt={athlete.name}
-                    className="w-full h-64 object-cover"
+                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+                  {/* Subtle Gradient for legibility */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                  
+                  {/* Gender Badge in Blue/Red */}
+                  <div className="absolute top-4 right-4">
+                    <span className="bg-[#1d4ed8] text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-lg">
+                      {athlete.gender}
+                    </span>
+                  </div>
                 </div>
-                <div className="p-6 text-white">
-                  <h2 className="text-2xl font-bold mb-2">{athlete.name}</h2>
-                  <div className="flex justify-between items-center text-gray-400">
-                    <span>{athlete.gender}</span>
-                    <span>Born: {athlete.birthday}</span>
+
+                <div className="p-6">
+                  {/* Name in Blue */}
+                  <h2 className="text-xl font-black text-[#0f172a] uppercase tracking-tight mb-3 group-hover:text-[#1d4ed8]">
+                    {athlete.name}
+                  </h2>
+                  
+                  <div className="flex flex-col space-y-2">
+                    <div className="flex items-center text-gray-400 text-xs font-bold uppercase tracking-widest">
+                      <span className="text-[#ff6b6b] mr-2">●</span>
+                      Born: {athlete.birthday}
+                    </div>
+                    {/* Consistent Red Accent Line */}
+                    <div className="w-8 h-1 bg-[#ff6b6b] mt-2"></div>
                   </div>
                 </div>
               </motion.div>

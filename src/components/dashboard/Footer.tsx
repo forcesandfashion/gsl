@@ -1,8 +1,6 @@
 import React, { useState } from "react";
 import {
-  Facebook,
   Instagram,
-  Twitter,
   Youtube,
   MessageCircle,
   Mail,
@@ -11,7 +9,6 @@ import {
   LinkedinIcon,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { LinkedInLogoIcon } from "@radix-ui/react-icons";
 import { FaTelegram } from "react-icons/fa";
 
 const Footer = () => {
@@ -45,14 +42,17 @@ const Footer = () => {
   };
 
   return (
-    <footer className="bg-gray-900 text-white py-12 relative">
+    /* Changed background to a deep patriotic blue consistent with the theme */
+    <footer className="bg-[#000000] text-white py-12 relative border-t-4 border-[#ff6b6b]">
       <div className="max-w-6xl mx-auto px-4">
         {/* Main Footer Columns */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           {/* About GSL */}
           <div>
-            <h4 className="font-bold text-lg mb-4">Global Shooting League</h4>
-            <p className="text-gray-400 text-sm">
+            <h4 className="font-black text-xl mb-4 uppercase tracking-tighter text-[#ff6b6b]">
+              Global Shooting League
+            </h4>
+            <p className="text-white text-sm leading-relaxed">
               Promoting excellence in shooting sports worldwide. Connecting
               athletes, fans, and enthusiasts through innovative digital
               platforms.
@@ -61,30 +61,30 @@ const Footer = () => {
 
           {/* Quick Links */}
           <div>
-            <h4 className="font-bold text-lg mb-4">Quick Links</h4>
-            <ul className="space-y-2 text-sm">
+            <h4 className="font-bold text-lg mb-4 text-[#ff6b6b] uppercase tracking-widest text-sm">Quick Links</h4>
+            <ul className="space-y-2 text-sm font-medium">
               <li>
-                <Link to="/about" className="text-gray-400 hover:text-white">
+                <Link to="/about" className="text-gray hover:text-[#ff6b6b] transition-colors">
                   About Us
                 </Link>
               </li>
               <li>
-                <Link to="/squad" className="text-gray-400 hover:text-white">
+                <Link to="/squad" className="text-gray hover:text-[#ff6b6b] transition-colors">
                   Squad
                 </Link>
               </li>
               <li>
-                <Link to="/shop" className="text-gray-400 hover:text-white">
+                <Link to="/shop" className="text-gray hover:text-[#ff6b6b] transition-colors">
                   Shop
                 </Link>
               </li>
               <li>
-                <Link to="/events" className="text-gray-400 hover:text-white">
+                <Link to="/events" className="text-gray hover:text-[#ff6b6b] transition-colors">
                   Events
                 </Link>
               </li>
               <li>
-                <Link to="/media" className="text-gray-400 hover:text-white">
+                <Link to="/media" className="text-gray hover:text-[#ff6b6b] transition-colors">
                   Media
                 </Link>
               </li>
@@ -93,20 +93,20 @@ const Footer = () => {
 
           {/* Legal Links */}
           <div>
-            <h4 className="font-bold text-lg mb-4">Legal</h4>
-            <ul className="space-y-2 text-sm">
+            <h4 className="font-bold text-lg mb-4 text-[#ff6b6b] uppercase tracking-widest text-sm">Legal</h4>
+            <ul className="space-y-2 text-sm font-medium">
               <li>
-                <Link to="/terms" className="text-gray-400 hover:text-white">
+                <Link to="/terms" className="text-gray hover:text-[#ff6b6b] transition-colors">
                   Terms & Conditions
                 </Link>
               </li>
               <li>
-                <Link to="/privacy" className="text-gray-400 hover:text-white">
+                <Link to="/privacy" className="text-gray hover:text-[#ff6b6b] transition-colors">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link to="/contact" className="text-gray-400 hover:text-white">
+                <Link to="/contact" className="text-gray hover:text-[#ff6b6b] transition-colors">
                   Contact Us
                 </Link>
               </li>
@@ -115,18 +115,18 @@ const Footer = () => {
 
           {/* Contact Information */}
           <div>
-            <h4 className="font-bold text-lg mb-4">Contact Information</h4>
-            <address className="text-gray-400 text-sm not-italic space-y-2">
-              <div className="flex items-center space-x-2">
-                <MapPin className="w-5 h-5 text-red-500" />
+            <h4 className="font-bold text-lg mb-4 text-[#ff6b6b] uppercase tracking-widest text-sm">Contact Us</h4>
+            <address className="text-gray text-sm not-italic space-y-3">
+              <div className="flex items-start space-x-3">
+                <MapPin className="w-5 h-5 text-[#ff6b6b] shrink-0" />
                 <span>SportsGiri Pvt Ltd, Indore, MP, India</span>
               </div>
-              <div className="flex items-center space-x-2">
-                <Phone className="w-5 h-5 text-red-500" />
+              <div className="flex items-center space-x-3">
+                <Phone className="w-5 h-5 text-[#ff6b6b] shrink-0" />
                 <span>+91 74098 83594</span>
               </div>
-              <div className="flex items-center space-x-2">
-                <Mail className="w-5 h-5 text-red-500" />
+              <div className="flex items-center space-x-3">
+                <Mail className="w-5 h-5 text-[#ff6b6b] shrink-0" />
                 <span>admin@sportsgiri.com</span>
               </div>
             </address>
@@ -134,22 +134,22 @@ const Footer = () => {
         </div>
 
         {/* Social Media and Copyright */}
-        <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center">
+        <div className="border-t border-red-800 pt-8 flex flex-col md:flex-row justify-between items-center">
           {/* Copyright */}
-          <p className="text-gray-500 text-sm mb-4 md:mb-0">
+          <p className="text-white text-xs font-bold uppercase tracking-widest mb-4 md:mb-0">
             © {new Date().getFullYear()} SportsGiri Pvt Ltd. All Rights
             Reserved.
           </p>
 
           {/* Social Media Links */}
-          <div className="flex space-x-4">
+          <div className="flex space-x-6">
             {socialLinks.map((social) => (
               <a
                 key={social.name}
                 href={social.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-gray-400 hover:text-white transition"
+                className="text-white hover:text-[#ff6b6b] transition-all transform hover:scale-110"
                 aria-label={social.name}
               >
                 {social.icon}
@@ -159,28 +159,32 @@ const Footer = () => {
         </div>
       </div>
 
-      {/* Chatbot Icon */}
+      {/* Chatbot Icon - Kept Red consistent with theme */}
       <div
-        className="fixed bottom-6 right-6 z-50 bg-red-500 text-white rounded-full p-3 shadow-lg cursor-pointer hover:bg-red-600 transition"
+        className="fixed bottom-6 right-6 z-50 bg-[#ff6b6b] text-white rounded-full p-4 shadow-[0_10px_25px_rgba(255,107,107,0.5)] cursor-pointer hover:bg-[#fa5252] transition-all transform hover:scale-110"
         onClick={toggleChatbot}
       >
-        <MessageCircle className="w-8 h-8" />
+        <MessageCircle className="w-7 h-7" />
       </div>
 
-      {/* Chatbot Modal (Placeholder) */}
+      {/* Chatbot Modal */}
       {isChatbotOpen && (
-        <div className="fixed bottom-24 right-6 w-80 bg-white text-black rounded-lg shadow-2xl p-4 z-50">
-          <div className="font-bold mb-2">Welcome to SportsGiri!</div>
-          <p className="text-sm text-gray-600">
-            How can I help you today? Feel free to ask any questions about our
-            league, events, or services.
-          </p>
-          <button
-            className="mt-4 w-full bg-red-500 text-white py-2 rounded"
-            onClick={toggleChatbot}
-          >
-            Start Chat
-          </button>
+        <div className="fixed bottom-24 right-6 w-80 bg-white text-black rounded-2xl shadow-2xl overflow-hidden z-50 border border-gray-100">
+          <div className="bg-[#1d4ed8] p-4 text-white font-black uppercase tracking-tighter">
+            SportsGiri Support
+          </div>
+          <div className="p-4">
+            <p className="text-sm text-gray-600 leading-relaxed">
+              How can I help you today? Feel free to ask any questions about our
+              league, events, or services.
+            </p>
+            <button
+              className="mt-4 w-full bg-[#ff6b6b] hover:bg-[#fa5252] text-white font-bold py-3 rounded-xl transition-colors uppercase tracking-widest text-xs"
+              onClick={toggleChatbot}
+            >
+              Start Chat
+            </button>
+          </div>
         </div>
       )}
     </footer>
