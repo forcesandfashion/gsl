@@ -121,7 +121,8 @@ const createRoleBasedDocument = async (user: User, fullName: string, email: stri
         fullName,
         email,
         role,
-        createdAt: timestamp
+        createdAt: timestamp,
+        status: "pending",
       });
       break;
 
