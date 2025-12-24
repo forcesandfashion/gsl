@@ -5,7 +5,7 @@ import "swiper/css";
 import "swiper/css/navigation";
 import React, { useState } from "react";
 import Layout from "./Layout";
-import { ChevronRight, Play } from "lucide-react";
+import { ChevronRight, Play, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/firebase/auth";
 
@@ -196,7 +196,7 @@ const ParallaxScrollPage: React.FC = () => {
               onClick={closeVideoModal}
               className="absolute -top-16 right-0 text-white hover:text-[#ff6b6b] transition-colors"
             >
-              {/* <X className="h-10 w-10" /> */}
+              <X className="h-10 w-10" />
             </button>
             <div className="relative pb-[56.25%] h-0 shadow-2xl rounded-3xl overflow-hidden border-4 border-white/10">
               <iframe
