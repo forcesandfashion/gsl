@@ -57,14 +57,11 @@ const rankIcon = (rank: number) => {
 };
 
 const stars = (count: number) => (
-  <span className="text-yellow-400 text-lg">{Array.from({ length: count }).map((_, i) => (<span key={i}>★</span>))}</span>
+  <span className="text-red-500 text-lg">{Array.from({ length: count }).map((_, i) => (<span key={i}>★</span>))}</span>
 );
 
-// Function to calculate profile completion percentage
 const calculateProfileCompletion = (profileData: any) => {
   if (!profileData) return 0;
-  
-  // Define required profile fields based on ShooterProfile interface and their weights
   const profileFields = [
     { field: 'fullName', weight: 10, check: (val: any) => val && val.toString().trim().length > 0 },
     { field: 'age', weight: 5, check: (val: any) => val && (typeof val === 'number' ? val > 0 : parseInt(val) > 0) },
@@ -82,16 +79,11 @@ const calculateProfileCompletion = (profileData: any) => {
     { field: 'dominantHand', weight: 6, check: (val: any) => val && val.toString().trim().length > 0 },
     { field: 'profileImage', weight: 5, check: (val: any) => val && val.toString().trim().length > 0 }
   ];
-  
   let completedWeight = 0;
   let totalWeight = profileFields.reduce((sum, field) => sum + field.weight, 0);
-  
   profileFields.forEach(({ field, weight, check }) => {
-    if (check(profileData[field])) {
-      completedWeight += weight;
-    }
+    if (check(profileData[field])) completedWeight += weight;
   });
-  
   return Math.round((completedWeight / totalWeight) * 100);
 };
 
@@ -108,210 +100,74 @@ const ShooterDashboard = () => {
   const [latestBooking, setLatestBooking] = useState<Booking | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(true);
 
-  // Fetch dashboard data (events, bookings, and sessions)
   useEffect(() => {
     const fetchDashboardData = async () => {
-      if (!user?.uid) {
-        setDashboardLoading(false);
-        return;
-      }
-
+      if (!user?.uid) { setDashboardLoading(false); return; }
       try {
-        console.log("Fetching dashboard data for user:", user.uid);
+        const eventsQuery = query(collection(db, "events"));
+        const eventsSnapshot = await getDocs(eventsQuery);
+        const now = new Date();
+        const thirtyDaysFromNow = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
+        const upcomingEventsData = eventsSnapshot.docs.filter(doc => {
+          const eventData = doc.data();
+          if (!eventData.date) return false;
+          try {
+            const eventDate = eventData.date?.toDate ? eventData.date.toDate() : new Date(eventData.date);
+            return eventDate >= now && eventDate <= thirtyDaysFromNow;
+          } catch (e) { return false; }
+        });
+        setUpcomingEvents(upcomingEventsData.length);
 
-        // Fetch upcoming events
-        let eventsCount = 0;
-        try {
-          const eventsQuery = query(collection(db, "events"));
-          const eventsSnapshot = await getDocs(eventsQuery);
-          
-          // Get current date for filtering upcoming events
-          const now = new Date();
-          const thirtyDaysFromNow = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
-          
-          const upcomingEventsData = eventsSnapshot.docs.filter(doc => {
-            const eventData = doc.data();
-            if (!eventData.date) return false;
-            
-            try {
-              const eventDate = eventData.date?.toDate ? eventData.date.toDate() : new Date(eventData.date);
-              return eventDate >= now && eventDate <= thirtyDaysFromNow;
-            } catch (error) {
-              console.warn("Error parsing event date:", eventData.date);
-              return false;
-            }
-          });
-          
-          eventsCount = upcomingEventsData.length;
-          console.log("Upcoming events found:", eventsCount);
-        } catch (eventsError) {
-          console.error("Error fetching events:", eventsError);
+        const bookingsQuery = query(collection(db, "bookings"), where("userId", "==", user.uid));
+        const bookingsSnapshot = await getDocs(bookingsQuery);
+        const bookings: Booking[] = bookingsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...(doc.data() as Omit<Booking, "id">)
+        }));
+        setUserBookings(bookings.length);
+        if (bookings.length > 0) setLatestBooking(bookings[0]);
+
+        const sessionsQuery = query(
+          collection(db, "shooters", user.uid, "shootingSessions"),
+          orderBy("uploadDate", "desc"),
+          limit(1)
+        );
+        const sessionsSnapshot = await getDocs(sessionsQuery);
+        if (!sessionsSnapshot.empty) {
+          setLatestSession({ id: sessionsSnapshot.docs[0].id, ...sessionsSnapshot.docs[0].data() } as ShootingSession);
         }
-
-        // Fetch user bookings
-        let bookingsCount = 0;
-        let latestUserBooking: Booking | null = null;
-        try {
-          const bookingsQuery = query(
-            collection(db, "bookings"),
-            where("userId", "==", user.uid),
-          );
-          const bookingsSnapshot = await getDocs(bookingsQuery);
-          
-          const bookings: Booking[] = bookingsSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...(doc.data() as Omit<Booking, "id">)
-          }));
-          
-          bookingsCount = bookings.length;
-
-          console.log("All user bookings:", bookings); // Debug: see all bookings
-          
-          // Get current date for filtering upcoming bookings (start of today)
-          const now = new Date();
-          now.setHours(0, 0, 0, 0); // Set to start of today
-          const thirtyDaysFromNow = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
-          
-          console.log("Date range:", { now, thirtyDaysFromNow }); // Debug: see date range
-          
-          const upcomingBookings = bookings.filter(booking => {
-            if (!booking.date) {
-              console.log("Booking has no date:", booking);
-              return false;
-            }
-            
-            try {
-              let bookingDate;
-              if (booking.date?.toDate) {
-                bookingDate = booking.date.toDate();
-              } else if (typeof booking.date === 'string') {
-                bookingDate = new Date(booking.date);
-              } else if (booking.date?.seconds) {
-                // Handle Firestore timestamp format
-                bookingDate = new Date(booking.date.seconds * 1000);
-              } else {
-                bookingDate = new Date(booking.date);
-              }
-              
-              // Set booking date to start of day for comparison
-              bookingDate.setHours(0, 0, 0, 0);
-              
-              console.log("Comparing dates:", { 
-                bookingId: booking.id,
-                bookingDate, 
-                now, 
-                thirtyDaysFromNow,
-                isUpcoming: bookingDate >= now && bookingDate <= thirtyDaysFromNow 
-              });
-              
-              return bookingDate >= now && bookingDate <= thirtyDaysFromNow;
-            } catch (error) {
-              console.warn("Error parsing booking date:", booking.date, error);
-              return false;
-            }
-          });
-          
-          bookingsCount = upcomingBookings.length;
-          
-          // Get the latest upcoming booking
-          if (upcomingBookings.length > 0) {
-            latestUserBooking = upcomingBookings[0];
-          }
-          
-          console.log("Filtered upcoming bookings:", upcomingBookings);
-          console.log("Upcoming bookings count:", bookingsCount);
-        } catch (bookingsError) {
-          console.error("Error fetching bookings:", bookingsError);
-        }
-
-        // Fetch latest shooting session
-        let latestShootingSession: ShootingSession | null = null;
-        try {
-          const sessionsQuery = query(
-            collection(db, "shooters", user.uid, "shootingSessions"),
-            orderBy("uploadDate", "desc"),
-            limit(1)
-          );
-          const sessionsSnapshot = await getDocs(sessionsQuery);
-          
-          if (!sessionsSnapshot.empty) {
-            const sessionDoc = sessionsSnapshot.docs[0];
-            latestShootingSession = {
-              id: sessionDoc.id,
-              ...sessionDoc.data()
-            } as ShootingSession;
-          }
-          
-          console.log("Latest session found:", latestShootingSession);
-        } catch (sessionError) {
-          console.error("Error fetching latest session:", sessionError);
-        }
-
-        setUpcomingEvents(eventsCount);
-        setUserBookings(bookingsCount);
-        setLatestBooking(latestUserBooking);
-        setLatestSession(latestShootingSession);
-        
       } catch (error) {
-        console.error("Error fetching dashboard data:", error);
+        console.error("Dashboard error:", error);
       } finally {
         setDashboardLoading(false);
       }
     };
-
     fetchDashboardData();
   }, [user?.uid]);
 
-  // Fetch user profile data from Firebase
   useEffect(() => {
     const fetchUserProfile = async () => {
-      if (!user?.uid) {
-        setLoading(false);
-        return;
-      }
-
+      if (!user?.uid) { setLoading(false); return; }
       try {
-        // Match the same pattern as ShooterProfile component
         const shootersRef = collection(db, "shooters");
         const shootersQuery = query(shootersRef, where("uid", "==", user.uid));
         const shootersSnapshot = await getDocs(shootersQuery);
-        
         if (!shootersSnapshot.empty) {
-          const profileDoc = shootersSnapshot.docs[0];
-          const profileData = profileDoc.data();
-          console.log('Profile data loaded:', profileData); // Debug log
+          const profileData = shootersSnapshot.docs[0].data();
           setUserProfile(profileData);
-          
-          // Calculate profile completion
-          const completion = calculateProfileCompletion(profileData);
-          console.log('Profile completion:', completion); // Debug log
-          
-          setProfileCompletion(completion);
-        } else {
-          console.log('No profile found for user:', user.uid);
-          setProfileCompletion(0);
+          setProfileCompletion(calculateProfileCompletion(profileData));
         }
       } catch (error) {
-        console.error('Error fetching user profile:', error);
-        setProfileCompletion(0);
+        console.error('Profile fetch error:', error);
       } finally {
         setLoading(false);
       }
     };
-
     fetchUserProfile();
   }, [user?.uid]);
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/");
-  };
-
-  const handleProfileUpdate = () => {
-    navigate("/profile");
-  };
-
-  // Get completion status message
+  const handleSignOut = async () => { await signOut(); navigate("/"); };
+  const handleProfileUpdate = () => { navigate("/profile"); };
   const getCompletionMessage = (completion: number) => {
     if (completion === 0) return "Get started on your profile";
     if (completion < 30) return "Just getting started";
@@ -320,291 +176,170 @@ const ShooterDashboard = () => {
     if (completion < 100) return "Nearly complete";
     return "Profile complete!";
   };
-
-  // Get completion color based on percentage
   const getCompletionColor = (completion: number) => {
     if (completion < 30) return "from-red-400 to-red-600";
-    if (completion < 60) return "from-orange-400 to-orange-600";
-    if (completion < 80) return "from-yellow-400 to-yellow-600";
+    if (completion < 60) return "from-blue-400 to-blue-600";
+    if (completion < 80) return "from-blue-600 to-blue-800";
     return "from-green-400 to-green-600";
   };
-
-  // Format date helper
   const formatDate = (date: any) => {
     if (!date) return "N/A";
     try {
       const dateObj = date?.toDate ? date.toDate() : new Date(date);
       return dateObj.toLocaleDateString();
-    } catch (error) {
-      return "Invalid Date";
-    }
+    } catch (e) { return "Invalid Date"; }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Modern Header */}
-      <header className="bg-white/90 shadow-lg backdrop-blur-md sticky top-0 z-10 border-b border-slate-200/50">
+    <div className="min-h-screen bg-white">
+      <header className="bg-white shadow-lg sticky top-0 z-10 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 tracking-tight mb-2 flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                <div className="w-10 h-10 bg-blue-700 rounded-xl flex items-center justify-center">
                   <Target className="w-5 h-5 text-white" />
                 </div>
-                Welcome, {user?.displayName ? user.displayName.split('|')[0] : user?.email?.split('@')[0] || "Shooter"}!
+                Welcome, <span className="text-[#ff5252]">{user?.displayName ? user.displayName.split('|')[0] : user?.email?.split('@')[0] || "Shooter"}</span>!
               </h1>
-              <p className="text-slate-600 font-medium">Shooter Dashboard - Track your progress and improve your skills</p>
+              <p className="text-gray-600 font-medium">Shooter Dashboard - Track your progress and improve your skills</p>
             </div>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                <div className="w-12 h-12 bg-blue-700 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
                   {user?.displayName ? user.displayName.split('|')[0][0].toUpperCase() : user?.email ? user.email[0].toUpperCase() : "S"}
                 </div>
                 <div className="hidden md:block">
                   <p className="font-semibold text-gray-900">{user?.displayName ? user.displayName.split('|')[0] : user?.email?.split('@')[0] || "Shooter"}</p>
-                  <p className="text-sm text-slate-600">Member</p>
+                  <p className="text-sm text-gray-600">Member</p>
                 </div>
               </div>
-              <Button
-                onClick={() => navigate("/")}
-                variant="outline"
-                className="font-semibold px-6 py-2 border-slate-200 hover:bg-slate-50 transition-all duration-200"
-              >
-                Home
-              </Button>
-              <Button
-                onClick={handleSignOut}
-                className="font-semibold px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
-              >
-                Sign Out
-              </Button>
+              <Button onClick={() => navigate("/")} variant="outline" className="font-semibold px-6 py-2 border-gray-200 hover:bg-gray-50">Home</Button>
+              <Button onClick={handleSignOut} className="font-semibold px-6 py-2 bg-blue-700 hover:bg-[#ff5252] text-white shadow-lg transition-all duration-200">Sign Out</Button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Enhanced Stats Cards */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          {/* Ranking Card */}
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
+          <Card className="bg-blue-50 border-0 shadow-lg group">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-semibold text-blue-900">Your Ranking</CardTitle>
-              <div className="p-2 bg-blue-500 rounded-lg group-hover:bg-blue-600 transition-colors">
-                <Trophy className="h-5 w-5 text-white" />
-              </div>
+              <div className="p-2 bg-blue-700 rounded-lg"><Trophy className="h-5 w-5 text-white" /></div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-blue-900 mb-1">
-                {userRank ? `#${userRank}` : "Unranked"}
-              </div>
-              <p className="text-xs text-blue-700 font-medium flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" />
-                Total Points: {userProfile?.totalPoints || 0}
-              </p>
+              <div className="text-3xl font-bold text-blue-900 mb-1">{userRank ? `#${userRank}` : "Unranked"}</div>
+              <p className="text-xs text-blue-700 font-medium flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Total Points: {userProfile?.totalPoints || 0}</p>
             </CardContent>
           </Card>
           
-          {/* Latest Session Card */}
-          <Card className="bg-gradient-to-br from-red-50 to-red-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
+          <Card className="bg-red-50 border-0 shadow-lg group">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-semibold text-red-900">Latest Session</CardTitle>
-              <div className="p-2 bg-red-500 rounded-lg group-hover:bg-red-600 transition-colors">
-                <Target className="h-5 w-5 text-white" />
-              </div>
+              <div className="p-2 bg-[#ff5252] rounded-lg"><Target className="h-5 w-5 text-white" /></div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-900 mb-1">
-                {dashboardLoading ? "..." : latestSession ? `${latestSession.pointsEarned} pts` : "No Sessions"}
-              </div>
+              <div className="text-2xl font-bold text-red-900 mb-1">{dashboardLoading ? "..." : latestSession ? `${latestSession.pointsEarned} pts` : "No Sessions"}</div>
               {latestSession && (
                 <div className="space-y-1">
                   <div className="flex items-center gap-1">
-                    {Array.from({ length: latestSession.rating }).map((_, i) => (
-                      <Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                    ))}
+                    {Array.from({ length: latestSession.rating }).map((_, i) => (<Star key={i} className="w-3 h-3 fill-red-500 text-red-500" />))}
                     <span className="text-xs text-red-700 ml-1">{latestSession.rating}/4</span>
                   </div>
-                  <p className="text-xs text-red-700 font-medium truncate">
-                    {latestSession.sessionName}
-                  </p>
+                  <p className="text-xs text-red-700 font-medium truncate">{latestSession.sessionName}</p>
                 </div>
-              )}
-              {!latestSession && !dashboardLoading && (
-                <p className="text-xs text-red-700 font-medium">
-                  Upload your first session
-                </p>
               )}
             </CardContent>
           </Card>
           
-          {/* Upcoming Events Card */}
-          <Card  onClick={() => navigate("/dashboard/shooter/events")}    className="bg-gradient-to-br hover:cursor-pointer from-green-50 to-green-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
+          <Card className="bg-blue-50 border-0 shadow-lg group">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-semibold text-green-900">Upcoming Events</CardTitle>
-              <div className="p-2 bg-green-500 rounded-lg group-hover:bg-green-600 transition-colors">
-                <Calendar className="h-5 w-5 text-white" />
-              </div>
+              <CardTitle className="text-sm font-semibold text-blue-900">Upcoming Events</CardTitle>
+              <div className="p-2 bg-blue-700 rounded-lg"><Calendar className="h-5 w-5 text-white" /></div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-green-900 mb-1">
-                {dashboardLoading ? "..." : upcomingEvents}
-              </div>
-              <p className="text-xs text-green-700 font-medium flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                Next 30 days
-              </p>
+              <div className="text-3xl font-bold text-blue-900 mb-1">{dashboardLoading ? "..." : upcomingEvents}</div>
+              <p className="text-xs text-blue-700 font-medium flex items-center gap-1"><Clock className="w-3 h-3" /> Next 30 days</p>
             </CardContent>
           </Card>
           
-          {/* My Bookings Card - FIXED to show count */}
-          <Card 
-            onClick={() => navigate("/dashboard/shooter/bookings")} 
-            className="bg-gradient-to-br from-amber-50 to-amber-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group"
-          >
+          <Card className="bg-red-50 border-0 shadow-lg group">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-semibold text-amber-900">My Bookings</CardTitle>
-              <div className="p-2 bg-amber-500 rounded-lg group-hover:bg-amber-600 transition-colors">
-                <BookOpen className="h-5 w-5 text-white" />
-              </div>
+              <CardTitle className="text-sm font-semibold text-red-900">My Bookings</CardTitle>
+              <div className="p-2 bg-[#ff5252] rounded-lg"><BookOpen className="h-5 w-5 text-white" /></div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-amber-900 mb-1">
-                {dashboardLoading ? "..." : userBookings}
-              </div>
-              {latestBooking && (
-                <div className="space-y-1">
-                  <p className="text-xs text-amber-700 font-medium truncate">
-                    Next: {formatDate(latestBooking.date)}
-                  </p>
-                  <p className="text-xs text-amber-600 truncate">
-                    {latestBooking.eventName || "Event"}
-                  </p>
-                </div>
-              )}
-              {!latestBooking && !dashboardLoading && (
-                <p className="text-xs text-amber-700 font-medium">
-                  Book your first event
-                </p>
-              )}
+              <div className="text-3xl font-bold text-red-900 mb-1">{dashboardLoading ? "..." : userBookings}</div>
+              {latestBooking && <p className="text-xs text-red-700 font-medium truncate">Next: {formatDate(latestBooking.date)}</p>}
             </CardContent>
           </Card>
 
-          {/* Profile Completion Card - Enhanced */}
-          <Card 
-            className="bg-gradient-to-br from-purple-50 to-purple-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group" 
-            onClick={handleProfileUpdate}
-          >
+          <Card className="bg-blue-50 border-0 shadow-lg cursor-pointer group" onClick={handleProfileUpdate}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-semibold text-purple-900">Profile</CardTitle>
-              <div className="p-2 bg-purple-500 rounded-lg group-hover:bg-purple-600 transition-colors">
-                <User className="h-5 w-5 text-white" />
-              </div>
+              <CardTitle className="text-sm font-semibold text-blue-900">Profile</CardTitle>
+              <div className="p-2 bg-blue-700 rounded-lg"><User className="h-5 w-5 text-white" /></div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-purple-900 mb-2">
-                {loading ? "..." : `${profileCompletion}%`}
+              <div className="text-3xl font-bold text-blue-900 mb-2">{loading ? "..." : `${profileCompletion}%`}</div>
+              <div className="w-full h-2 bg-blue-200 rounded-full mb-2">
+                <div className={`h-2 rounded-full bg-gradient-to-r ${getCompletionColor(profileCompletion)}`} style={{ width: `${profileCompletion}%` }}></div>
               </div>
-              <div className="w-full h-2 bg-purple-200 rounded-full mb-2">
-                <div 
-                  className={`h-2 rounded-full bg-gradient-to-r transition-all duration-500 ${getCompletionColor(profileCompletion)}`}
-                  style={{ width: `${profileCompletion}%` }}
-                ></div>
-              </div>
-              <p className="text-xs text-purple-700 font-medium">
-                {loading ? "Loading..." : getCompletionMessage(profileCompletion)}
-              </p>
-              {profileCompletion < 100 && (
-                <p className="text-xs text-purple-500 mt-1 group-hover:text-purple-700">
-                  Click to update
-                </p>
-              )}
+              <p className="text-xs text-blue-700 font-medium">{loading ? "Loading..." : getCompletionMessage(profileCompletion)}</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Coach List + Quick Actions Section (replaces old Session Section) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 mb-8">
-          {/* LEFT 2/3 COLUMN: Coach List Card */}
-          <div className="lg:col-span-2">
-            <CoachListCard />
-          </div>
-
-          {/* RIGHT 1/3 COLUMN: Quick Actions Card */}
-          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-            <CardHeader className="border-b border-slate-100 p-4 md:p-6">
-              <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-indigo-600" />
-                Quick Actions
-              </CardTitle>
-              <CardDescription className="text-slate-600">
-                Manage your profile and upload history.
-              </CardDescription>
+          <div className="lg:col-span-2"><CoachListCard /></div>
+          <Card className="shadow-lg border-0 bg-white">
+            <CardHeader className="border-b border-gray-100 p-4 md:p-6">
+              <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2"><Calendar className="w-5 h-5 text-blue-700" /> Quick Actions</CardTitle>
+              <CardDescription className="text-gray-600">Manage your profile and upload history.</CardDescription>
             </CardHeader>
             <CardContent className="p-4 md:p-6 space-y-4">
-              {/* <Button
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold flex justify-start items-center"
-                onClick={() => navigate("/session/upload")} // Placeholder route
-              >
-                <Target className="w-4 h-4 mr-3" /> Upload New Session
-              </Button> */}
-              <Button
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold flex justify-start items-center"
-                onClick={handleProfileUpdate}
-              >
+              <Button className="w-full bg-blue-700 hover:bg-[#ff5252] text-white font-semibold flex justify-start items-center" onClick={handleProfileUpdate}>
                 <User className="w-4 h-4 mr-3" /> Edit My Profile ({profileCompletion}%)
               </Button>
-              <Button
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold flex justify-start items-center"
-                onClick={() => navigate("/dashboard/history")} // Placeholder route
-              >
+              <Button className="w-full bg-blue-700 hover:bg-[#ff5252] text-white font-semibold flex justify-start items-center" onClick={() => navigate("/dashboard/history")}>
                 <Clock className="w-4 h-4 mr-3" /> View Session History
               </Button>
-              <Button
-                variant="outline"
-                className="w-full border-red-400 text-red-600 hover:bg-red-50/50 font-semibold flex justify-start items-center"
-                onClick={() => console.log("Navigate to /coaches/booking")} 
-              >
+              <Button variant="outline" className="w-full border-blue-200 text-blue-700 hover:bg-red-50 hover:text-[#ff5252] font-semibold flex justify-start items-center">
                 <Phone className="w-4 h-4 mr-3" /> Book Coach Session
               </Button>
             </CardContent>
           </Card>
         </div>
-        <div>
-          <ShootingSessionUpload />
-        </div>
+        <div><ShootingSessionUpload /></div>
+        <br></br>
 
-        {/* Global Leaderboard Section */}
-        <Card className="mb-8 shadow-lg border-0 bg-gradient-to-br from-blue-600 to-blue-800 text-white overflow-hidden">
-          <CardHeader className="border-b border-blue-500/30">
-            <CardTitle className="text-2xl font-bold flex items-center gap-2">
-              <Trophy className="w-6 h-6 text-yellow-400" />
-              GLOBAL LEADERBOARD
-            </CardTitle>
+        <Card className="mb-8 shadow-lg border-0 bg-white overflow-hidden">
+          <CardHeader className="border-b border-gray-100 bg-blue-700 text-white">
+            <CardTitle className="text-2xl font-bold flex items-center gap-2"><Trophy className="w-6 h-6 text-red-400" /> GLOBAL LEADERBOARD</CardTitle>
             <CardDescription className="text-blue-100">Top shooting scores from all shooters</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full text-left">
-                <thead className="bg-blue-700/50">
-                  <tr className="text-blue-100">
-                    <th className="py-4 px-6 font-semibold">#</th>
-                    <th className="py-4 px-6 font-semibold">Player</th>
-                    <th className="py-4 px-6 font-semibold">Session</th>
-                    <th className="py-4 px-6 font-semibold">Stars</th>
-                    <th className="py-4 px-6 font-semibold">Score</th>
-                    <th className="py-4 px-6 font-semibold">Date</th>
+                <thead className="bg-gray-50">
+                  <tr className="text-gray-700">
+                    <th className="py-4 px-6 font-semibold border-b">#</th>
+                    <th className="py-4 px-6 font-semibold border-b">Player</th>
+                    <th className="py-4 px-6 font-semibold border-b">Session</th>
+                    <th className="py-4 px-6 font-semibold border-b">Stars</th>
+                    <th className="py-4 px-6 font-semibold border-b">Score</th>
+                    <th className="py-4 px-6 font-semibold border-b">Date</th>
                   </tr>
                 </thead>
                 <tbody>
                   {leaderboardData.map((row) => (
-                    <tr key={row.id} className="border-b border-blue-600/30 hover:bg-blue-700/30 transition-colors">
-                      <td className="py-4 px-6 font-bold text-lg">{rankIcon(row.rank)}</td>
-                      <td className="py-4 px-6 font-semibold">{row.player}</td>
-                      <td className="py-4 px-6">{row.session}</td>
+                    <tr key={row.id} className="border-b hover:bg-gray-50 transition-colors">
+                      <td className="py-4 px-6 font-bold text-lg text-blue-700">{rankIcon(row.rank)}</td>
+                      <td className="py-4 px-6 font-semibold text-gray-900">{row.player}</td>
+                      <td className="py-4 px-6 text-gray-600">{row.session}</td>
                       <td className="py-4 px-6">{stars(row.stars)}</td>
-                      <td className="py-4 px-6 font-bold text-cyan-300">{row.score}</td>
-                      <td className="py-4 px-6">{row.date}</td>
+                      <td className="py-4 px-6 font-bold text-red-600">{row.score}</td>
+                      <td className="py-4 px-6 text-gray-500">{row.date}</td>
                     </tr>
                   ))}
                 </tbody>
