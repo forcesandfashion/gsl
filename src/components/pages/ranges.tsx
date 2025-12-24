@@ -199,7 +199,7 @@ export default function ShootingRanges() {
                 )}
               </h2>
               <div className="h-64 md:h-[500px] w-full bg-gray-50">
-                <Map ranges={filteredRanges} selectedRange={selectedRange} />
+                <Map ranges={filteredRanges} selectedRange={selectedRange} onLocationFound={setUserLocation} />
               </div>
             </div>
 

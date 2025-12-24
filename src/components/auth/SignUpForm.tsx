@@ -8,6 +8,8 @@ import AuthLayout from "./AuthLayout";
 import { useToast } from "@/components/ui/use-toast";
 import { User } from "firebase/auth";
 import GoogleRoleSelection from "./GoogleRoleSelection";
+// --- Added this import below ---
+import { cn } from "@/lib/utils"; 
 
 type UserRole =
   | "shooter"
@@ -34,22 +36,17 @@ export default function SignUpForm() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminCode, setAdminCode] = useState("");
 
-  // Handle admin checkbox toggle
   const handleAdminToggle = () => {
     const newAdminState = !isAdmin;
     setIsAdmin(newAdminState);
-    
     if (newAdminState) {
-      // If selecting admin, set role to admin
       setRole("admin");
     } else {
-      // If deselecting admin, reset to default role
       setRole("shooter");
       setAdminCode("");
     }
   };
 
-  // Handle role selection - deselect admin if any other role is selected
   const handleRoleChange = (newRole: UserRole) => {
     if (newRole !== "admin") {
       setIsAdmin(false);
@@ -58,36 +55,31 @@ export default function SignUpForm() {
     setRole(newRole);
   };
 
-const handleGoogleSignUp = async () => {
-  try {
-    setGoogleLoading(true);
-    setError("");
-    const result = await signInWithGoogle();
-    
-    // Type guard to check if result is the expected object
-    if (result && typeof result === 'object' && 'isNewUser' in result && 'user' in result) {
-      if (result.isNewUser) {
-        // New user needs to select role
-        setGoogleUser(result.user);
-        setShowGoogleRoleSelection(true);
+  const handleGoogleSignUp = async () => {
+    try {
+      setGoogleLoading(true);
+      setError("");
+      const result = await signInWithGoogle();
+      if (result && typeof result === 'object' && 'isNewUser' in result && 'user' in result) {
+        if (result.isNewUser) {
+          setGoogleUser(result.user);
+          setShowGoogleRoleSelection(true);
+        } else {
+          toast({
+            title: "Welcome back!",
+            description: "You're already registered.",
+          });
+          navigate("/dashboard");
+        }
       } else {
-        // Existing user, redirect based on role
-        toast({
-          title: "Welcome back!",
-          description: "You're already registered.",
-        });
-        navigate("/dashboard");
+        setError("Unexpected response from Google sign-in");
       }
-    } else {
-      // Handle case where result is void or unexpected
-      setError("Unexpected response from Google sign-in");
+    } catch (error: any) {
+      setError(error.message || "Failed to sign up with Google");
+    } finally {
+      setGoogleLoading(false);
     }
-  } catch (error: any) {
-    setError(error.message || "Failed to sign up with Google");
-  } finally {
-    setGoogleLoading(false);
-  }
-};
+  };
 
   const handleCancelGoogleSignup = () => {
     setShowGoogleRoleSelection(false);
@@ -103,9 +95,8 @@ const handleGoogleSignUp = async () => {
       return;
     }
 
-    // Verify admin code if signing up as admin
     if (isAdmin || role === "admin") {
-      const validAdminCode = import.meta.env.VITE_ADMIN_CODE
+      const validAdminCode = import.meta.env.VITE_ADMIN_CODE;
       if (!validAdminCode) {
         setError("Admin registration is not configured");
         return;
@@ -118,7 +109,6 @@ const handleGoogleSignUp = async () => {
 
     try {
       await signUp(email, password, fullName, role);
-
       toast({
         title: "Account created successfully",
         description: "Please check your email to verify your account.",
@@ -146,22 +136,22 @@ const handleGoogleSignUp = async () => {
 
   return (
     <AuthLayout title="Sign Up">
-      <div className="bg-white rounded-3xl shadow-xl p-4 sm:p-6 md:p-8 lg:p-10 w-full max-w-md mx-auto">
-        <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6 md:space-y-7">
-          <div className="space-y-2 sm:space-y-3">
-            <Label htmlFor="fullName" className="text-sm font-semibold text-gray-700">Full Name</Label>
+      <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 md:p-10 w-full max-w-md mx-auto border border-gray-100">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="fullName" className="text-xs font-black uppercase tracking-widest text-gray-500">Full Name</Label>
             <Input
               id="fullName"
               placeholder="John Doe"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               required
-              className="h-10 sm:h-11 md:h-12 rounded-lg border-2 border-gray-200 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 text-sm sm:text-base"
+              className="h-12 rounded-xl border-2 border-gray-100 focus:border-[#1d4ed8] focus:ring-0 transition-all duration-300"
             />
           </div>
 
-          <div className="space-y-2 sm:space-y-3">
-            <Label htmlFor="email" className="text-sm font-semibold text-gray-700">Email</Label>
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-xs font-black uppercase tracking-widest text-gray-500">Email</Label>
             <Input
               id="email"
               type="email"
@@ -169,12 +159,12 @@ const handleGoogleSignUp = async () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="h-10 sm:h-11 md:h-12 rounded-lg border-2 border-gray-200 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 text-sm sm:text-base"
+              className="h-12 rounded-xl border-2 border-gray-100 focus:border-[#1d4ed8] focus:ring-0 transition-all duration-300"
             />
           </div>
 
-          <div className="space-y-2 sm:space-y-3">
-            <Label htmlFor="password" className="text-sm font-semibold text-gray-700">Password</Label>
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-xs font-black uppercase tracking-widest text-gray-500">Password</Label>
             <Input
               id="password"
               type="password"
@@ -182,182 +172,117 @@ const handleGoogleSignUp = async () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="h-10 sm:h-11 md:h-12 rounded-lg border-2 border-gray-200 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 text-sm sm:text-base"
+              className="h-12 rounded-xl border-2 border-gray-100 focus:border-[#1d4ed8] focus:ring-0 transition-all duration-300"
             />
           </div>
 
-          {/* Role selection - only show if not admin */}
           {!isAdmin && (
-            <div className="space-y-2 sm:space-y-3">
-              <Label className="text-sm font-semibold text-gray-700">I am a</Label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-                <label className="flex items-center space-x-2 cursor-pointer p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    value="shooter"
-                    checked={role === "shooter"}
-                    onChange={() => handleRoleChange("shooter")}
-                    className="form-radio h-4 w-4 sm:h-5 sm:w-5 text-blue-600 focus:ring-blue-500 border-gray-300"
-                  />{" "}
-                  <span className="text-gray-700 text-xs sm:text-sm">Shooter</span>
-                </label>
-                <label className="flex items-center space-x-2 cursor-pointer p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    value="range_owner"
-                    checked={role === "range_owner"}
-                    onChange={() => handleRoleChange("range_owner")}
-                    className="form-radio h-4 w-4 sm:h-5 sm:w-5 text-blue-600 focus:ring-blue-500 border-gray-300"
-                  />{" "}
-                  <span className="text-gray-700 text-xs sm:text-sm">Range Owner</span>
-                </label>
-                <label className="flex items-center space-x-2 cursor-pointer p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    value="technical_coach"
-                    checked={role === "technical_coach"}
-                    onChange={() => handleRoleChange("technical_coach")}
-                    className="form-radio h-4 w-4 sm:h-5 sm:w-5 text-blue-600 focus:ring-blue-500 border-gray-300"
-                  />{" "}
-                  <span className="text-gray-700 text-xs sm:text-sm">Technical Coach</span>
-                </label>
-                <label className="flex items-center space-x-2 cursor-pointer p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    value="dietician"
-                    checked={role === "dietician"}
-                    onChange={() => handleRoleChange("dietician")}
-                    className="form-radio h-4 w-4 sm:h-5 sm:w-5 text-blue-600 focus:ring-blue-500 border-gray-300"
-                  />{" "}
-                  <span className="text-gray-700 text-xs sm:text-sm">Dietician</span>
-                </label>
-                <label className="flex items-center space-x-2 cursor-pointer p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    value="mental_trainer"
-                    checked={role === "mental_trainer"}
-                    onChange={() => handleRoleChange("mental_trainer")}
-                    className="form-radio h-4 w-4 sm:h-5 sm:w-5 text-blue-600 focus:ring-blue-500 border-gray-300"
-                  />{" "}
-                  <span className="text-gray-700 text-xs sm:text-sm">Mental Trainer</span>
-                </label>
-                <label className="flex items-center space-x-2 cursor-pointer p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    value="franchise_owner"
-                    checked={role === "franchise_owner"}
-                    onChange={() => handleRoleChange("franchise_owner")}
-                    className="form-radio h-4 w-4 sm:h-5 sm:w-5 text-blue-600 focus:ring-blue-500 border-gray-300"
-                  />{" "}
-                  <span className="text-gray-700 text-xs sm:text-sm">Franchise Owner</span>
-                </label>
-                <label className="flex items-center space-x-2 cursor-pointer p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    value="investor"
-                    checked={role === "investor"}
-                    onChange={() => handleRoleChange("investor")}
-                    className="form-radio h-4 w-4 sm:h-5 sm:w-5 text-blue-600 focus:ring-blue-500 border-gray-300"
-                  />{" "}
-                  <span className="text-gray-700 text-xs sm:text-sm">Investor</span>
-                </label>
+            <div className="space-y-3">
+              <Label className="text-xs font-black uppercase tracking-widest text-gray-500">I am a</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: "shooter", label: "Shooter" },
+                  { id: "range_owner", label: "Range Owner" },
+                  { id: "technical_coach", label: "Technical Coach" },
+                  { id: "dietician", label: "Dietician" },
+                  { id: "mental_trainer", label: "Mental Trainer" },
+                  { id: "franchise_owner", label: "Franchise Owner" },
+                  { id: "investor", label: "Investor" },
+                ].map((item) => (
+                  <label key={item.id} className={cn(
+                    "flex items-center space-x-2 cursor-pointer p-3 rounded-xl border-2 transition-all",
+                    role === item.id ? "border-[#1d4ed8] bg-[#1d4ed8]/5" : "border-gray-100 hover:bg-gray-50"
+                  )}>
+                    <input
+                      type="radio"
+                      value={item.id}
+                      checked={role === item.id}
+                      onChange={() => handleRoleChange(item.id as UserRole)}
+                      className="form-radio h-4 w-4 text-[#1d4ed8] focus:ring-[#1d4ed8]"
+                    />
+                    <span className={cn("text-xs font-bold uppercase tracking-tighter", role === item.id ? "text-[#1d4ed8]" : "text-gray-600")}>
+                      {item.label}
+                    </span>
+                  </label>
+                ))}
               </div>
             </div>
           )}
 
-          {/* Sign up as Admin option */}
-          <div className="flex items-center mt-4">
+          <div className="flex items-center">
             <input
               type="checkbox"
               id="isAdmin"
               checked={isAdmin}
               onChange={handleAdminToggle}
-              className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              className="h-4 w-4 text-[#1d4ed8] focus:ring-[#1d4ed8] border-gray-300 rounded"
             />
-            <label htmlFor="isAdmin" className="ml-2 text-xs sm:text-sm text-gray-700">
+            <label htmlFor="isAdmin" className="ml-2 text-xs font-black uppercase tracking-widest text-gray-500 cursor-pointer">
               Sign up as Admin
             </label>
           </div>
 
-          {/* Admin code input - only show if admin is selected */}
           {isAdmin && (
-            <div className="space-y-2 sm:space-y-3 mt-4">
-              <Label htmlFor="adminCode" className="text-sm font-semibold text-gray-700">
-                Admin Code
+            <div className="space-y-2 mt-4 animate-in fade-in slide-in-from-top-2">
+              <Label htmlFor="adminCode" className="text-xs font-black uppercase tracking-widest text-[#ff6b6b]">
+                Admin Verification Code
               </Label>
               <Input
                 id="adminCode"
                 type="password"
-                placeholder="Enter admin code"
+                placeholder="Enter access code"
                 value={adminCode}
                 onChange={(e) => setAdminCode(e.target.value)}
                 required={isAdmin}
-                className="h-10 sm:h-11 md:h-12 rounded-lg border-2 border-gray-200 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 text-sm sm:text-base"
+                className="h-12 rounded-xl border-2 border-[#ff6b6b]/20 focus:border-[#ff6b6b] focus:ring-0 transition-all duration-300"
               />
-              <p className="text-xs text-gray-500">
-                Selected role: <span className="font-semibold text-blue-600">Administrator</span>
-              </p>
             </div>
           )}
 
-          {error && <p className="text-sm text-red-600 text-center px-2">{error}</p>}
+          {error && <p className="text-xs font-bold text-[#ff6b6b] text-center bg-red-50 py-2 rounded-lg">{error}</p>}
 
           <Button
             type="submit"
-            className="w-full h-10 sm:h-11 md:h-12 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-sm sm:text-base md:text-lg shadow-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105"
+            className="w-full h-12 rounded-full bg-[#1d4ed8] hover:bg-[#ff6b6b] text-white font-black uppercase tracking-widest text-sm shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
           >
             Create account
           </Button>
 
-          {/* Social Login Divider */}
-          <div className="relative flex items-center justify-center my-4 sm:my-5 md:my-6">
+          <div className="relative flex items-center justify-center py-2">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
+              <div className="w-full border-t border-gray-100"></div>
             </div>
-            <div className="relative bg-white px-2 sm:px-3 md:px-4 text-xs sm:text-sm text-gray-500">
-              Or continue with
+            <div className="relative bg-white px-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+              Social Registration
             </div>
           </div>
 
-          {/* Google Sign Up Button */}
           <Button
             type="button"
             onClick={handleGoogleSignUp}
             disabled={googleLoading}
-            className="w-full h-10 sm:h-11 md:h-12 rounded-full border-2 border-gray-200 bg-white text-gray-700 font-medium hover:bg-gray-50 transition-all duration-300 flex items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm md:text-base"
+            className="w-full h-12 rounded-full border-2 border-gray-100 bg-white text-[#0f172a] font-bold hover:bg-gray-50 transition-all duration-300 flex items-center justify-center gap-3 text-sm"
           >
             {googleLoading ? (
-              <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-5 h-5 border-2 border-[#1d4ed8] border-t-transparent rounded-full animate-spin"></div>
             ) : (
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
             )}
-            <span>{googleLoading ? "Signing up..." : "Continue with Google"}</span>
+            <span>{googleLoading ? "Processing..." : "Continue with Google"}</span>
           </Button>
 
-          {/* Facebook Sign Up Button (Placeholder) */}
-          <Button
-            type="button"
-            disabled
-            className="w-full h-10 sm:h-11 md:h-12 rounded-full border-2 border-gray-200 bg-gray-100 text-gray-400 font-medium cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm md:text-base"
-          >
-            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-            </svg>
-            <span>Continue with Facebook</span>
-          </Button>
-
-          <div className="text-xs sm:text-sm text-center text-gray-600 mt-4 sm:mt-5 md:mt-6 px-2">
-            Already have an account?{" "}
+          <div className="text-[10px] font-black uppercase tracking-widest text-center text-gray-400 pt-4">
+            Already a member?{" "}
             <Link
               to="/login"
-              className="text-blue-600 hover:underline font-bold"
+              className="text-[#1d4ed8] hover:text-[#ff6b6b] transition-colors border-b-2 border-[#1d4ed8]/20"
             >
-              Sign in
+              Sign In
             </Link>
           </div>
         </form>
