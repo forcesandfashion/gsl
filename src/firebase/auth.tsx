@@ -63,7 +63,8 @@ const createRoleBasedDocument = async (user: User, fullName: string, email: stri
         wallet: false,
         kyc: false,
         premium: false,
-        createdAt: timestamp
+        createdAt: timestamp,
+        coaches: [],
       });
       break;
 
@@ -123,6 +124,7 @@ const createRoleBasedDocument = async (user: User, fullName: string, email: stri
         role,
         createdAt: timestamp,
         status: "pending",
+        shooters: [],
       });
       break;
 

@@ -16,52 +16,19 @@ import {
   Phone,
   Target,
 } from "lucide-react";
-
-// Assuming these Firebase imports are available in your setup
 import { db } from "@/firebase/config";
 import { collection, getDocs, query, limit } from "firebase/firestore";
 
-// --- Coach Type Definition ---
+// --- Coach Type Definition matching your database structure ---
 interface Coach {
   id: string;
-  name: string;
+  fullName: string; // Changed from 'name' to 'fullName' to match standard coach profiles
   discipline: string;
   location: string;
-  avgRating: number;
-  studentsCount: number;
-  isElite: boolean;
+  avgRating?: number;
+  isElite?: boolean;
+  photoUrl?: string;
 }
-
-// Mock Data (to use if Firebase fetch fails or during development)
-const mockCoaches: Coach[] = [
-  {
-    id: "C001",
-    name: "Dr. Arjun Sharma",
-    discipline: "10m Air Rifle Specialist",
-    location: "New Delhi",
-    avgRating: 4.8,
-    studentsCount: 15,
-    isElite: true,
-  },
-  {
-    id: "C002",
-    name: "Priya Singh Rana",
-    discipline: "25m Pistol Expert",
-    location: "Mumbai",
-    avgRating: 4.5,
-    studentsCount: 10,
-    isElite: false,
-  },
-  {
-    id: "C003",
-    name: "Vikram Reddy",
-    discipline: "50m Rifle Prone Focus",
-    location: "Bangalore",
-    avgRating: 4.9,
-    studentsCount: 22,
-    isElite: true,
-  },
-];
 
 const CoachListCard = () => {
   const [coaches, setCoaches] = useState<Coach[]>([]);
@@ -71,18 +38,15 @@ const CoachListCard = () => {
     const fetchCoaches = async () => {
       try {
         setLoading(true);
-        // Firebase Query to fetch top coaches
+        // Query the actual technical-coaches collection
         const coachesQuery = query(
-          collection(db, "coaches"),
-          // You might order by avgRating or studentsCount here
-          // orderBy("avgRating", "desc"),
-          limit(4) // Fetch a few to display on the dashboard
+          collection(db, "technical-coaches"),
+          limit(4) 
         );
         const snapshot = await getDocs(coachesQuery);
 
         if (snapshot.empty) {
-            // Use mock data if no coaches are found
-            setCoaches(mockCoaches); 
+            setCoaches([]); 
         } else {
             const fetchedCoaches = snapshot.docs.map(doc => ({
                 id: doc.id,
@@ -93,8 +57,6 @@ const CoachListCard = () => {
 
       } catch (error) {
         console.error("Error fetching coaches:", error);
-        // Fallback to mock data on error
-        setCoaches(mockCoaches); 
       } finally {
         setLoading(false);
       }
@@ -103,83 +65,91 @@ const CoachListCard = () => {
     fetchCoaches();
   }, []);
   
-  // Reusable component for star rating
-  const renderStars = (rating: number) => (
-    <span className="text-yellow-500 flex items-center gap-0.5">
-      {Array.from({ length: Math.floor(rating) }).map((_, i) => (
-        <Star key={i} className="w-4 h-4 fill-yellow-500 text-yellow-500" />
+  const renderStars = (rating: number = 5.0) => (
+    <span className="text-[#ff6b6b] flex items-center gap-0.5">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star key={i} className={`w-4 h-4 ${i < Math.floor(rating) ? "fill-current" : "text-gray-200"}`} />
       ))}
-      <span className="text-gray-600 text-sm ml-1">({rating.toFixed(1)})</span>
+      <span className="text-gray-400 text-xs font-black ml-1">({rating.toFixed(1)})</span>
     </span>
   );
 
   return (
-    <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm lg:col-span-2">
-      <CardHeader className="border-b border-slate-100 p-4 md:p-6 flex flex-row items-center justify-between">
+    <Card className="shadow-2xl border-0 bg-white rounded-[2rem] overflow-hidden lg:col-span-2">
+      <CardHeader className="bg-white border-b border-gray-50 p-6 flex flex-row items-center justify-between">
         <div>
-            <CardTitle className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <Zap className="w-6 h-6 text-red-600" />
-                Find Your Coach
+            <CardTitle className="text-xl font-black text-[#1d4ed8] uppercase tracking-tighter flex items-center gap-2">
+                <Zap className="w-5 h-5 text-[#ff6b6b] fill-current" />
+                Expert <span className="text-[#ff6b6b]">Coaches</span>
             </CardTitle>
-            <CardDescription className="text-slate-600">
-                Connect with Elite Shooting Coaches worldwide.
+            <CardDescription className="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-1">
+                Verified professional training staff
             </CardDescription>
         </div>
         <Button 
             variant="outline"
-            className="text-red-600 border-red-200 hover:bg-red-50/70"
-            // This is a placeholder navigation, update your router accordingly
-            onClick={() => console.log("Navigate to /coaches/list")} 
+            className="border-[#1d4ed8] text-[#1d4ed8] hover:bg-blue-50 font-black uppercase tracking-widest text-[10px]"
+            onClick={() => window.location.href = "/dashboard/shooter/coach-students"} 
         >
-            View All
+            View Directory
         </Button>
       </CardHeader>
       
       <CardContent className="p-0">
         {loading ? (
-          <div className="p-6 text-center text-slate-500">Loading top coaches...</div>
+          <div className="p-10 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1d4ed8] mx-auto mb-4"></div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Syncing Staff Records...</p>
+          </div>
+        ) : coaches.length === 0 ? (
+          <div className="p-10 text-center text-gray-400 italic">No coaches found in the system.</div>
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-gray-50">
             {coaches.map((coach) => (
               <li 
                 key={coach.id} 
-                className="p-4 md:p-5 hover:bg-indigo-50/50 transition-colors cursor-pointer flex justify-between items-center"
+                className="p-6 hover:bg-blue-50/30 transition-all cursor-pointer flex justify-between items-center group"
               >
-                <div className="flex items-center gap-4">
-                  {/* Coach Avatar Placeholder */}
-                  <div className="w-10 h-10 bg-indigo-200 rounded-full flex items-center justify-center text-indigo-700 font-bold flex-shrink-0">
-                    <User className="w-5 h-5" />
+                <div className="flex items-center gap-5">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-[#ff6b6b] rounded-2xl blur-md opacity-0 group-hover:opacity-20 transition-opacity"></div>
+                    {coach.photoUrl ? (
+                      <img src={coach.photoUrl} alt="Coach" className="relative w-14 h-14 rounded-2xl object-cover border-2 border-white shadow-md" />
+                    ) : (
+                      <div className="relative w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center text-[#1d4ed8] shadow-md border-2 border-white">
+                        <User className="w-6 h-6" />
+                      </div>
+                    )}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                      {coach.name}
-                      {coach.isElite && (
-                        <span className="text-xs font-medium text-white bg-red-600 px-2 py-0.5 rounded-full">ELITE</span>
+                    <h3 className="font-black text-[#0f172a] uppercase tracking-tight flex items-center gap-2">
+                      {coach.fullName}
+                      {coach.isElite !== false && (
+                        <span className="text-[8px] font-black text-white bg-[#ff6b6b] px-2 py-0.5 rounded-md tracking-[0.2em]">ELITE</span>
                       )}
                     </h3>
-                    <p className="text-sm text-slate-600 flex items-center gap-1">
-                      <Target className="w-3 h-3 text-blue-500" /> {coach.discipline}
+                    <p className="text-[10px] font-bold text-gray-500 flex items-center gap-1 mt-1 uppercase">
+                      <Target className="w-3 h-3 text-[#1d4ed8]" /> {coach.discipline || "General Technical Coach"}
                     </p>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-4 flex-shrink-0">
-                    <div className="hidden sm:block">
-                        {renderStars(coach.avgRating)}
-                        <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                            <MapPin className="w-3 h-3" /> {coach.location}
+                <div className="flex items-center gap-8 flex-shrink-0">
+                    <div className="hidden md:block text-right">
+                        {renderStars(coach.avgRating || 5.0)}
+                        <p className="text-[10px] font-black text-gray-400 flex items-center justify-end gap-1 mt-1 uppercase tracking-tighter">
+                            <MapPin className="w-3 h-3 text-[#1d4ed8]" /> {coach.location || "Online"}
                         </p>
                     </div>
                   <Button 
                     size="sm" 
-                    className="bg-red-600 hover:bg-red-700 text-white"
+                    className="bg-[#ff6b6b] hover:bg-[#fa5252] text-white font-black uppercase tracking-widest text-[10px] px-6 py-5 rounded-xl shadow-lg transition-transform hover:scale-105"
                     onClick={(e) => {
                         e.stopPropagation();
-                        // Placeholder action: Navigate to coach details or booking page
-                        console.log(`Booking session with ${coach.name}`); 
+                        // Placeholder for profile viewing or booking
                     }}
                   >
-                    Book <ArrowRightCircle className="w-4 h-4 ml-1" />
+                    Consult <ArrowRightCircle className="w-4 h-4 ml-2" />
                   </Button>
                 </div>
               </li>

@@ -46,6 +46,7 @@ import TechnicalCoachDashboard from "./TechCoach";
 import CoachProfilePage from "./TeachCoachProfile";
 import InvestorDashboard from "./InvestorDashboard";
 import OpportunityDetail from "./OpportunityDetail";
+import CoachStudentDirectory from "./CoachList";
 
 const DashboardRouter = () => {
   const { userRole, loading } = useAuth();
@@ -123,6 +124,7 @@ const DashboardRouter = () => {
       
       {/* Shooter sub-routes */}
       <Route path="shooter/bookings" element={<ShooterBooking />} />
+      <Route path="shooter/coach-students" element={<CoachStudentDirectory />} />
       <Route path="shooter/events" element={<ShooterEvents />} />
       <Route path="/documents" element={<UserDocumentsPage />} />
       
