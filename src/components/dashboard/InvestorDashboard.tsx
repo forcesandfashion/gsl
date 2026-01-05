@@ -308,7 +308,7 @@ const InvestorDashboard = () => {
             </Card>
 
             {/* KYC Card */}
-            <Card onClick={() => navigate("/investor/profile")} className="shadow-2xl border-0 bg-white rounded-[2.5rem] overflow-hidden border-t-8 border-[#ff6b6b] cursor-pointer hover:scale-105 transition-transform">
+            <Card onClick={() => navigate("/dashboard/investor/profile")} className="shadow-2xl border-0 bg-white rounded-[2.5rem] overflow-hidden border-t-8 border-[#ff6b6b] cursor-pointer hover:scale-105 transition-transform">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Compliance</CardTitle>

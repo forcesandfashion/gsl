@@ -37,14 +37,14 @@ export default function ShooterWallet() {
   return (
     <div className="space-y-6">
       {/* Wallet Balance */}
-      <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl p-6 shadow-lg">
+      <div className="bg-blue-700 text-white rounded-xl p-6 shadow-lg">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm opacity-80">Current Balance</p>
-            <p className="text-3xl font-bold">₹{balance.toLocaleString('en-IN')}</p>
-            <p className="text-sm mt-2 opacity-80">Available for payments and transfers</p>
+            <p className="text-sm text-white opacity-80">Current Balance</p>
+            <p className="text-3xl text-[#ff6b6b] font-bold">₹{balance.toLocaleString('en-IN')}</p>
+            <p className="text-sm text-white mt-2 opacity-80">Available for payments and transfers</p>
           </div>
-          <Wallet className="w-12 h-12 opacity-80" />
+          <Wallet className="w-12 h-12 opacity-80 text-[#ff6b6b]" />
         </div>
       </div>
 
@@ -52,7 +52,7 @@ export default function ShooterWallet() {
       <div className="grid grid-cols-3 gap-4">
         <Button 
           onClick={() => setActiveAction('add')}
-          className="flex flex-col items-center justify-center h-20 bg-green-500 hover:bg-green-600 text-white p-2"
+          className="flex flex-col items-center justify-center h-20 bg-blue-700 hover:bg-[#ff6b6b] text-white p-2"
         >
           <Plus className="w-6 h-6 mb-1" />
           <span className="text-sm">Add Money</span>
@@ -60,13 +60,13 @@ export default function ShooterWallet() {
         
         <Button 
           onClick={() => setActiveAction('send')}
-          className="flex flex-col items-center justify-center h-20 bg-blue-500 hover:bg-blue-600 text-white p-2"
+          className="flex flex-col items-center justify-center h-20 bg-[#ff6b6b] hover:bg-blue-700 text-white p-2"
         >
           <Send className="w-6 h-6 mb-1" />
           <span className="text-sm">Send Money</span>
         </Button>
         
-        <Button className="flex flex-col items-center justify-center h-20 bg-purple-500 hover:bg-purple-600 text-white p-2">
+        <Button className="flex flex-col items-center justify-center h-20 bg-blue-700 hover:bg-[#ff6b6b] text-white p-2">
           <History className="w-6 h-6 mb-1" />
           <span className="text-sm">History</span>
         </Button>
@@ -75,8 +75,8 @@ export default function ShooterWallet() {
       {/* Add Money Form */}
       {activeAction === 'add' && (
         <div className="bg-white rounded-lg p-4 shadow-md">
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Plus className="w-5 h-5 text-green-600" /> Add Money to Wallet
+          <h3 className="text-lg text-blue-700 font-semibold mb-4 flex items-center gap-2">
+            <Plus className="w-5 h-5 text-[#ff6b6b]" /> Add Money to Wallet
           </h3>
           <div className="space-y-4">
             <div>
@@ -121,7 +121,7 @@ export default function ShooterWallet() {
               </Button>
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleAddMoney} className="flex-1 bg-green-600 hover:bg-green-700">
+              <Button onClick={handleAddMoney} className="flex-1 bg-[#ff6b6b] hover:bg-blue-700">
                 <CreditCard className="w-4 h-4 mr-2" /> Add Money
               </Button>
               <Button onClick={() => setActiveAction(null)} variant="outline">
@@ -135,8 +135,8 @@ export default function ShooterWallet() {
       {/* Send Money Form */}
       {activeAction === 'send' && (
         <div className="bg-white rounded-lg p-4 shadow-md">
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Send className="w-5 h-5 text-blue-600" /> Send Money
+          <h3 className="text-lg text-blue-700 font-semibold mb-4 flex items-center gap-2">
+            <Send className="w-5 h-5 text-[#ff6b6b]" /> Send Money
           </h3>
           <div className="space-y-4">
             <div>
@@ -162,7 +162,7 @@ export default function ShooterWallet() {
               />
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleSendMoney} className="flex-1 bg-blue-600 hover:bg-blue-700">
+              <Button onClick={handleSendMoney} className="flex-1 bg-[#ff6b6b] hover:bg-blue-700">
                 <Send className="w-4 h-4 mr-2" /> Send Money
               </Button>
               <Button onClick={() => setActiveAction(null)} variant="outline">
@@ -175,8 +175,8 @@ export default function ShooterWallet() {
 
       {/* Transaction History */}
       <div className="bg-white rounded-lg p-4 shadow-md">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <History className="w-5 h-5 text-purple-600" /> Recent Transactions
+        <h3 className="text-lg text-blue-700 font-semibold mb-4 flex items-center gap-2">
+          <History className="w-5 h-5 text-[#ff6b6b]" /> Recent Transactions
         </h3>
         <div className="space-y-3">
           {mockTransactions.map((transaction) => (

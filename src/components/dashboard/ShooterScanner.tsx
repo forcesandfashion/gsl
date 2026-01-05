@@ -815,8 +815,8 @@ export default function ShooterScanner() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <QrCode className="w-5 h-5" />
+          <CardTitle className="flex items-center gap-2 text-blue-700">
+            <QrCode className="w-5 h-5 text-[#ff6b6b]" />
             Range QR Scanner
           </CardTitle>
         </CardHeader>
@@ -824,11 +824,11 @@ export default function ShooterScanner() {
           {!scanning ? (
             <div className="text-center space-y-4">
               <div className="p-6 border-2 border-dashed border-gray-300 rounded-lg">
-                <QrCode className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-600 mb-4">
+                <QrCode className="w-12 h-12 text-[#ff6b6b] mx-auto mb-3" />
+                <p className="text-blue-700 mb-4">
                   Scan the range QR code to check-in and mark attendance
                 </p>
-                <Button onClick={() => setScanning(true)} className="w-full max-w-xs">
+                <Button onClick={() => setScanning(true)} className="w-full max-w-xs bg-blue-700 hover:bg-[#ff6b6b] text-white">
                   <Camera className="w-4 h-4 mr-2" />
                   Start Camera Scanner
                 </Button>

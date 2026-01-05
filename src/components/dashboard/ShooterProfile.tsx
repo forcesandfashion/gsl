@@ -626,7 +626,7 @@ export default function ShooterProfile() {
   if (loading) return <div className="text-center text-lg mt-6">Loading profile...</div>;
 
   return (
-    <div className="w-full max-w-6xl mx-auto bg-gradient-to-br from-blue-50 via-purple-50 to-green-50 rounded-xl md:rounded-2xl shadow-lg md:shadow-xl p-4 md:p-6">
+    <div className="w-full max-w-6xl mx-auto bg-blue-50  rounded-xl md:rounded-2xl shadow-lg md:shadow-xl p-4 md:p-6">
       
       {/* Mobile Menu Toggle */}
       <div className="md:hidden flex justify-between items-center mb-4">
@@ -658,8 +658,8 @@ export default function ShooterProfile() {
                 }}
                 className={`py-2 px-3 md:px-4 border-b-2 md:border-b-2 font-medium text-sm flex items-center gap-2 ${
                   activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-[#ff6b6b] text-[#ff6b6b] hover:text-blue-700 hover:border-blue-700'
+                    : 'border-transparent text-blue-700 hover:text-[#ff6b6b] hover:border-[#ff6b6b]'
                 }`}
               >
                 <tab.icon className="w-4 h-4" />
@@ -694,7 +694,7 @@ export default function ShooterProfile() {
               />
               <button
                 type="button"
-                className="px-3 py-1.5 md:px-4 md:py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition text-sm"
+                className="px-3 py-1.5 md:px-4 md:py-2 bg-[#ff6b6b] text-white rounded-lg shadow hover:bg-blue-600 transition text-sm"
                 onClick={() => fileInputRef.current?.click()}
               >
                 {image ? "Change Image" : "Upload Image"}
@@ -714,9 +714,9 @@ export default function ShooterProfile() {
             </div>
 
             {/* Preferred Disciplines */}
-            <div className="mb-4 md:mb-6 p-4 md:p-6 rounded-xl md:rounded-2xl shadow-md bg-gradient-to-br from-purple-50 via-blue-50 to-green-50 border border-blue-100">
+            <div className="mb-4 md:mb-6 p-4 md:p-6 rounded-xl md:rounded-2xl shadow-md bg-blue-50 border border-blue-100">
               <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4 text-blue-700 flex items-center gap-2">
-                <Target className="w-5 h-5 md:w-6 md:h-6 text-blue-400" /> Preferred Disciplines
+                <Target className="w-5 h-5 md:w-6 md:h-6 text-[#ff6b6b]" /> Preferred Disciplines
               </h3>
               <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
                 {[
@@ -739,9 +739,9 @@ export default function ShooterProfile() {
             </div>
 
             {/* Equipment Section */}
-            <div className="mb-4 md:mb-6 p-4 md:p-6 rounded-xl md:rounded-2xl shadow-md bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 border border-pink-100">
-              <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4 text-pink-700 flex items-center gap-2">
-                <Package className="w-5 h-5 md:w-6 md:h-6 text-pink-400" /> Equipment & Preferences
+            <div className="mb-4 md:mb-6 p-4 md:p-6 rounded-xl md:rounded-2xl shadow-md bg-blue-50 border border-blue-100">
+              <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4 text-blue-700 flex items-center gap-2">
+                <Package className="w-5 h-5 md:w-6 md:h-6 text-[#ff6b6b]" /> Equipment & Preferences
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-3 md:mb-4">
@@ -819,7 +819,7 @@ export default function ShooterProfile() {
             {/* Physical Details Section */}
             <div className="mb-6 md:mb-8 p-4 md:p-6 rounded-xl md:rounded-2xl shadow-md bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 border border-blue-100">
               <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4 text-blue-700 flex items-center gap-2">
-                <User className="w-5 h-5 md:w-6 md:h-6 text-blue-400" /> Physical Details
+                <User className="w-5 h-5 md:w-6 md:h-6 text-[#ff6b6b]" /> Physical Details
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
@@ -866,7 +866,7 @@ export default function ShooterProfile() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full py-2 md:py-3 text-base md:text-lg font-bold bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-md hover:from-purple-500 hover:to-blue-500 transition rounded-lg mt-4">
+            <Button type="submit" className="w-full py-2 md:py-3 text-base md:text-lg font-bold bg-blue-700 text-white shadow-md hover:bg-[#ff6b6b] transition rounded-lg mt-4">
               {isNewProfile ? "Create Profile" : "Update Profile"}
             </Button>
           </form>
@@ -876,18 +876,18 @@ export default function ShooterProfile() {
       {activeTab === 'analytics' && (
         <>
           <h2 className="text-xl md:text-2xl font-bold text-blue-700 mb-4 flex items-center gap-2 justify-center">
-            <BarChart3 className="w-5 h-5 md:w-7 md:h-7 text-blue-400" /> Shooting Analytics
+            <BarChart3 className="w-5 h-5 md:w-7 md:h-7 text-[#ff6b6b]" /> Shooting Analytics
           </h2>
 
           {/* Filters */}
           <div className="mb-4 md:mb-6 p-3 md:p-4 bg-white rounded-lg md:rounded-xl shadow-md border border-gray-200">
-            <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4 flex items-center gap-2">
-              <Filter className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
+            <h3 className="text-base text-blue-700 md:text-lg font-semibold mb-3 md:mb-4 flex items-center gap-2">
+              <Filter className="w-4 h-4 md:w-5 md:h-5 text-[#ff6b6b]" />
               Filters
             </h3>
             <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
               <div>
-                <label className="block text-xs md:text-sm font-medium mb-1">Start Date</label>
+                <label className="block text-xs text-blue-700 md:text-sm font-medium mb-1">Start Date</label>
                 <input
                   type="date"
                   value={dateFilter.startDate}
@@ -896,7 +896,7 @@ export default function ShooterProfile() {
                 />
               </div>
               <div>
-                <label className="block text-xs md:text-sm font-medium mb-1">End Date</label>
+                <label className="block text-xs text-blue-700 md:text-sm font-medium mb-1">End Date</label>
                 <input
                   type="date"
                   value={dateFilter.endDate}
@@ -905,7 +905,7 @@ export default function ShooterProfile() {
                 />
               </div>
               <div>
-                <label className="block text-xs md:text-sm font-medium mb-1">Year</label>
+                <label className="block text-xs text-blue-700 md:text-sm font-medium mb-1">Year</label>
                 <select
                   value={yearFilter}
                   onChange={(e) => setYearFilter(e.target.value)}
@@ -918,7 +918,7 @@ export default function ShooterProfile() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs md:text-sm font-medium mb-1">Discipline</label>
+                <label className="block text-xs text-blue-700 md:text-sm font-medium mb-1">Discipline</label>
                 <select
                   value={disciplineFilter}
                   onChange={(e) => setDisciplineFilter(e.target.value)}
@@ -938,46 +938,46 @@ export default function ShooterProfile() {
             <div className="bg-white p-3 md:p-4 rounded-lg md:rounded-xl shadow-md border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">Total Sessions</p>
-                  <p className="text-lg md:text-2xl font-bold text-blue-600">{stats.totalSessions || 0}</p>
+                  <p className="text-xs md:text-sm text-blue-700">Total Sessions</p>
+                  <p className="text-lg md:text-2xl font-bold text-blue-700">{stats.totalSessions || 0}</p>
                 </div>
-                <Target className="w-5 h-5 md:w-8 md:h-8 text-blue-600" />
+                <Target className="w-5 h-5 md:w-8 md:h-8 text-blue-700" />
               </div>
             </div>
             <div className="bg-white p-3 md:p-4 rounded-lg md:rounded-xl shadow-md border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">Avg Score</p>
-                  <p className="text-lg md:text-2xl font-bold text-green-600">{stats.avgScore?.toFixed(1) || 0}</p>
+                  <p className="text-xs md:text-sm text-[#ff6b6b]">Avg Score</p>
+                  <p className="text-lg md:text-2xl font-bold text-[#ff6b6b]">{stats.avgScore?.toFixed(1) || 0}</p>
                 </div>
-                <Award className="w-5 h-5 md:w-8 md:h-8 text-green-600" />
+                <Award className="w-5 h-5 md:w-8 md:h-8 text-[#ff6b6b]" />
               </div>
             </div>
             <div className="bg-white p-3 md:p-4 rounded-lg md:rounded-xl shadow-md border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">Avg Accuracy</p>
-                  <p className="text-lg md:text-2xl font-bold text-purple-600">{stats.avgAccuracy?.toFixed(1) || 0}%</p>
+                  <p className="text-xs md:text-sm text-blue-700">Avg Accuracy</p>
+                  <p className="text-lg md:text-2xl font-bold text-blue-700">{stats.avgAccuracy?.toFixed(1) || 0}%</p>
                 </div>
-                <TrendingUp className="w-5 h-5 md:w-8 md:h-8 text-purple-600" />
+                <TrendingUp className="w-5 h-5 md:w-8 md:h-8 text-blue-700" />
               </div>
             </div>
             <div className="bg-white p-3 md:p-4 rounded-lg md:rounded-xl shadow-md border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">Best Score</p>
-                  <p className="text-lg md:text-2xl font-bold text-orange-600">{stats.bestScore || 0}</p>
+                  <p className="text-xs md:text-sm text-[#ff6b6b]">Best Score</p>
+                  <p className="text-lg md:text-2xl font-bold text-[#ff6b6b]">{stats.bestScore || 0}</p>
                 </div>
-                <Award className="w-5 h-5 md:w-8 md:h-8 text-orange-600" />
+                <Award className="w-5 h-5 md:w-8 md:h-8 text-[#ff6b6b]" />
               </div>
             </div>
             <div className="bg-white p-3 md:p-4 rounded-lg md:rounded-xl shadow-md border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">Avg Group Size</p>
-                  <p className="text-lg md:text-2xl font-bold text-red-600">{stats.avgGroupSize?.toFixed(1) || 0}mm</p>
+                  <p className="text-xs md:text-sm text-blue-700">Avg Group Size</p>
+                  <p className="text-lg md:text-2xl font-bold text-blue-700">{stats.avgGroupSize?.toFixed(1) || 0}mm</p>
                 </div>
-                <Target className="w-5 h-5 md:w-8 md:h-8 text-red-600" />
+                <Target className="w-5 h-5 md:w-8 md:h-8 text-blue-700" />
               </div>
             </div>
           </div>
@@ -1200,7 +1200,7 @@ export default function ShooterProfile() {
       {activeTab === 'wallet' && (
         <>
           <h2 className="text-xl md:text-2xl font-bold text-blue-700 mb-4 flex items-center gap-2 justify-center">
-            <Wallet className="w-5 h-5 md:w-7 md:h-7 text-blue-400" /> Wallet Management
+            <Wallet className="w-5 h-5 md:w-7 md:h-7 text-[#ff6b6b]" /> Wallet Management
           </h2>
           
           {profile.kyc && profile.wallet ? (
@@ -1224,7 +1224,7 @@ export default function ShooterProfile() {
       {activeTab === 'bills' && (
         <>
           <h2 className="text-xl md:text-2xl font-bold text-blue-700 mb-4 flex items-center gap-2 justify-center">
-            <Receipt className="w-5 h-5 md:w-7 md:h-7 text-blue-400" /> Bills Management
+            <Receipt className="w-5 h-5 md:w-7 md:h-7 text-[#ff6b6b]" /> Bills Management
           </h2>
           <ShooterBills />
         </>
@@ -1233,7 +1233,7 @@ export default function ShooterProfile() {
       {activeTab === 'scanner' && (
         <>
           <h2 className="text-xl md:text-2xl font-bold text-blue-700 mb-4 flex items-center gap-2 justify-center">
-            <ScanLine className="w-5 h-5 md:w-7 md:h-7 text-blue-400" /> Document Scanner
+            <ScanLine className="w-5 h-5 md:w-7 md:h-7 text-[#ff6b6b]" /> Document Scanner
           </h2>
           <ShooterScanner />
         </>
@@ -1350,7 +1350,7 @@ function InputBlock({ label, id, icon, type = "text", value, onChange, placehold
   return (
     <div>
       <Label htmlFor={id} className="flex items-center gap-2 font-semibold text-blue-700 text-sm md:text-base">
-        {icon && <span className="text-blue-400">{icon}</span>} {label}
+        {icon && <span className="text-[#ff6b6b]">{icon}</span>} {label}
       </Label>
       <Input
         id={id}
@@ -1377,15 +1377,15 @@ interface SelectBlockProps {
 function SelectBlock({ label, id, value, onChange, options }: SelectBlockProps) {
   return (
     <div>
-      <Label htmlFor={id} className="flex items-center gap-2 text-pink-700 font-semibold text-sm md:text-base">
-        <Star className="w-4 h-4 md:w-5 md:h-5 text-pink-400" /> {label}
+      <Label htmlFor={id} className="flex items-center gap-2 text-blue-700 font-semibold text-sm md:text-base">
+        <Star className="w-4 h-4 md:w-5 md:h-5 text-[#ff6b6b]" /> {label}
       </Label>
       <select
         id={id}
         name={id}
         value={value}
         onChange={onChange}
-        className="mt-1 w-full rounded-lg border border-pink-200 focus:ring-2 focus:ring-pink-300 focus:border-pink-400 transition shadow-sm p-2 md:p-2.5 text-sm md:text-base"
+        className="mt-1 w-full rounded-lg border border-blue-200 focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm p-2 md:p-2.5 text-sm md:text-base"
       >
         <option value="">Select {label}</option>
         {options.map((opt: string) => (

@@ -200,10 +200,10 @@ export default function ShooterBills() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Bills</p>
-                <p className="text-2xl font-bold text-blue-600">{filteredBills.length}</p>
+                <p className="text-sm text-blue-700">Total Bills</p>
+                <p className="text-2xl font-bold text-blue-700">{filteredBills.length}</p>
               </div>
-              <Receipt className="w-8 h-8 text-blue-600" />
+              <Receipt className="w-8 h-8 text-blue-700" />
             </div>
           </CardContent>
         </Card>
@@ -212,10 +212,10 @@ export default function ShooterBills() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Amount</p>
-                <p className="text-2xl font-bold text-green-600">₹{calculateTotalAmount()}</p>
+                <p className="text-sm text-[#ff6b6b]">Total Amount</p>
+                <p className="text-2xl font-bold text-[#ff6b6b]">₹{calculateTotalAmount()}</p>
               </div>
-              <CreditCard className="w-8 h-8 text-green-600" />
+              <CreditCard className="w-8 h-8 text-[#ff6b6b]" />
             </div>
           </CardContent>
         </Card>
@@ -224,12 +224,12 @@ export default function ShooterBills() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Pending</p>
-                <p className="text-2xl font-bold text-yellow-600">
+                <p className="text-sm text-blue-700">Pending</p>
+                <p className="text-2xl font-bold text-blue-700">
                   {filteredBills.filter(b => b.paymentStatus === 'pending').length}
                 </p>
               </div>
-              <Clock className="w-8 h-8 text-yellow-600" />
+              <Clock className="w-8 h-8 text-blue-700" />
             </div>
           </CardContent>
         </Card>
@@ -238,12 +238,12 @@ export default function ShooterBills() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Completed</p>
-                <p className="text-2xl font-bold text-green-600">
+                <p className="text-sm text-[#ff6b6b]">Completed</p>
+                <p className="text-2xl font-bold text-[#ff6b6b]">
                   {filteredBills.filter(b => b.paymentStatus === 'completed').length}
                 </p>
               </div>
-              <Calendar className="w-8 h-8 text-green-600" />
+              <Calendar className="w-8 h-8 text-[#ff6b6b]" />
             </div>
           </CardContent>
         </Card>
@@ -252,15 +252,15 @@ export default function ShooterBills() {
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="w-5 h-5" />
+          <CardTitle className="flex items-center gap-2 text-blue-700">
+            <Filter className="w-5 h-5 text-[#ff6b6b]" />
             Filters
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Payment Status</label>
+              <label className="block text-sm font-medium mb-1 text-[#ff6b6b]">Payment Status</label>
               <select
                 value={filters.paymentStatus}
                 onChange={(e) => setFilters(prev => ({ ...prev, paymentStatus: e.target.value }))}
@@ -274,7 +274,7 @@ export default function ShooterBills() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Bill Type</label>
+              <label className="block text-sm font-medium mb-1 text-[#ff6b6b]">Bill Type</label>
               <select
                 value={filters.billType}
                 onChange={(e) => setFilters(prev => ({ ...prev, billType: e.target.value }))}
@@ -287,7 +287,7 @@ export default function ShooterBills() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Year</label>
+              <label className="block text-sm font-medium mb-1 text-[#ff6b6b]">Year</label>
               <select
                 value={filters.year}
                 onChange={(e) => setFilters(prev => ({ ...prev, year: e.target.value }))}
@@ -301,7 +301,7 @@ export default function ShooterBills() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Range</label>
+              <label className="block text-sm font-medium mb-1 text-[#ff6b6b]">Range</label>
               <select
                 value={filters.range}
                 onChange={(e) => setFilters(prev => ({ ...prev, range: e.target.value }))}
@@ -322,9 +322,9 @@ export default function ShooterBills() {
         {filteredBills.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center">
-              <Receipt className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">No Bills Found</h3>
-              <p className="text-gray-500">No bills match your current filters or you haven't made any payments yet.</p>
+              <Receipt className="w-16 h-16 text-[#ff6b6b] mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-blue-700 mb-2">No Bills Found</h3>
+              <p className="text-blue-700">No bills match your current filters or you haven't made any payments yet.</p>
             </CardContent>
           </Card>
         ) : (
