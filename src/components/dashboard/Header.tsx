@@ -21,6 +21,7 @@ const Header = () => {
   // Function to get dashboard route based on user role
   const getDashboardRoute = () => {
     if (!user || !userRole) return "/";
+    console.log('Get Dashboard Route - userRole:', userRole);
     
     switch (userRole) {
       case 'shooter':
@@ -63,6 +64,9 @@ const Header = () => {
         break;
       case 'franchise_owner':
         navigate("/dashboard/franchise-owner/profile");
+        break;
+      case 'investor':
+        navigate("/dashboard/investor/profile");
         break;
       default:
         navigate("/profile");
@@ -146,7 +150,7 @@ const Header = () => {
                   onSelect={handleSettingClick}>
                   
                   <Settings className="mr-2 h-4 w-4" />
-                  Settings
+                  Dashboard
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

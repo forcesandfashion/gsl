@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/firebase/auth";
 import { db } from "@/firebase/config";
+import { cn } from "@/lib/utils";
 import { 
   collection, 
   query, 
@@ -34,7 +35,8 @@ import {
   QrCode,
   Download,
   Ban,
-  AlertTriangle
+  AlertTriangle,
+  ChevronRight
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import EditRange from "../dashboard/EditRange";
@@ -92,23 +94,13 @@ export default function RangeListOwners() {
   
   const weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-  // Get display time for range card
   const getDisplayTime = (range: Range) => {
     if (range.structuredOpeningHours) {
-      // Find the first day that has operating hours
       for (const day of weekdays) {
         const hours = range.structuredOpeningHours[day];
         if (hours && hours.start && hours.end) {
-          const startTime = new Date(`2000-01-01T${hours.start}:00`).toLocaleTimeString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-          });
-          const endTime = new Date(`2000-01-01T${hours.end}:00`).toLocaleTimeString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-          });
+          const startTime = new Date(`2000-01-01T${hours.start}:00`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+          const endTime = new Date(`2000-01-01T${hours.end}:00`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
           return `${startTime} - ${endTime}`;
         }
       }
@@ -119,604 +111,245 @@ export default function RangeListOwners() {
 
   const fetchUserPremiumStatus = async () => {
     if (!user) return;
-    
     try {
       const userDoc = await getDoc(doc(db, "range-owners", user.uid));
       if (userDoc.exists()) {
-        const userData = userDoc.data();
-        setUserPremiumStatus(userData.premium || false);
+        setUserPremiumStatus(userDoc.data().premium || false);
       }
     } catch (error) {
-      console.error("Error fetching user premium status:", error);
       setUserPremiumStatus(false);
     }
   };
 
-  // Fetch ranges owned by current user
   const fetchRanges = async () => {
     if (!user) return;
-    
     try {
-      console.log("Fetching ranges for user:", user.uid);
       const rangesRef = collection(db, "ranges");
-      const q = query(
-        rangesRef, 
-        where("ownerId", "==", user.uid)
-      );
+      const q = query(rangesRef, where("ownerId", "==", user.uid));
       const querySnapshot = await getDocs(q);
-      
       const rangesData: Range[] = [];
       querySnapshot.forEach((doc) => {
-        console.log("Found range:", doc.id, doc.data());
-        rangesData.push({
-          id: doc.id,
-          ...doc.data()
-        } as Range);
+        rangesData.push({ id: doc.id, ...doc.data() } as Range);
       });
-      
-      console.log("Total ranges found:", rangesData.length);
       setRanges(rangesData);
-    } catch (error) {
-      console.error("Error fetching ranges:", error);
-      toast({
-        title: "Error",
-        description: `Failed to load ranges: ${error.message}`,
-        variant: "destructive"
-      });
+    } catch (error: any) {
+      toast({ title: "Error", description: `Failed to load ranges`, variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle create event button click
-  const handleCreateEventClick = (rangeId: string) => {
-    setSelectedRangeId(rangeId);
-    setCreateModal(true);
-  };
-
-  // Handle create event modal close
-  const handleCreateEventModalClose = () => {
-    setCreateModal(false);
-    setSelectedRangeId(null);
-  };
-
-  // Handle edit button click
-  const handleEditClick = (range: Range) => {
-    setEditingRange(range);
-    setShowEditModal(true);
-  };
-
-  // Handle subscription button click
-  const handleSubscriptionClick = (range: Range) => {
-    setSubscriptionRange(range);
-    setSubscriptionModal(true);
-  };
-
-  // Handle subscription modal close
-  const handleSubscriptionModalClose = () => {
-    setSubscriptionModal(false);
-    setSubscriptionRange(null);
-  };
-
-  // Handle QR code button click
-  const handleQrCodeClick = (range: Range) => {
-    setSelectedQrCode(range.qrCodeUrl || null);
-    setSelectedRangeName(range.name);
-    setQrModalOpen(true);
-  };
-
-  // Handle QR code modal close
-  const handleQrModalClose = () => {
-    setQrModalOpen(false);
-    setSelectedQrCode(null);
-    setSelectedRangeName(null);
-  };
-
-  // Download QR code
+  const handleCreateEventClick = (rangeId: string) => { setSelectedRangeId(rangeId); setCreateModal(true); };
+  const handleCreateEventModalClose = () => { setCreateModal(false); setSelectedRangeId(null); };
+  const handleEditClick = (range: Range) => { setEditingRange(range); setShowEditModal(true); };
+  const handleSubscriptionClick = (range: Range) => { setSubscriptionRange(range); setSubscriptionModal(true); };
+  const handleSubscriptionModalClose = () => { setSubscriptionModal(false); setSubscriptionRange(null); };
+  const handleQrCodeClick = (range: Range) => { setSelectedQrCode(range.qrCodeUrl || null); setSelectedRangeName(range.name); setQrModalOpen(true); };
+  const handleQrModalClose = () => { setQrModalOpen(false); setSelectedQrCode(null); setSelectedRangeName(null); };
   const downloadQRCode = () => {
     if (!selectedQrCode) return;
-    
     const link = document.createElement('a');
     link.download = `qr-code-${selectedRangeName?.replace(/\s+/g, '-').toLowerCase()}.png`;
     link.href = selectedQrCode;
     link.click();
   };
-
-  // Handle range update from modal
   const handleRangeUpdate = (updatedData: Partial<Range>) => {
     if (!editingRange) return;
-    
-    setRanges(prev => prev.map(range => 
-      range.id === editingRange.id 
-        ? { ...range, ...updatedData }
-        : range
-    ));
+    setRanges(prev => prev.map(range => range.id === editingRange.id ? { ...range, ...updatedData } : range));
   };
+  const handleModalClose = () => { setShowEditModal(false); setEditingRange(null); };
 
-  // Handle modal close
-  const handleModalClose = () => {
-    setShowEditModal(false);
-    setEditingRange(null);
-  };
-
-  // Create delete request in actions collection
   const createDeleteRequest = async (rangeId: string, rangeName: string) => {
     try {
       await addDoc(collection(db, "actions"), {
-        type: "delete_range_request",
-        rangeId,
-        rangeName,
-        ownerId: user?.uid,
-        ownerEmail: user?.email,
-        completed: false,
-        createdAt: serverTimestamp(),
-        status: "pending",
-        message: "Request to delete range"
+        type: "delete_range_request", rangeId, rangeName, ownerId: user?.uid, ownerEmail: user?.email, completed: false, createdAt: serverTimestamp(), status: "pending", message: "Request to delete range"
       });
-      
       return true;
-    } catch (error) {
-      console.error("Error creating delete request:", error);
-      return false;
-    }
+    } catch (error) { return false; }
   };
 
-  // Delete range or create delete request based on status
   const handleDelete = async (rangeId: string, rangeName: string, status: string) => {
     if (status === "pending") {
-      // Directly delete if status is pending
-      if (!confirm(`Are you sure you want to delete "${rangeName}"? This action cannot be undone.`)) {
-        return;
-      }
-
+      if (!confirm(`Are you sure you want to delete "${rangeName}"?`)) return;
       setDeleteLoading(rangeId);
       try {
         await deleteDoc(doc(db, "ranges", rangeId));
         setRanges(ranges.filter(range => range.id !== rangeId));
-        toast({
-          title: "Success",
-          description: "Range deleted successfully"
-        });
-      } catch (error) {
-        console.error("Error deleting range:", error);
-        toast({
-          title: "Error",
-          description: "Failed to delete range. Please try again.",
-          variant: "destructive"
-        });
-      } finally {
-        setDeleteLoading(null);
-      }
-    } else if (status === "active") {
-      // For active ranges, block them and create delete request
-      if (!confirm(`Are you sure you want to request deletion for "${rangeName}"? The range will be blocked until admin approval.`)) {
-        return;
-      }
-
+        toast({ title: "Success", description: "Range deleted successfully" });
+      } catch (error) { toast({ title: "Error", variant: "destructive" });
+      } finally { setDeleteLoading(null); }
+    } else {
+      if (!confirm(`Are you sure you want to request deletion for "${rangeName}"?`)) return;
       setDeleteLoading(rangeId);
       try {
-        // Update status to blocked
-        await updateDoc(doc(db, "ranges", rangeId), {
-          status: "blocked",
-          updatedAt: serverTimestamp()
-        });
-        
-        // Create delete request
+        await updateDoc(doc(db, "ranges", rangeId), { status: "blocked", updatedAt: serverTimestamp() });
         const requestCreated = await createDeleteRequest(rangeId, rangeName);
-        
         if (requestCreated) {
-          // Update local state
-          setRanges(prev => prev.map(range => 
-            range.id === rangeId 
-              ? { ...range, status: "blocked" }
-              : range
-          ));
-          
-          toast({
-            title: "Success",
-            description: "Delete request submitted. Range has been blocked pending admin approval."
-          });
-        } else {
-          toast({
-            title: "Error",
-            description: "Failed to create delete request. Please try again.",
-            variant: "destructive"
-          });
+          setRanges(prev => prev.map(range => range.id === rangeId ? { ...range, status: "blocked" } : range));
+          toast({ title: "Success", description: "Delete request submitted." });
         }
-      } catch (error) {
-        console.error("Error blocking range:", error);
-        toast({
-          title: "Error",
-          description: "Failed to process delete request. Please try again.",
-          variant: "destructive"
-        });
-      } finally {
-        setDeleteLoading(null);
-      }
-    } else if (status === "blocked") {
-      // For already blocked ranges, just create a delete request
-      if (!confirm(`Are you sure you want to request deletion for "${rangeName}"? This range is already blocked.`)) {
-        return;
-      }
-
-      setDeleteLoading(rangeId);
-      try {
-        // Create delete request
-        const requestCreated = await createDeleteRequest(rangeId, rangeName);
-        
-        if (requestCreated) {
-          toast({
-            title: "Success",
-            description: "Delete request submitted. Admin will review your request."
-          });
-        } else {
-          toast({
-            title: "Error",
-            description: "Failed to create delete request. Please try again.",
-            variant: "destructive"
-          });
-        }
-      } catch (error) {
-        console.error("Error creating delete request:", error);
-        toast({
-          title: "Error",
-          description: "Failed to process delete request. Please try again.",
-          variant: "destructive"
-        });
-      } finally {
-        setDeleteLoading(null);
-      }
+      } catch (error) { toast({ title: "Error", variant: "destructive" });
+      } finally { setDeleteLoading(null); }
     }
   };
 
-  useEffect(() => {
-    if (user) {
-      fetchRanges();
-      fetchUserPremiumStatus();
-    }
-  }, [user]);
+  useEffect(() => { if (user) { fetchRanges(); fetchUserPremiumStatus(); } }, [user]);
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <LoadingSpinner />
+      <div className="flex justify-center items-center min-h-screen bg-white">
+        <LoadingSpinner className="text-[#1d4ed8]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Header */}
-      <div className="bg-white shadow-lg border-b border-gray-200">
+    <div className="min-h-screen bg-slate-50">
+      {/* Header - White background with Blue border */}
+      <header className="bg-white shadow-2xl border-b-4 border-[#ff6b6b] sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                <Building className="w-8 h-8 text-blue-600" />
-                My Shooting Ranges
-                {userPremiumStatus && (
-                  <Badge className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-white">
-                    <Crown className="w-3 h-3 mr-1" />
-                    Premium
-                  </Badge>
-                )}
-              </h1>
-              <p className="text-gray-600 mt-1">
-                Manage your shooting range listings and facilities
-              </p>
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-[#1d4ed8] rounded-xl flex items-center justify-center shadow-lg">
+                <Building className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-black text-[#0f172a] uppercase tracking-tighter flex items-center gap-3">
+                  MY <span className="text-[#ff6b6b]">RANGES</span>
+                  {userPremiumStatus && (
+                    <Badge className="bg-[#ff6b6b] text-white text-[8px] font-black uppercase tracking-[0.2em] px-2 py-0.5">
+                      PREMIUM
+                    </Badge>
+                  )}
+                </h1>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Operational Facility Management</p>
+              </div>
             </div>
             <Link to="/dashboard/range-owner">
-              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-purple-600 hover:to-blue-600 text-white shadow-lg transition-all duration-200 hover:scale-105">
-                <Plus className="w-4 h-4 mr-2" />
-                Add New Range
+              <Button className="bg-[#1d4ed8] hover:bg-[#0f172a] text-white font-black uppercase tracking-widest text-[10px] px-8 py-6 rounded-2xl shadow-xl transition-all">
+                <Plus className="w-4 h-4 mr-2" /> Add New Facility
               </Button>
             </Link>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Create Event Modal */}
+      {/* Modals maintained from original detail */}
       {createModal && selectedRangeId && (
-        <CreateEventModal
-          isOpen={createModal}
-          onClose={handleCreateEventModalClose}
-          title="Create Event"
-          rangeId={selectedRangeId}
-        />
+        <CreateEventModal isOpen={createModal} onClose={handleCreateEventModalClose} title="Create Event" rangeId={selectedRangeId} />
       )}
-
-      {/* Subscription Modal */}
       {subscriptionModal && subscriptionRange && (
-        <SubscriptionModal
-          isOpen={subscriptionModal}
-          onClose={handleSubscriptionModalClose}
-          rangeName={subscriptionRange.name}
-          rangeId={subscriptionRange.id}
-          ownerId={user?.uid || ""}
-        />
+        <SubscriptionModal isOpen={subscriptionModal} onClose={handleSubscriptionModalClose} rangeName={subscriptionRange.name} rangeId={subscriptionRange.id} ownerId={user?.uid || ""} />
       )}
 
-      {/* QR Code Modal */}
+      {/* QR Code Modal - Themed */}
       {qrModalOpen && selectedQrCode && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <Card className="bg-white rounded-[2rem] p-8 max-w-md w-full border-none shadow-2xl">
             <div className="text-center">
-              <h3 className="text-xl font-bold mb-4 flex items-center justify-center gap-2">
-                <QrCode className="w-6 h-6" /> Range QR Code
+              <h3 className="text-xl font-black text-[#0f172a] uppercase tracking-tighter mb-4 flex items-center justify-center gap-2">
+                <QrCode className="w-6 h-6 text-[#1d4ed8]" /> Access Key
               </h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Shooters can scan this code to check in at your range
-              </p>
-              
-              <div className="flex justify-center mb-4">
-                <img src={selectedQrCode} alt="Range QR Code" className="w-48 h-48" />
+              <div className="bg-gray-50 p-6 rounded-3xl border-2 border-dashed border-gray-200 mb-6">
+                <img src={selectedQrCode} alt="Range QR Code" className="w-48 h-48 mx-auto" />
               </div>
-              
-              <div className="text-left bg-gray-50 p-4 rounded-lg mb-4">
-                <p className="text-sm"><strong>Range:</strong> {selectedRangeName}</p>
-              </div>
-              
-              <div className="flex gap-3 justify-center">
-                <Button
-                  onClick={downloadQRCode}
-                  className="flex items-center gap-2"
-                >
-                  <Download className="w-4 h-4" /> Download QR
+              <div className="flex flex-col gap-3">
+                <Button onClick={downloadQRCode} className="w-full bg-[#1d4ed8] hover:bg-[#ff6b6b] text-white font-black uppercase text-[10px] py-6 rounded-xl">
+                  <Download className="w-4 h-4 mr-2" /> Download Key
                 </Button>
-                <Button
-                  onClick={handleQrModalClose}
-                  variant="outline"
-                >
-                  Close
-                </Button>
+                <Button onClick={handleQrModalClose} variant="ghost" className="font-black uppercase text-[10px] tracking-widest text-gray-400">Close</Button>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {ranges.length === 0 ? (
-          // Empty State
-          <div className="text-center py-16">
-            <div className="bg-white rounded-2xl shadow-xl p-12 max-w-md mx-auto">
-              <Building className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-909 mb-2">No Ranges Yet</h3>
-              <p className="text-gray-500 mb-6">
-                Start by adding your first shooting range to begin managing your facilities.
-              </p>
-              <Link to="/dashboard/range-owner">
-                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-purple-600 hover:to-blue-600 text-white">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Your First Range
-                </Button>
-              </Link>
-            </div>
+          <div className="text-center py-20 bg-white rounded-[2.5rem] border-2 border-dashed border-gray-200 shadow-inner">
+            <Building className="w-16 h-16 text-gray-100 mx-auto mb-4" />
+            <h3 className="text-xl font-black text-gray-400 uppercase tracking-widest">No Facilities Found</h3>
+            <Link to="/dashboard/range-owner" className="mt-6 block">
+              <Button variant="outline" className="border-[#1d4ed8] text-[#1d4ed8] font-black uppercase text-[10px]">Initialize First Range</Button>
+            </Link>
           </div>
         ) : (
-          // Ranges Grid
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
             {ranges.map((range) => (
-              <Card key={range.id} className="group hover:shadow-2xl transition-all duration-300 hover:scale-105 bg-white border border-gray-200 rounded-2xl overflow-hidden">
-                {/* Range Image */}
-                <div className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200">
-                  {(range.rangeImages && range.rangeImages.length > 0) ? (
-                    <img
-                      src={range.rangeImages[0]}
-                      alt={range.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        target.nextElementSibling?.classList.remove('hidden');
-                      }}
-                    />
-                  ) : null}
-                  
-                  {/* Fallback when no image */}
-                  <div className={`w-full h-full flex items-center justify-center ${
-                    ((range.rangeImages && range.rangeImages.length > 0)) ? 'hidden' : ''
-                  }`}>
-                    <div className="text-center">
-                      <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-500">No Image</p>
+              <Card key={range.id} className="border-0 shadow-xl bg-white rounded-[2rem] overflow-hidden group hover:-translate-y-2 transition-all duration-500">
+                <div className="relative h-56">
+                  {range.rangeImages?.[0] ? (
+                    <img src={range.rangeImages[0]} alt={range.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                  ) : (
+                    <div className="w-full h-full bg-slate-100 flex items-center justify-center text-[#1d4ed8]">
+                      <ImageIcon className="w-12 h-12 opacity-20" />
                     </div>
-                  </div>
+                  )}
                   
-                  {/* Status Badge */}
-                  <Badge 
-                    className={`absolute top-3 right-3 ${
-                      range.status === 'active' 
-                        ? 'bg-green-500 hover:bg-green-600' 
-                        : range.status === 'pending'
-                        ? 'bg-yellow-500 hover:bg-yellow-600'
-                        : 'bg-red-500 hover:bg-red-600'
-                    } text-white`}
-                  >
-                    {range.status?.charAt(0).toUpperCase() + range.status?.slice(1) || 'Active'}
-                  </Badge>
-
-                  {/* Premium Badge */}
-                  {userPremiumStatus && (
-                    <Badge className="absolute top-3 left-3 bg-gradient-to-r from-yellow-400 to-yellow-600 text-white">
-                      <Crown className="w-3 h-3 mr-1" />
-                      Premium
+                  <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
+                    <Badge className={cn(
+                      "px-3 py-1 font-black text-[9px] uppercase tracking-widest border-none text-white",
+                      range.status === 'active' ? 'bg-[#10b981]' : range.status === 'pending' ? 'bg-[#f59e0b]' : 'bg-[#ff6b6b]'
+                    )}>
+                      {range.status}
                     </Badge>
-                  )}
+                  </div>
 
-                  {/* Logo Overlay */}
                   {range.logoUrl && (
-                    <div className="absolute bottom-3 left-3">
-                      <img
-                        src={range.logoUrl}
-                        alt={`${range.name} logo`}
-                        className="w-12 h-12 rounded-full border-2 border-white shadow-lg object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  {/* Image count indicator */}
-                  {((range.rangeImages && range.rangeImages.length > 1)) && (
-                    <div className="absolute bottom-3 right-3 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded-full">
-                      +{(range.rangeImages?.length || 1) - 1} more
+                    <div className="absolute -bottom-6 left-6">
+                      <img src={range.logoUrl} className="w-16 h-16 rounded-2xl border-4 border-white shadow-xl object-cover bg-white" alt="logo" />
                     </div>
                   )}
                 </div>
 
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-                    {range.name}
-                  </CardTitle>
-                  <div className="flex items-center text-sm text-gray-500 mt-1">
-                    <MapPin className="w-4 h-4 mr-1" />
-                    {range.address}
-                  </div>
-                </CardHeader>
-
-                <CardContent className="space-y-4">
-                  {/* Description */}
-                  <p className="text-gray-600 text-sm line-clamp-2">
-                    {range.description}
-                  </p>
-
-                  {/* Info Grid */}
-                  <div className="grid grid-cols-1 gap-2 text-sm">
-                    <div className="flex items-center text-gray-600">
-                      <Clock className="w-4 h-4 mr-2 text-blue-500" />
-                      {getDisplayTime(range)}
-                    </div>
-                    <div className="flex items-center text-gray-600">
-                      <Phone className="w-4 h-4 mr-2 text-green-500" />
-                      {range.contactNumber}
+                <CardContent className="pt-10 px-8 pb-8 space-y-6">
+                  <div>
+                    <h3 className="text-xl font-black text-[#0f172a] uppercase tracking-tighter truncate group-hover:text-[#1d4ed8] transition-colors">
+                      {range.name}
+                    </h3>
+                    <div className="flex items-center text-[10px] font-bold text-gray-400 uppercase tracking-tight mt-1">
+                      <MapPin className="w-3 h-3 mr-1 text-[#ff6b6b]" /> {range.address}
                     </div>
                   </div>
 
-                  {/* Facilities Preview */}
-                  {range.facilities && (
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <p className="text-sm text-gray-600 font-medium mb-1">Facilities:</p>
-                      <p className="text-xs text-gray-500 line-clamp-2">
-                        {range.facilities}
-                      </p>
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="flex items-center text-[11px] font-black text-[#0f172a] uppercase tracking-tight">
+                      <Clock className="w-4 h-4 mr-3 text-[#1d4ed8]" /> {getDisplayTime(range)}
                     </div>
-                  )}
-
-                  {/* Image Count */}
-                  {((range.rangeImages && range.rangeImages.length > 0)) && (
-                    <div className="flex items-center text-sm text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
-                      <ImageIcon className="w-4 h-4 mr-2 text-blue-500" />
-                      <span className="font-medium">{range.rangeImages?.length || 0}</span>
-                      <span className="ml-1">gallery image{(range.rangeImages?.length || 0) > 1 ? 's' : ''}</span>
+                    <div className="flex items-center text-[11px] font-black text-[#0f172a] uppercase tracking-tight">
+                      <Phone className="w-4 h-4 mr-3 text-[#1d4ed8]" /> {range.contactNumber}
                     </div>
-                  )}
-
-                  {/* QR Code Button */}
-                  {range.qrCodeUrl && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full hover:bg-blue-50 hover:border-blue-300"
-                      onClick={() => handleQrCodeClick(range)}
-                    >
-                      <QrCode className="w-4 h-4 mr-2" />
-                      View QR Code
-                    </Button>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 hover:bg-purple-50 hover:border-purple-300"
-                      onClick={() => handleCreateEventClick(range.id)}
-                    >
-                      <Calendar className="w-4 h-4 mr-1" />
-                      Create Event
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 hover:bg-blue-50 hover:border-blue-300"
-                      asChild
-                    >
-                      <Link to={`/ranges/${range.id}`}>
-                        <Eye className="w-4 h-4 mr-1" />
-                        View
-                      </Link>
-                    </Button>
-                  </div>
-                  
-                  {/* Secondary Action Buttons */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="hover:bg-green-50 hover:border-green-300"
-                      onClick={() => handleEditClick(range)}
-                    >
-                      <Edit className="w-4 h-4 mr-1" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="hover:bg-yellow-50 hover:border-yellow-300"
-                      onClick={() => handleSubscriptionClick(range)}
-                    >
-                      <Crown className="w-4 h-4 mr-1" />
-                      Subscription
-                    </Button>
-                    {range.qrCodeUrl && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="hover:bg-indigo-50 hover:border-indigo-300 col-span-2"
-                        onClick={() => handleQrCodeClick(range)}
-                      >
-                        <QrCode className="w-4 h-4 mr-1" />
-                        QR Code
-                      </Button>
-                    )}
                   </div>
 
-                  {/* Delete Button */}
-                  <div className="pt-2 border-t border-gray-200">
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    <Button onClick={() => handleEditClick(range)} variant="outline" className="border-gray-100 text-[#0f172a] font-black uppercase text-[9px] h-10 rounded-xl hover:bg-blue-50">
+                      <Edit className="w-3 h-3 mr-2 text-[#1d4ed8]" /> Edit
+                    </Button>
+                    <Button onClick={() => handleSubscriptionClick(range)} variant="outline" className="border-gray-100 text-[#0f172a] font-black uppercase text-[9px] h-10 rounded-xl hover:bg-yellow-50">
+                      <Crown className="w-3 h-3 mr-2 text-yellow-500" /> Plan
+                    </Button>
+                    <Button onClick={() => handleCreateEventClick(range.id)} className="bg-[#1d4ed8] text-white font-black uppercase text-[9px] h-10 rounded-xl">
+                      <Calendar className="w-3 h-3 mr-2" /> Event
+                    </Button>
+                    <Button asChild variant="outline" className="border-gray-100 text-[#1d4ed8] font-black uppercase text-[9px] h-10 rounded-xl">
+                      <Link to={`/ranges/${range.id}`}> <Eye className="w-3 h-3 mr-2" /> Preview</Link>
+                    </Button>
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-100">
                     <Button
-                      variant="outline"
-                      size="sm"
-                      className={`w-full ${
-                        range.status === "pending" 
-                          ? "hover:bg-red-50 hover:border-red-300 hover:text-red-600" 
-                          : "hover:bg-orange-50 hover:border-orange-300 hover:text-orange-600"
-                      }`}
+                      variant="ghost"
+                      className={cn(
+                        "w-full h-12 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all",
+                        range.status === "pending" ? "text-[#ff6b6b] hover:bg-red-50" : "text-orange-500 hover:bg-orange-50"
+                      )}
                       onClick={() => handleDelete(range.id, range.name, range.status)}
                       disabled={deleteLoading === range.id}
                     >
-                      {deleteLoading === range.id ? (
-                        <LoadingSpinner />
-                      ) : (
-                        <>
-                          {range.status === "pending" ? (
-                            <Trash2 className="w-4 h-4 mr-1" />
-                          ) : (
-                            <Ban className="w-4 h-4 mr-1" />
-                          )}
-                          {range.status === "pending" ? "Delete" : "Request Deletion"}
-                        </>
+                      {deleteLoading === range.id ? <LoadingSpinner size="sm" /> : (
+                        <>{range.status === "pending" ? <Trash2 className="w-4 h-4 mr-2" /> : <Ban className="w-4 h-4 mr-2" />} {range.status === "pending" ? "Purge Record" : "Request Delete"}</>
                       )}
                     </Button>
-                    {range.status !== "pending" && (
-                      <p className="text-xs text-gray-500 mt-1 text-center">
-                        <AlertTriangle className="w-3 h-3 inline mr-1" />
-                        Admin approval required
-                      </p>
-                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -724,43 +357,41 @@ export default function RangeListOwners() {
           </div>
         )}
 
-        {/* Summary Stats */}
+        {/* Global Summary Stats */}
         {ranges.length > 0 && (
-          <div className="mt-12 bg-white rounded-2xl shadow-xl p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Star className="w-5 h-5 text-yellow-500" />
-              Summary
+          <div className="mt-16 bg-[#0f172a] rounded-[2.5rem] p-10 shadow-2xl relative overflow-hidden border-b-8 border-[#1d4ed8]">
+            <div className="absolute top-0 right-0 p-8 opacity-10">
+              <BarChart className="w-32 h-32 text-white" />
+            </div>
+            <h3 className="text-xl font-black text-white uppercase tracking-widest mb-8 flex items-center gap-3">
+              <Star className="w-6 h-6 text-[#ff6b6b] fill-current" /> Operational Summary
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-blue-50 rounded-xl">
-                <div className="text-2xl font-bold text-blue-600">{ranges.length}</div>
-                <div className="text-sm text-blue-800">Total Ranges</div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 relative z-10">
+              <div className="p-6 bg-white/5 backdrop-blur-md rounded-3xl border border-white/10">
+                <div className="text-4xl font-black text-white">{ranges.length}</div>
+                <div className="text-[10px] font-black text-[#ffffff] uppercase tracking-widest mt-2">Total Nodes</div>
               </div>
-              <div className="text-center p-4 bg-green-50 rounded-xl">
-                <div className="text-2xl font-bold text-green-600">
-                  {ranges.filter(r => r.status === 'active').length}
-                </div>
-                <div className="text-sm text-green-800">Active Ranges</div>
+              <div className="p-6 bg-white/5 backdrop-blur-md rounded-3xl border border-white/10">
+                <div className="text-4xl font-black text-blue-500">{ranges.filter(r => r.status === 'active').length}</div>
+                <div className="text-[10px] font-black text-white uppercase tracking-widest mt-2">Verified Active</div>
               </div>
-              <div className="text-center p-4 bg-purple-50 rounded-xl">
-                <div className="text-2xl font-bold text-purple-600">
-                  {ranges.reduce((total, range) => total + (range.rangeImages?.length || 0), 0)}
-                </div>
-                <div className="text-sm text-purple-800">Total Images</div>
+              <div className="p-6 bg-white/5 backdrop-blur-md rounded-3xl border border-white/10">
+                <div className="text-4xl font-black text-[#ff6b6b]">{ranges.reduce((total, range) => total + (range.rangeImages?.length || 0), 0)}</div>
+                <div className="text-[10px] font-black text-white uppercase tracking-widest mt-2">Assets Logged</div>
               </div>
             </div>
           </div>
         )}
-      </div>
+      </main>
 
-      {/* EditRange Modal */}
-      <EditRange 
-        range={editingRange}
-        isOpen={showEditModal}
-        onClose={handleModalClose}
-        onUpdate={handleRangeUpdate}
-        premium={userPremiumStatus}
-      />
+      <EditRange range={editingRange} isOpen={showEditModal} onClose={handleModalClose} onUpdate={handleRangeUpdate} premium={userPremiumStatus} />
     </div>
   );
 }
+
+// Minimal BarChart icon for the summary background
+const BarChart = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="20" x2="12" y2="10" /><line x1="18" y1="20" x2="18" y2="4" /><line x1="6" y1="20" x2="6" y2="16" />
+  </svg>
+);

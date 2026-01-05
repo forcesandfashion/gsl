@@ -180,6 +180,13 @@ const InvestorDashboard = () => {
                 History
               </Button>
               <Button
+                onClick={() => navigate("/dashboard/investor/profile")}
+                variant="outline"
+                className="border-[#1d4ed8] text-[#1d4ed8] hover:bg-blue-50 font-bold uppercase tracking-widest text-[10px]"
+              >
+                Profile
+              </Button>
+              <Button
                 onClick={handleSignOut}
                 className="bg-[#ff6b6b] hover:bg-[#fa5252] text-white font-black uppercase tracking-widest text-[10px]"
               >

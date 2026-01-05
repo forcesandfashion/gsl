@@ -318,7 +318,7 @@ const ShooterDashboard = () => {
             </CardContent>
           </Card>
           
-          <Card className="bg-blue-50 border-0 shadow-lg group">
+          <Card className="bg-blue-50 border-0 shadow-lg group" onClick={() => navigate("/dashboard/shooter/events")}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-semibold text-blue-900">Upcoming Events</CardTitle>
               <div className="p-2 bg-blue-700 rounded-lg"><Calendar className="h-5 w-5 text-white" /></div>

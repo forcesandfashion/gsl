@@ -47,6 +47,7 @@ import CoachProfilePage from "./TeachCoachProfile";
 import InvestorDashboard from "./InvestorDashboard";
 import OpportunityDetail from "./OpportunityDetail";
 import CoachStudentDirectory from "./CoachList";
+import InvestorProfilePage from "./InvestorProfile";
 
 const DashboardRouter = () => {
   const { userRole, loading } = useAuth();
@@ -149,6 +150,7 @@ const DashboardRouter = () => {
 
       {/* Investor sub-routes */}
       <Route path="investor/opportunities/:opportunityId" element={<OpportunityDetail />} />
+      <Route path="investor/profile" element={<InvestorProfilePage />} />
 
       {/* cmb sub path  */}
       <Route path="cmb/shooters-data" element={<CmbShooterData />} />

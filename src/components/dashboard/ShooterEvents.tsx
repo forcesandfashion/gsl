@@ -287,11 +287,11 @@ export default function ShooterEvents() {
       <header className="bg-white/80 backdrop-blur-md shadow-xl border-b border-white/20 sticky top-0 z-10">
         <div className="flex justify-between items-center p-6">
           <div className="flex items-center gap-4">
-            <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl shadow-lg">
+            <div className="p-2 bg-blue-700 rounded-xl shadow-lg">
               <Target size={32} className="text-white"/>
             </div>
             <div>
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold bg-[#ff6b6b] bg-clip-text text-transparent">
                 Events
               </h1>
               <p className="text-gray-600 text-sm">Discover and join shooting competitions & training sessions</p>
@@ -383,56 +383,56 @@ export default function ShooterEvents() {
       {/* Stats Cards */}
       <div className="max-w-7xl mx-auto p-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-xl border-0">
+          <Card className="bg-blue-700 text-white shadow-xl border-0">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-blue-100 text-sm font-medium">Total Events</p>
-                  <p className="text-3xl font-bold">{filteredEvents.length}</p>
+                  <p className="text-3xl font-bold text-blue-100">{filteredEvents.length}</p>
                 </div>
-                <Target className="h-8 w-8 text-blue-200" />
+                <Target className="h-8 w-8 text-blue-100" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white shadow-xl border-0">
+          <Card className="bg-[#ff6b6b] text-white shadow-xl border-0">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-green-100 text-sm font-medium">Active Events</p>
-                  <p className="text-3xl font-bold">
+                  <p className="text-red-100 text-sm font-medium">Active Events</p>
+                  <p className="text-3xl font-bold text-red-100">
                     {filteredEvents.filter(e => getEventStatus(e) === 'active').length}
                   </p>
                 </div>
-                <CheckCircle className="h-8 w-8 text-green-200" />
+                <CheckCircle className="h-8 w-8 text-red-100" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-xl border-0">
+          <Card className="bg-blue-700 text-white shadow-xl border-0">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-purple-100 text-sm font-medium">Available Seats</p>
-                  <p className="text-3xl font-bold">
+                  <p className="text-blue-100 text-sm font-medium">Available Seats</p>
+                  <p className="text-3xl font-bold text-blue-100">
                     {filteredEvents.reduce((sum, event) => sum + (parseInt(event.availableseats) || 0), 0)}
                   </p>
                 </div>
-                <Users className="h-8 w-8 text-purple-200" />
+                <Users className="h-8 w-8 text-blue-100" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-xl border-0">
+          <Card className="bg-[#ff6b6b] text-white shadow-xl border-0">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-orange-100 text-sm font-medium">Participants</p>
-                  <p className="text-3xl font-bold">
+                  <p className="text-red-100 text-sm font-medium">Participants</p>
+                  <p className="text-3xl font-bold text-red-100">
                     {filteredEvents.reduce((sum, event) => sum + (event.participants?.length || 0), 0)}
                   </p>
                 </div>
-                <User className="h-8 w-8 text-orange-200" />
+                <User className="h-8 w-8 text-red-100" />
               </div>
             </CardContent>
           </Card>
