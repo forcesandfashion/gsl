@@ -878,10 +878,10 @@ export default function RangeListingForm() {
         qrCodeUrl={qrCodeUrl || ""}
       />
       
-      <div className="rounded-3xl shadow-2xl bg-gradient-to-br from-white via-blue-50 to-purple-50 p-8 border border-blue-100">
+      <div className="rounded-3xl shadow-2xl bg-blue-50 p-8 border border-blue-100">
         <div className="text-center mb-8">
-          <h2 className="text-4xl font-extrabold mb-6 flex items-center justify-center gap-3 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            <List className="w-8 h-8 text-blue-500" /> Create Range Listing
+          <h2 className="text-4xl font-extrabold mb-6 flex items-center justify-center gap-3 bg-blue-700 bg-clip-text text-transparent">
+            <List className="w-8 h-8 text-[#ff6b6b]" /> Create Range Listing
           </h2>
           
           {/* Premium Status Display */}
@@ -1062,7 +1062,7 @@ export default function RangeListingForm() {
           </div>
 
           {/* Enhanced Address Section with Map */}
-          <div className="p-6 bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl border border-green-200">
+          <div className="p-6 bg-blue-50 rounded-2xl border border-blue-200">
             <div className="mb-4">
               <Label htmlFor="address" className="flex items-center gap-2 font-semibold text-gray-700 mb-2">
                 <MapPin className="w-5 h-5 text-green-500" /> Address & Location
@@ -1144,7 +1144,7 @@ export default function RangeListingForm() {
           </div>
 
           {/* Range Images Section - Enhanced with Content Guidelines */}
-          <div className="p-6 bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl border border-orange-200">
+          <div className="p-6 bg-blue-50 to-red-50 rounded-2xl border ">
             <Label htmlFor="rangeImages" className="flex items-center gap-2 font-semibold text-gray-700 mb-4">
               <ImageIcon className="w-5 h-5 text-orange-500" /> 
               Range Gallery

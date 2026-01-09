@@ -198,7 +198,7 @@ export default function ShootingRanges() {
                   <span className="bg-white/20 px-3 py-1 rounded-full text-[10px] ml-auto">GPS ACTIVE</span>
                 )}
               </h2>
-              <div className="h-64 md:h-[500px] w-full bg-gray-50">
+              <div className="h-64 md:h-[380px] w-full bg-gray-50">
                 <Map ranges={filteredRanges} selectedRange={selectedRange} onLocationFound={setUserLocation} />
               </div>
             </div>
@@ -289,34 +289,67 @@ export default function ShootingRanges() {
 
                 {/* Pagination - Consistent with Shop/About */}
                 {totalPages > 1 && (
-                  <div className="mt-16 flex justify-center items-center gap-3">
-                    <button
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="p-2 rounded-xl border border-gray-200 text-gray-400 disabled:opacity-30 hover:border-[#1d4ed8] hover:text-[#1d4ed8] transition-all"
-                    >
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <div className="flex gap-2">
-                      {Array.from({ length: totalPages }, (_, i) => (
-                        <button
-                          key={i}
-                          onClick={() => handlePageChange(i + 1)}
-                          className={`w-10 h-10 rounded-xl text-xs font-black transition-all ${
-                            currentPage === i + 1 ? "bg-[#ff6b6b] text-white shadow-lg" : "bg-white border border-gray-100 text-gray-600 hover:bg-gray-50"
-                          }`}
-                        >
-                          {i + 1}
-                        </button>
-                      ))}
+                  <div className="mt-16 flex flex-col items-center gap-6">
+                    <div className="flex items-center gap-2">
+                      {/* Previous Button */}
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-gray-500 disabled:opacity-30 hover:border-[#1d4ed8] hover:text-[#1d4ed8] font-black uppercase text-[10px] tracking-widest transition-all bg-white shadow-sm"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        <span className="hidden sm:inline">Prev</span>
+                      </button>
+
+                      <div className="flex gap-2">
+                        {/* Logic for Page Numbers with Ellipses */}
+                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                          .filter(page => {
+                            // Show first page, last page, and 1 page around current page
+                            return page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1;
+                          })
+                          .map((page, index, array) => {
+                            const items = [];
+                            // Add ellipsis if there's a gap between the current page and the previous one in the filtered list
+                            if (index > 0 && page - array[index - 1] > 1) {
+                              items.push(
+                                <span key={`sep-${page}`} className="flex items-center justify-center w-10 text-gray-300 font-black">
+                                  ...
+                                </span>
+                              );
+                            }
+                            items.push(
+                              <button
+                                key={page}
+                                onClick={() => handlePageChange(page)}
+                                className={`w-10 h-10 rounded-xl text-xs font-black transition-all ${
+                                  currentPage === page
+                                    ? "bg-[#1d4ed8] text-white shadow-lg scale-110 z-10"
+                                    : "bg-white border border-gray-100 text-gray-600 hover:border-[#ff6b6b] hover:text-[#ff6b6b]"
+                                }`}
+                              >
+                                {page}
+                              </button>
+                            );
+                            return items;
+                          })}
+                      </div>
+
+                      {/* Next Button */}
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-gray-500 disabled:opacity-30 hover:border-[#1d4ed8] hover:text-[#1d4ed8] font-black uppercase text-[10px] tracking-widest transition-all bg-white shadow-sm"
+                      >
+                        <span className="hidden sm:inline">Next</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
                     </div>
-                    <button
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="p-2 rounded-xl border border-gray-200 text-gray-400 disabled:opacity-30 hover:border-[#1d4ed8] hover:text-[#1d4ed8] transition-all"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
+                    
+                    {/* Page indicator text */}
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+                      Displaying Page {currentPage} of {totalPages}
+                    </p>
                   </div>
                 )}
               </div>

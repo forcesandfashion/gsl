@@ -171,7 +171,7 @@ const RangeOwnerDashboard = () => {
           <div className="mb-10">
             <div className="relative bg-white rounded-[2rem] p-8 shadow-2xl border-2 border-[#ff6b6b] overflow-hidden group">
               <div className="absolute top-0 right-0 p-4">
-                 <Crown className="w-24 h-24 text-gray-50 -rotate-12" />
+                 <Crown className="w-24 h-24 text-[#ff6b6b] -rotate-12" />
               </div>
               <div className="relative flex flex-col md:flex-row items-center justify-between gap-6">
                 <div className="flex items-center gap-6">

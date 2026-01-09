@@ -290,7 +290,7 @@ const CmbDashboard: React.FC = () => {
       const months = getLast6Months();
       const fallbackData: ShooterAnalytics[] = months.map(monthData => ({
         month: monthData.month,
-        shooters: Math.floor(Math.random() * 20) + 5 // Random fallback
+        shooters: Math.floor(Math.random() * 20) + 5
       }));
       setShooterAnalytics(fallbackData);
     }
@@ -495,7 +495,7 @@ const CmbDashboard: React.FC = () => {
             title="Shooting Ranges" 
             value={dashboardData.ranges} 
             icon={Target} 
-            color="#10b981"
+            color="#ff6b6b"
             onClick={() => handleCardClick('ranges')}
             loading={loading}
           />
@@ -503,7 +503,7 @@ const CmbDashboard: React.FC = () => {
             title="Total Bookings" 
             value={dashboardData.bookings} 
             icon={Calendar} 
-            color="#f59e0b"
+            color="#3b82f6"
             onClick={() => handleCardClick('bookings')}
             loading={loading}
           />
@@ -511,7 +511,7 @@ const CmbDashboard: React.FC = () => {
             title="Upcoming Events" 
             value={dashboardData.events} 
             icon={TrendingUp} 
-            color="#ef4444"
+            color="#ff6b6b"
             onClick={() => handleCardClick('events')}
             loading={loading}
           />
@@ -519,7 +519,7 @@ const CmbDashboard: React.FC = () => {
             title="Total Bills" 
             value={dashboardData.bills} 
             icon={FileText} 
-            color="#8b5cf6"
+            color="#3b82f6"
             onClick={() => handleCardClick('bills')}
             loading={loading}
           />
@@ -527,7 +527,7 @@ const CmbDashboard: React.FC = () => {
             title="Active Subscriptions" 
             value={dashboardData.subscriptions} 
             icon={CreditCard} 
-            color="#ec4899"
+            color="#ff6b6b"
             onClick={() => handleCardClick('subscriptions')}
             loading={loading}
           />
@@ -535,7 +535,7 @@ const CmbDashboard: React.FC = () => {
             title="Attendance Records" 
             value={dashboardData.attendance} 
             icon={UserCheck} 
-            color="#06b6d4"
+            color="#3b82f6"
             onClick={() => handleCardClick('attendance')}
             loading={loading}
           />
@@ -578,7 +578,7 @@ const CmbDashboard: React.FC = () => {
                   <Line 
                     type="monotone" 
                     dataKey="shooters" 
-                    stroke="#10b981" 
+                    stroke="#ff6b6b" 
                     strokeWidth={3}
                     name="New Shooters"
                   />
@@ -590,7 +590,7 @@ const CmbDashboard: React.FC = () => {
 
         {/* Recent Activity */}
         <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
-          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">Recent Activity</h2>
+          <h2 className="text-lg sm:text-xl font-semibold text-[#ff6b6b] mb-4">Recent Activity</h2>
           {loading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4, 5].map(i => (
