@@ -240,8 +240,8 @@ const ShooterDashboard = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
           <StatCard title="Current Rank" val={userRankLabel} icon={<Trophy />} color="border-[#1d4ed8]" />
           <StatCard title="Points" val={userProfile?.totalPoints || 0} icon={<TrendingUp />} color="border-[#ff6b6b]" />
-          <StatCard title="Events" val={upcomingEvents} icon={<Calendar />} color="border-[#1d4ed8]" onClick={() => navigate("/ranges")} />
-          <StatCard title="Bookings" val={userBookings} icon={<BookOpen />} color="border-[#ff6b6b]" onClick={() => navigate("/ranges")} />
+          <StatCard title="Events" val={upcomingEvents} icon={<Calendar />} color="border-[#1d4ed8]" onClick={() => navigate("/dashboard/shooter/events")} />
+          <StatCard title="Bookings" val={userBookings} icon={<BookOpen />} color="border-[#ff6b6b]" onClick={() => navigate("/dashboard/shooter/bookings")} />
           <StatCard title="Profile" val={`${profileCompletion}%`} icon={<User />} color="border-[#1d4ed8]" onClick={() => navigate("/profile")} />
         </div>
 
