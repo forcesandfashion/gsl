@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { User, Calendar, Award, Star, Briefcase, Target, Crosshair, Package, BarChart3, TrendingUp, Filter, Clock, FileText, ScanLine, Receipt, Menu, X, Wallet, AlertCircle, CheckCircle, Phone, Clock as ClockIcon } from "lucide-react";
+import { cn} from "@/lib/utils";
+import { User, Calendar, Award, Star, Briefcase, Target, Crosshair, Package, BarChart3, TrendingUp, Filter, Clock, FileText, ScanLine, Receipt, Menu, X, Wallet, AlertCircle, CheckCircle, Phone, Clock as ClockIcon, Zap, Shield, Trophy, Crown, LayoutGrid, Sun, Moon, Activity, Layers, UserCheck } from "lucide-react";
 import { db, storage } from "@/firebase/config";
 import { collection, doc, getDocs, query, setDoc, where, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -52,6 +53,7 @@ interface ShootingSession {
   series: any[];
   weather: string;
   timeOfDay: string;
+  rating?: number;
 }
 
 interface BookingData {
@@ -104,6 +106,15 @@ interface DisciplineData {
   totalAccuracy: number;
   avgScore: number;
   avgAccuracy: number;
+}
+
+interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+  isUnlocked: boolean;
+  progress?: number; // percentage toward unlocking
 }
 
 export default function ShooterProfile() {
@@ -625,6 +636,105 @@ export default function ShooterProfile() {
 
   if (loading) return <div className="text-center text-lg mt-6">Loading profile...</div>;
 
+  const getBadges = (): Badge[] => {
+    const totalPoints = profile.totalPoints || 0;
+    const sessionsCount = shootingData.length;
+    
+    // REAL DATA LOGIC MAPPING
+    // pointsEarned and rating are direct from your DB structure
+    const totalInnerTens = shootingData.reduce((sum, s) => sum + (s.innerTens || 0), 0);
+    const totalShots = shootingData.reduce((sum, s) => sum + (s.totalShots || 0), 0);
+    const uniqueDisciplines = new Set(shootingData.map(s => s.discipline)).size;
+    
+    // Check for high rating (your DB has rating 1-5 or 1-4)
+    const highRatingSessions = shootingData.filter(s => (s.rating ?? 0) >= 4).length;
+    
+    // Check for accuracy sessions (based on your calculated accuracy string)
+    const eliteAccuracy = shootingData.some(s => parseFloat(s.accuracy) >= 98);
+
+    // Time of day logic (based on your sessionData.timeOfDay field)
+    const hasEarlySession = shootingData.some(s => s.timeOfDay?.toLowerCase().includes('morning'));
+
+    return [
+      { 
+        id: "rookie", 
+        name: "First Trigger", 
+        description: "Log your first verified session", 
+        icon: <Zap className="w-6 h-6" />, 
+        isUnlocked: sessionsCount > 0 
+      },
+      { 
+        id: "accuracy_elite", 
+        name: "Deadshot", 
+        description: "Hit 98% accuracy in a session", 
+        icon: <Crosshair className="w-6 h-6" />, 
+        isUnlocked: eliteAccuracy 
+      },
+      { 
+        id: "inner_ten_collector", 
+        name: "X-Ring King", 
+        description: "Hit 50 total Inner Tens", 
+        icon: <Target className="w-6 h-6" />, 
+        isUnlocked: totalInnerTens >= 50, 
+        progress: Math.min(100, (totalInnerTens / 50) * 100) 
+      },
+      { 
+        id: "discipline_pro", 
+        name: "Versatile Shooter", 
+        description: "Train in 3 different disciplines", 
+        icon: <Layers className="w-6 h-6" />, 
+        isUnlocked: uniqueDisciplines >= 3, 
+        progress: Math.min(100, (uniqueDisciplines / 3) * 100) 
+      },
+      { 
+        id: "high_rater", 
+        name: "Consistent 4-Star", 
+        description: "Get a 4+ rating in 5 sessions", 
+        icon: <Star className="w-6 h-6" />, 
+        isUnlocked: highRatingSessions >= 5,
+        progress: Math.min(100, (highRatingSessions / 5) * 100)
+      },
+      { 
+        id: "morning_warrior", 
+        name: "Dawn Patrol", 
+        description: "Complete a morning session", 
+        icon: <Sun className="w-6 h-6" />, 
+        isUnlocked: hasEarlySession 
+      },
+      { 
+        id: "volume_shooter", 
+        name: "Lead Rain", 
+        description: "Fire 500 total shots", 
+        icon: <Activity className="w-6 h-6" />, 
+        isUnlocked: totalShots >= 500, 
+        progress: Math.min(100, (totalShots / 500) * 100) 
+      },
+      { 
+        id: "points_titan", 
+        name: "GSL Elite", 
+        description: "Cross 5,000 career points", 
+        icon: <Crown className="w-6 h-6" />, 
+        isUnlocked: totalPoints >= 5000, 
+        progress: Math.min(100, (totalPoints / 5000) * 100) 
+      },
+      { 
+        id: "veteran", 
+        name: "Range Veteran", 
+        description: "Complete 20 sessions", 
+        icon: <Shield className="w-6 h-6" />, 
+        isUnlocked: sessionsCount >= 20, 
+        progress: Math.min(100, (sessionsCount / 20) * 100) 
+      },
+      { 
+        id: "verified", 
+        name: "Trusted Athlete", 
+        description: "KYC and Wallet verified", 
+        icon: <UserCheck className="w-6 h-6" />, 
+        isUnlocked: profile.kyc && profile.wallet 
+      }
+    ];
+  };
+
   return (
     <div className="w-full max-w-6xl mx-auto bg-blue-50  rounded-xl md:rounded-2xl shadow-lg md:shadow-xl p-4 md:p-6">
       
@@ -1021,6 +1131,84 @@ export default function ShooterProfile() {
                         <Line type="monotone" dataKey="innerTens" stroke="#ffc658" name="Inner Tens" strokeWidth={2} />
                       </LineChart>
                     </ResponsiveContainer>
+                  </div>
+                </div>
+                {/* --- Hall of Fame / Badges Section --- */}
+                <div className="mb-8 p-6 md:p-10 rounded-[2.5rem] shadow-2xl bg-white border-t-8 border-[#1d4ed8]">
+                  <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
+                    <div>
+                      <h3 className="text-2xl md:text-3xl font-black text-[#0f172a] uppercase tracking-tighter flex items-center gap-3">
+                        <Award className="w-10 h-10 text-[#ff6b6b] fill-current" /> 
+                        Shooter <span className="text-[#1d4ed8]">Milestones</span>
+                      </h3>
+                      <p className="text-[11px] font-black text-gray-400 uppercase tracking-[0.3em] mt-2">
+                        Real-time Performance Achievements
+                      </p>
+                    </div>
+                    
+                    <div className="flex items-center gap-4 bg-blue-50/50 p-4 rounded-3xl border border-blue-100 shadow-inner">
+                      <div className="text-right">
+                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Mastery</p>
+                        <p className="text-lg font-black text-[#1d4ed8]">
+                          {getBadges().filter(b => b.isUnlocked).length} / {getBadges().length}
+                        </p>
+                      </div>
+                      <Trophy className="w-8 h-8 text-yellow-500 drop-shadow-md" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                    {getBadges().map((badge) => (
+                      <div 
+                        key={badge.id}
+                        className={cn(
+                          "relative group p-6 rounded-[2.2rem] flex flex-col items-center text-center transition-all duration-500 border-2",
+                          badge.isUnlocked 
+                            ? "bg-white border-blue-100 shadow-xl hover:border-[#ff6b6b] hover:scale-105" 
+                            : "bg-gray-50 border-transparent opacity-40 grayscale"
+                        )}
+                      >
+                        {/* Badge Icon Holder */}
+                        <div className={cn(
+                          "w-16 h-16 rounded-[1.2rem] flex items-center justify-center mb-4 transition-transform group-hover:rotate-12",
+                          badge.isUnlocked 
+                            ? "bg-[#1d4ed8] text-white shadow-[0_10px_20px_rgba(29,78,216,0.3)]" 
+                            : "bg-gray-200 text-gray-400"
+                        )}>
+                          {badge.icon}
+                        </div>
+
+                        <h4 className="text-[11px] font-black uppercase text-[#0f172a] tracking-tight mb-1">
+                          {badge.name}
+                        </h4>
+                        
+                        {/* Unlocked Progress Bar Logic */}
+                        {!badge.isUnlocked && badge.progress !== undefined ? (
+                          <div className="w-full px-2">
+                            <div className="w-full h-1 bg-gray-200 rounded-full mt-2 overflow-hidden">
+                                <div 
+                                  className="h-full bg-[#1d4ed8]" 
+                                  style={{ width: `${badge.progress}%` }} 
+                                />
+                            </div>
+                            <span className="text-[8px] font-black text-gray-400 uppercase mt-1 block">
+                              {Math.round(badge.progress)}% Target
+                            </span>
+                          </div>
+                        ) : (
+                          <p className="text-[8px] text-gray-400 font-bold uppercase tracking-tighter line-clamp-2">
+                            {badge.description}
+                          </p>
+                        )}
+
+                        {/* Status Checkmark */}
+                        {badge.isUnlocked && (
+                          <div className="absolute -top-2 -right-2 bg-[#ff6b6b] rounded-full p-1.5 border-4 border-white shadow-lg animate-in zoom-in duration-300">
+                            <CheckCircle className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
 
