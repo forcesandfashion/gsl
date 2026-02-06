@@ -31,7 +31,7 @@ const ParallaxScrollPage: React.FC = () => {
   ]);
 
   const articles = [
-    { title: "Magazine 9", image: "/images/mag9-img.png", mag: "https://heyzine.com/flip-book/ed18700fbd.html" },
+    { title: "Magazine 9", image: "/images/mag9-img.png", mag: "https://heyzine.com/flip-book/e8ff28e240.html" },
     { title: "Global Shooting League Magazine Brochure", image: "/images/GSL-brochure.png", mag: "https://heyzine.com/flip-book/4a86e2c1d3.html" },
     { title: "Magazine 8", image: "/images/mag8-img.png", mag: "https://heyzine.com/flip-book/827d5bc5b6.html" },
     { title: "Magazine 7", image: "/images/mag7-img.png", mag: "https://heyzine.com/flip-book/8391562bd3.html" },
