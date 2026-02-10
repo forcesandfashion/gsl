@@ -38,12 +38,17 @@ export default function AboutPage() {
                   />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black mb-4 uppercase text-[#0f172a]">The Beginning</h3>
+                  <h3 className="text-2xl font-black mb-4 uppercase text-[#0f172a]">GSL Today </h3>
                   <p className="text-gray-700 mb-4 leading-relaxed font-medium">
-                    At the heart of every great shot lies a story—of focus, discipline, and the relentless pursuit of excellence. Our sports magazine is a tribute to that journey. We are a team of passionate storytellers, athletes, and creatives united by one mission: to celebrate the spirit of competitive shooting and the athletes who define it. 
+                    Our platform is designed not just for seasoned enthusiasts, but for the next generation of sharpshooters and fans who want to learn, engage, and be inspired. With every issue, every article, and every image, we aim to fire up passion, spark curiosity, and drive conversations that elevate the sport.
                   </p>
                   <p className="text-gray-700 leading-relaxed font-medium">
-                    Whether it's the slow breath before a final shot or the electric rush of hitting the bullseye, we aim to capture every pulse of the sport through powerful visuals, bold narratives, and cutting-edge insights.
+                    We're not just telling stories—we're shaping the future of shooting, one perfectly placed word (and shot) at a time.
+                  </p>
+                  <br ></br>
+                  <p className="text-gray-700 leading-relaxed font-medium">
+                    This platform is not just a source of information; it is a growing community of learners, athletes, fans, and mentors. We encourage interaction, discussion, and shared experiences because growth happens faster together. We understand that today’s learners want more than instructions; they want stories, guidance, and a sense of belonging.
+                    At its heart, our platform is about passion—discovering it, nurturing it, and keeping it alive.
                   </p>
                 </div>
               </div>
@@ -51,12 +56,12 @@ export default function AboutPage() {
               {/* Our Growth */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center mb-20 group">
                 <div className="order-2 md:order-1">
-                  <h3 className="text-2xl font-black mb-4 uppercase text-[#0f172a]">Our Growth</h3>
+                  <h3 className="text-2xl font-black mb-4 uppercase text-[#0f172a]">What We Stand For </h3>
                   <p className="text-gray-700 mb-4 leading-relaxed font-medium">
-                    We believe that Olympic shooting is more than just a sport—it's a finely tuned art form, one where technology, mental strength, and sheer willpower converge. Through our carefully curated features, in-depth articles, and visually immersive content, we bring readers closer to the ever-evolving world of shooting sports. 
+                    <span className="font-bold">Learning First:</span> We believe every expert was once a beginner. GSL supports growth through knowledge, practice and mentorship. 
                   </p>
                   <p className="text-gray-700 leading-relaxed font-medium">
-                    From covering tech innovations like AI-driven training and smart firearms to profiling the legends behind the trigger, we dive deep into what makes this sport one of the most demanding and awe-inspiring disciplines in the world of athletics.
+                    <span className="font-bold">Engagement Over Intimidation:</span> Shooting should feel welcoming, not exclusive. We simplify and celebrate every step of the journey by making information accessible, language simple, and experiences relatable. 
                   </p>
                 </div>
                 <div className="order-1 md:order-2 relative overflow-hidden rounded-2xl shadow-xl border-4 border-white">
@@ -78,12 +83,12 @@ export default function AboutPage() {
                   />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black mb-4 uppercase text-[#0f172a]">GSL Today</h3>
+                  {/* <h3 className="text-2xl font-black mb-4 uppercase text-[#0f172a]">GSL Today</h3> */}
                   <p className="text-gray-700 mb-4 leading-relaxed font-medium">
-                    Our platform is designed not just for seasoned enthusiasts, but for the next generation of sharpshooters and fans who want to learn, engage, and be inspired. With every issue, every article, and every image, we aim to fire up passion, spark curiosity, and drive conversations that elevate the sport.
+                    <span className="font-bold">Inspiration Through Real Stories:</span> Every successful story starts with a deeper truth—discipline, setbacks, and resilience. By sharing real journeys of both wins and challenges, we inspire others to stay motivated and persistent.
                   </p>
                   <p className="text-gray-700 leading-relaxed font-medium">
-                    We're not just telling stories—we're shaping the future of shooting, one perfectly placed word (and shot) at a time.
+                    <span className="font-bold">Passion with Responsibility:</span> Shooting is a sport that demands respect. Safety, ethical practices, and responsible learning are key principles we strongly advocate. Passion must always be guided by discipline and awareness.
                   </p>
                 </div>
               </div>
@@ -100,7 +105,10 @@ export default function AboutPage() {
                 </h2>
                 <div className="text-lg leading-relaxed lg:w-1/2 text-justify">
                   <p className="mb-4 text-white">
-                    At Global Shooting League, we envision a world where sports shooting is accessible, inclusive, and celebrated across every corner of the globe. Our goal is to democratize the sport through the infusion of advanced technology, innovation, and strategic collaborations—aiming to make shooting sports a mainstream pursuit by 2030. We believe in nurturing a global community that thrives on precision, discipline, and shared excellence.
+                    At the Global Shooting League, we envision a world where sports shooting is accessible, inclusive, and celebrated across every corner of the globe. Our goal is to democratize the sport through the infusion of advanced technology, innovation, and strategic collaborations—aiming to make shooting sports a mainstream pursuit by 2030. We believe in nurturing a global community that thrives on precision, discipline, and shared excellence.
+                  </p>
+                  <p className="mb-4 text-white">
+                    We see GSL as a launchpad for the next generation of sharpshooters- individuals who aim not just for targets, but for personal growth and purpose. We are not here only for those who already know the sport inside out. We are here for the curious beginner, the inspired fan, the learner who wants to understand the “why” behind every shot, and the young sharpshooter who dreams of aiming higher. This platform exists to make shooting approachable, engaging, and meaningful for everyone who feels drawn to it. 
                   </p>
                 </div>
               </div>
@@ -112,14 +120,20 @@ export default function AboutPage() {
                 </h2>
                 <div className="text-lg leading-relaxed lg:w-1/2 text-justify">
                   <p className="mb-4 text-white">
+                    The world of shooting sports is rich with history, discipline, and excellence, yet access to the right guidance and inspiration often feels limited. Many aspiring shooters and fans struggle to find a space where learning feels welcoming rather than overwhelming. Information is scattered, stories are unheard, and beginners are often left feeling like outsiders. We saw that gap and decided to build a bridge.
+                  </p>
+                  <p className="mb-4 text-white">
                     Our mission is to build a thriving ecosystem for sports shooting by bringing together all key stakeholders—shooters, coaches, range operators, manufacturers, media professionals, and fans—under one unified digital and physical platform. Through our cutting-edge website, mobile applications, and on-ground initiatives, we aim to:
                   </p>
                   <ul className="list-none space-y-4">
                     {[
                       "Promote awareness and participation in shooting sports across India and the world.",
                       "Identify and nurture young talent while establishing world-class infrastructure and centers of excellence in every region.",
+                      "Foster a community built on respect, encouragement, and shared passion. ",
                       "Drive professional development through competitions, training, and data-driven talent management.",
-                      "Facilitate the growth of indigenous manufacturing for top-tier shooting equipment, supporting the Make-in-India initiative."
+                      "Facilitate the growth of indigenous manufacturing for top-tier shooting equipment, supporting the Make-in-India initiative.",
+                      "Make shooting more approachable and understandable for beginners.",
+                      "Highlight the importance of discipline, safety, and responsibility in the sport."
                     ].map((item, i) => (
                       <li key={i} className="flex items-start">
                         <span className="text-[#ff6b6b] mr-2 font-bold text-xl">●</span>
@@ -142,9 +156,9 @@ export default function AboutPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Value Cards */}
                 {[
-                  { title: "Safety", content: "We prioritize safety above all else, implementing rigorous protocols and standards at all our events and training programs to ensure a secure environment for participants and spectators alike." },
-                  { title: "Inclusivity", content: "We believe that shooting sports should be accessible to all, regardless of background, gender, or ability. Our programs and competitions are designed to welcome and support diverse participation." },
-                  { title: "Excellence", content: "We strive for excellence in everything we do, from the organization of our events to the development of our athletes. We set high standards and continuously work to exceed them." },
+                  { title: "Safety", content: "We prioritize safety above all else, implementing rigorous protocols and standards at all our events and training programs to ensure a secure environment for participants and spectators alike. By embedding safety into learning and engagement, we aim to cultivate confident, informed, and responsible participants who respect the sport and its values." },
+                  { title: "Inclusivity", content: "We believe that shooting sports should be accessible to all, regardless of background, gender, or ability. Our programs and competitions are designed to welcome and support diverse participation. Inclusivity strengthens the sport by bringing in fresh perspectives, untapped talent, and shared purpose. We believe the future of shooting is built together." },
+                  { title: "Excellence", content: "We strive for excellence in everything we do, from the organization of our events to the development of our athletes. We set high standards and continuously work to exceed them. Our platform promotes a culture of excellence that values progress as much as performance." },
                   { title: "Governance Policy", content: "GSL upholds the highest standards of transparency, ethics, and accountability. Our governance framework is designed to ensure fair decision-making, inclusive representation, and responsible leadership. Our policies support data privacy, athlete welfare, and equal opportunity." }
                 ].map((item, i) => (
                   <div key={i} className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 group hover:border-[#ff6b6b]/30 transition-all">
@@ -158,6 +172,8 @@ export default function AboutPage() {
                   <h3 className="text-xl font-black mb-4 uppercase tracking-tight text-[#ff6b6b]">Value Proposition</h3>
                   <div className="text-gray-600 text-sm leading-relaxed space-y-4 font-medium">
                     <p>At Global Shooting League (GSL), we offer a unified platform that elevates every dimension of the shooting sports ecosystem—from grassroots talent to elite competition. By combining technology, community, and strategic storytelling, we provide a space where shooters, coaches, ranges, manufacturers, and fans can connect, collaborate, and grow.</p>
+                    <p>Our platform focuses on breaking down complex ideas into understandable insights. From fundamentals of stance and breath control to mental focus and match-day discipline, we emphasize clarity over complexity.</p>
+                    <p>We want learners to feel empowered, not overwhelmed. Knowledge should build confidence, not fear. That’s why we prioritize education that is practical, respectful, and rooted in real-world experience.</p>
                     <p>GSL stands apart by delivering: Digital Empowerment, Talent Discovery & Development, Infrastructure Integration, Media & Visibility, and Community-Led Innovation. GSL is more than a league—it's a movement that transforms how the world sees, experiences, and supports shooting sports.</p>
                   </div>
                 </div>
@@ -165,7 +181,11 @@ export default function AboutPage() {
                 <div className="md:col-span-2 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
                   <h3 className="text-xl font-black mb-4 uppercase tracking-tight text-[#0f172a]">Our Culture</h3>
                   <p className="text-gray-600 text-sm leading-relaxed font-medium">
-                    At Global Shooting League (GSL), our culture is built on the foundation of precision, integrity, and innovation—reflecting the very essence of shooting sports. We are a purpose-driven organization with a deep commitment to excellence, collaboration, and inclusivity. We celebrate focus and discipline, encourage bold ideas, and believe in empowering individuals to take ownership of the mission. We celebrate focus and discipline, encourage bold ideas, and believe in empowering individuals to take ownership of the mission.
+                    At the Global Shooting League (GSL), our culture is built on the foundation of precision, integrity, and innovation—reflecting the very essence of shooting sports. We are a purpose-driven organization with a deep commitment to excellence, collaboration, and inclusivity. We celebrate focus and discipline, encourage bold ideas, and believe in empowering individuals to take ownership of the mission. We celebrate focus and discipline, encourage bold ideas, and believe in empowering individuals to take ownership of the mission.
+                  </p>
+                  <br />
+                  <p className="text-gray-600 text-sm leading-relaxed font-medium">
+                    Our platform strongly advocates ethical learning, safety awareness, and disciplined practice. We emphasize that shooting is not just about hitting targets; it is about mastering control—of the body, the mind, and one’s actions.
                   </p>
                 </div>
               </div>
