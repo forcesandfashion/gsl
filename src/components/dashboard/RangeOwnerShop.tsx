@@ -421,14 +421,14 @@ const RangeOwnerShop: React.FC = () => {
       return (
         <div className="flex items-center gap-1 text-orange-600 text-sm font-medium">
           <AlertTriangle className="w-4 h-4" />
-          Low Stock: {stock}
+          Low Stock
         </div>
       );
     } else {
       return (
         <div className="flex items-center gap-1 text-green-600 text-sm font-medium">
           <CheckCircle className="w-4 h-4" />
-          In Stock: {stock}
+          In Stock
         </div>
       );
     }

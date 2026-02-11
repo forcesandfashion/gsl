@@ -255,7 +255,7 @@ const ProductInfoPage: React.FC = () => {
                     </div>
                     <div>
                       <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-white ${product?.stock! > 0 ? 'bg-green-500' : 'bg-[#ff6b6b]'}`}>
-                        {product?.stock! > 0 ? `In Stock (${product?.stock})` : 'Sold Out'}
+                        {product?.stock! > 0 ? `In Stock` : 'Sold Out'}
                       </span>
                     </div>
                   </div>

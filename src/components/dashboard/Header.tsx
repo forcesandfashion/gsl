@@ -95,9 +95,6 @@ const Header = () => {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-7 text-sm font-medium">
-          <Link to="/shop" className="hover:text-blue-600">
-            Shop
-          </Link>
           <Link to="/about" className="hover:text-blue-600">
             About Us
           </Link>
@@ -109,6 +106,9 @@ const Header = () => {
           </Link>
           <Link to="/media" className="hover:text-blue-600">
             Media
+          </Link>
+          <Link to="/shop" className="hover:text-blue-600">
+            Shop
           </Link>
           <Link to="/contact" className="hover:text-blue-600">
             Contact
