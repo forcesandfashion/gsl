@@ -109,33 +109,34 @@ const UserDocumentsPage = () => {
 
   const filterAndSortSessions = () => {
     let filtered = sessions.filter(session => {
-      const matchesSearch = session.sessionName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            session.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            (session.sessionStats?.discipline || '').toLowerCase().includes(searchTerm.toLowerCase());
+      // Defensive checks for search term matching
+      const nameMatch = (session.sessionName || "").toLowerCase().includes(searchTerm.toLowerCase());
+      const fileMatch = (session.fileName || "").toLowerCase().includes(searchTerm.toLowerCase());
+      const disciplineMatch = (session.sessionStats?.discipline || "").toLowerCase().includes(searchTerm.toLowerCase());
       
-      const matchesRating = filterRating === 'all' || session.rating.toString() === filterRating;
-      
+      const matchesSearch = nameMatch || fileMatch || disciplineMatch;
+      const matchesRating = filterRating === 'all' || (session.rating || 0).toString() === filterRating;
       const matchesFileType = filterFileType === 'all' || session.fileType === filterFileType;
 
       return matchesSearch && matchesRating && matchesFileType;
     });
 
     filtered.sort((a, b) => {
-      let aValue, bValue;
+      let aValue: any, bValue: any;
       
       switch (sortBy) {
         case 'points':
-          aValue = a.pointsEarned;
-          bValue = b.pointsEarned;
+          aValue = a.pointsEarned || 0;
+          bValue = b.pointsEarned || 0;
           break;
         case 'rating':
-          aValue = a.rating;
-          bValue = b.rating;
+          aValue = a.rating || 0;
+          bValue = b.rating || 0;
           break;
         case 'date':
         default:
-          aValue = a.uploadDate?.toDate?.() || new Date(a.uploadDate);
-          bValue = b.uploadDate?.toDate?.() || new Date(b.uploadDate);
+          aValue = a.uploadDate?.toDate?.() || new Date(a.uploadDate || 0);
+          bValue = b.uploadDate?.toDate?.() || new Date(b.uploadDate || 0);
           break;
       }
 
@@ -156,7 +157,6 @@ const UserDocumentsPage = () => {
     try {
       await deleteDoc(doc(db, 'shooters', user.uid, 'shootingSessions', session.id));
       setSessions(prev => prev.filter(s => s.id !== session.id));
-      alert('Session deleted successfully');
     } catch (error) {
       console.error('Error deleting session:', error);
       alert('Failed to delete session');
@@ -177,7 +177,7 @@ const UserDocumentsPage = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = session.fileName;
+      link.download = session.fileName || 'document';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -199,6 +199,7 @@ const UserDocumentsPage = () => {
   };
 
   const formatDate = (date: any) => {
+    if (!date) return 'N/A';
     try {
       const dateObj = date?.toDate ? date.toDate() : new Date(date);
       return dateObj.toLocaleDateString('en-US', {
@@ -220,18 +221,19 @@ const UserDocumentsPage = () => {
           <Star
             key={star}
             className={`w-4 h-4 ${
-              star <= rating 
+              star <= (rating || 0)
                 ? 'text-[#ff6b6b] fill-current' 
                 : 'text-gray-300'
             }`}
           />
         ))}
-        <span className="text-sm text-gray-600 ml-1">({rating}/5)</span>
+        <span className="text-sm text-gray-600 ml-1">({rating || 0}/5)</span>
       </div>
     );
   };
 
   const getFileTypeIcon = (fileType: string) => {
+    if (!fileType) return <File className="w-5 h-5 text-gray-400" />;
     switch (fileType) {
       case '.pdf':
         return <File className="w-5 h-5 text-[#ff6b6b]" />;
@@ -242,9 +244,9 @@ const UserDocumentsPage = () => {
     }
   };
 
-  const totalPoints = sessions.reduce((sum, session) => sum + session.pointsEarned, 0);
+  const totalPoints = sessions.reduce((sum, session) => sum + (session.pointsEarned || 0), 0);
   const averageRating = sessions.length > 0 
-    ? (sessions.reduce((sum, session) => sum + session.rating, 0) / sessions.length).toFixed(1)
+    ? (sessions.reduce((sum, session) => sum + (session.rating || 0), 0) / sessions.length).toFixed(1)
     : '0';
 
   if (loading) {
@@ -260,7 +262,6 @@ const UserDocumentsPage = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header - White background with Blue tracking */}
       <header className="bg-white sticky top-0 z-10 border-b border-gray-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex justify-between items-center">
@@ -289,7 +290,6 @@ const UserDocumentsPage = () => {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
           <Card className="bg-white border-gray-100 shadow-xl border-t-4 border-[#1d4ed8]">
             <CardContent className="p-6">
@@ -328,7 +328,6 @@ const UserDocumentsPage = () => {
           </Card>
         </div>
 
-        {/* Filters and Search */}
         <Card className="mb-10 shadow-lg border-gray-100 bg-gray-50/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-400">
@@ -391,7 +390,6 @@ const UserDocumentsPage = () => {
           </CardContent>
         </Card>
 
-        {/* Documents Grid */}
         <Card className="shadow-2xl border-gray-100 rounded-3xl overflow-hidden">
           <CardHeader className="bg-white border-b border-gray-50 p-8">
             <CardTitle className="text-xl font-black text-[#0f172a] uppercase tracking-tight">Active Repositories ({filteredSessions.length})</CardTitle>
@@ -418,14 +416,15 @@ const UserDocumentsPage = () => {
                               {session.sessionName}
                             </h3>
                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 mt-1">
-                              {session.fileName}
+                              {session.fileName || "unnamed_file"}
                               <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                              {session.fileType.replace('.', '').toUpperCase()}
+                              {/* FIXED ERROR HERE: Added optional chaining and fallback */}
+                              {session.fileType?.replace('.', '').toUpperCase() || 'FILE'}
                             </p>
                           </div>
                           <div className="text-right">
                             <span className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest bg-green-50 text-green-700 border border-green-100">
-                              +{session.pointsEarned} PTS
+                              +{session.pointsEarned || 0} PTS
                             </span>
                           </div>
                         </div>
