@@ -48,6 +48,8 @@ import InvestorDashboard from "./InvestorDashboard";
 import OpportunityDetail from "./OpportunityDetail";
 import CoachStudentDirectory from "./CoachList";
 import InvestorProfilePage from "./InvestorProfile";
+import CoachStudentManager from "./CoachStudentManager";
+import StudentIntelPage from "./StudentIntelPage";
 
 const DashboardRouter = () => {
   const { userRole, loading } = useAuth();
@@ -144,6 +146,8 @@ const DashboardRouter = () => {
 
       {/* TechCoach sub-routes */}
       <Route path="technical-coach/profile" element={<CoachProfilePage />} />
+      <Route path="technical-coach/students" element={<CoachStudentManager />} />
+      <Route path="technical-coach/student/:shooterId" element={<StudentIntelPage />} />
       {/* <Route path="technical-coach/bookings" element={<TechCoachBookings />} />
       <Route path="technical-coach/events" element={<TechCoachEvents />} />
       <Route path="technical-coach/documents" element={<TechCoachDocuments />} /> */}

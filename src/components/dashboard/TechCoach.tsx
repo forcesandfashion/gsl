@@ -321,7 +321,9 @@ const TechnicalCoachDashboard = () => {
 
                 <div className="flex justify-end pt-4">
                     <Button
-                        onClick={() => navigate("/dashboard/technical-coach/students")}
+                        onClick={() => navigate("/dashboard/technical-coach/students", { 
+                            state: { coachId: user?.uid } // Passing the UID via state
+                        })}
                         className="bg-[#1d4ed8] hover:bg-[#ff6b6b] text-white font-black uppercase tracking-widest text-[10px] px-8 py-6 rounded-2xl shadow-xl transition-all"
                     >
                         Directory <ChevronRight className="w-4 h-4 ml-2" />

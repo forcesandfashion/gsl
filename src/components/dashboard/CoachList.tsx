@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/firebase/auth";
+import { arrayUnion, updateDoc, doc } from "firebase/firestore";
+import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
 import { db } from "@/firebase/config";
 import { collection, query, getDocs } from "firebase/firestore";
@@ -62,6 +64,67 @@ const CoachDirectory = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCoach, setSelectedCoach] = useState<Coach | null>(null);
+
+  const { toast } = useToast();
+  const [bookingLoading, setBookingLoading] = useState(false);
+
+  const handleBookCoach = async (coach: Coach) => {
+    if (!user?.uid) {
+      toast({ title: "Error", description: "You must be logged in to book a coach", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setBookingLoading(true);
+
+      // 1. Reference the docs
+      const shooterRef = doc(db, "shooters", user.uid);
+      const coachRef = doc(db, "technical-coaches", coach.id);
+
+      // 2. Prepare the data objects
+      const coachRequest = {
+        coachId: coach.id,
+        coachName: coach.fullName,
+        status: "pending",
+        requestedAt: new Date().toISOString()
+      };
+
+      const shooterRequest = {
+        shooterId: user.uid,
+        shooterName: user.displayName?.split('|')[0] || "Unknown Shooter",
+        status: "pending",
+        requestedAt: new Date().toISOString()
+      };
+
+      // 3. Update both collections
+      await Promise.all([
+        updateDoc(shooterRef, {
+          coaches: arrayUnion(coachRequest)
+        }),
+        updateDoc(coachRef, {
+          shooters: arrayUnion(shooterRequest)
+        })
+      ]);
+
+      toast({
+        title: "Request Sent",
+        description: `Training request sent to ${coach.fullName}. Status: Pending.`,
+      });
+      
+      // Close the dialog by resetting state if needed
+      setSelectedCoach(null);
+
+    } catch (error) {
+      console.error("Booking Error:", error);
+      toast({
+        title: "Booking Failed",
+        description: "Could not send request. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setBookingLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchCoaches = async () => {
@@ -277,10 +340,18 @@ const CoachDirectory = () => {
                             <Mail className="w-4 h-4 mr-2" /> Message
                           </Button>
                           <Button 
+                            disabled={bookingLoading}
                             className="flex-1 bg-[#ff6b6b] hover:bg-[#fa5252] text-white font-black uppercase text-[10px] py-6 rounded-2xl shadow-xl shadow-[#ff6b6b]/20"
-                            onClick={() => navigate(``)}
+                            onClick={() => handleBookCoach(coach)} // TRIGGER THE NEW FUNCTION
                           >
-                            <CalendarCheck className="w-4 h-4 mr-2" /> Book Coach
+                            {bookingLoading ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            ) : (
+                              <>
+                                <CalendarCheck className="w-4 h-4 mr-2" /> 
+                                Book Coach
+                              </>
+                            )}
                           </Button>
                         </DialogFooter>
                       </div>
