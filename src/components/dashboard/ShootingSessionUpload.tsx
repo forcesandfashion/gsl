@@ -36,7 +36,7 @@ const ShootingSessionUpload = () => {
   // Manual Entry States (New)
   const [manualScore, setManualScore] = useState("");
   const [manualInnerTens, setManualInnerTens] = useState("");
-  const [manualDiscipline, setManualDiscipline] = useState("Air Pistol 60");
+  const [manualDiscipline, setManualDiscipline] = useState("10M Air Pistol");
   const [manualDate, setManualDate] = useState(new Date().toISOString().split('T')[0]);
 
   // File States
@@ -235,10 +235,18 @@ const ShootingSessionUpload = () => {
                 value={manualDiscipline} 
                 onChange={(e) => setManualDiscipline(e.target.value)}
               >
-                <option>Air Pistol 60</option>
-                <option>Air Rifle 60</option>
+                <option>10M Air Pistol</option>
+                <option>25M Pistol</option>
+                <option>50M Pistol</option>
+                <option>10M Air Rifle</option>
+                <option>50M Rifle</option>
+                <option>300M Rifle</option>
+                <option>Trap</option>
+                <option>Skeet</option>
+                <option>Double Trap</option>
+                <option>Running Target</option>
                 <option>Sport Pistol</option>
-                <option>Rapid Fire Pistol</option>
+                <option>Free Pistol</option>
               </select>
             </div>
             <div>
