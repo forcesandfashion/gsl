@@ -115,7 +115,7 @@ export default function SignUpForm() {
         duration: 5000,
       });
       if (role === "range_owner") {
-        navigate("/waitingPage");
+        navigate("/login");
       } else {
         navigate("/login");
       }

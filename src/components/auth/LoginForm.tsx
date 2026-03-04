@@ -36,11 +36,11 @@ export default function LoginForm() {
     if (docSnap.exists()) {
       const data = docSnap.data();
       if (data.role === "range_owner") {
-        if (data.status === "pending") {
-          await signOut(auth);
-          navigate("/not-authorized");
-          return false;
-        }
+        // if (data.status === "pending") {
+        //   await signOut(auth);
+        //   navigate("/not-authorized");
+        //   return false;
+        // }
       }
     }
 
