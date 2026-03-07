@@ -50,6 +50,7 @@ import CoachStudentDirectory from "./CoachList";
 import InvestorProfilePage from "./InvestorProfile";
 import CoachStudentManager from "./CoachStudentManager";
 import StudentIntelPage from "./StudentIntelPage";
+import HallOfFameManager from "./ShooterHallFame";
 
 const DashboardRouter = () => {
   const { userRole, loading } = useAuth();
@@ -129,6 +130,7 @@ const DashboardRouter = () => {
       <Route path="shooter/bookings" element={<ShooterBooking />} />
       <Route path="shooter/coach-students" element={<CoachStudentDirectory />} />
       <Route path="shooter/events" element={<ShooterEvents />} />
+      <Route path="shooter/hall-of-fame" element={<HallOfFameManager />} />
       <Route path="/documents" element={<UserDocumentsPage />} />
       
       

@@ -253,6 +253,14 @@ const ShooterDashboard = () => {
             </CardHeader>
             <CardContent className="p-6 space-y-4">
               <ActionButton label="Edit Profile" icon={<User />} onClick={() => navigate("/profile")} />
+              
+              {/* --- Added Hall of Fame Button --- */}
+              <ActionButton 
+                label="Hall of Fame" 
+                icon={<Trophy className="text-[#000]" />} 
+                onClick={() => navigate("/dashboard/shooter/hall-of-fame")} 
+              />
+
               <ActionButton label="Session History" icon={<Clock />} onClick={() => navigate("/dashboard/documents")} />
               <ActionButton label="Book a Range" icon={<Target />} onClick={() => navigate("/ranges")} />
             </CardContent>
