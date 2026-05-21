@@ -43,7 +43,7 @@ export default function AboutPage() {
                     Our platform is designed not just for seasoned enthusiasts, but for the next generation of sharpshooters and fans who want to learn, engage, and be inspired. With every issue, every article, and every image, we aim to fire up passion, spark curiosity, and drive conversations that elevate the sport.
                   </p>
                   <p className="text-gray-700 leading-relaxed font-medium">
-                    We're not just telling stories—we're shaping the future of shooting, one perfectly placed word (and shot) at a time.
+                    We&apos;re not just telling stories—we&apos;re shaping the future of shooting, one perfectly placed word (and shot) at a time.
                   </p>
                   <br ></br>
                   <p className="text-gray-700 leading-relaxed font-medium">

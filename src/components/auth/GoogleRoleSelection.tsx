@@ -312,7 +312,7 @@ const GoogleRoleSelection: React.FC<GoogleRoleSelectionProps> = ({ user, onCance
         {selectedRole === 'range_owner' && (
           <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-sm text-yellow-800">
-              <strong>Note:</strong> Range Owner accounts require verification. You'll receive a confirmation email before accessing your dashboard.
+              <strong>Note:</strong> Range Owner accounts require verification. You&apos;ll receive a confirmation email before accessing your dashboard.
             </p>
           </div>
         )}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from "react-router-dom";
-import { Loader2, Package, Search, Filter, Crown, CheckCircle, ChevronRight } from 'lucide-react';
+import { Loader2, Search, Filter,  } from 'lucide-react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import Layout from "./Layout";
@@ -69,22 +69,22 @@ const ShopPage: React.FC = () => {
     });
   }, [products, searchTerm, selectedCategory]);
 
-  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+  // const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
   const paginatedProducts = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredProducts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredProducts, currentPage]);
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  // const handlePageChange = (page: number) => {
+  //   setCurrentPage(page);
+  //   window.scrollTo({ top: 0, behavior: 'smooth' });
+  // };
 
-  const resetFilters = () => {
-    setSearchTerm('');
-    setSelectedCategory('all');
-    setCurrentPage(1);
-  };
+  // const resetFilters = () => {
+  //   setSearchTerm('');
+  //   setSelectedCategory('all');
+  //   setCurrentPage(1);
+  // };
 
   if (loading) {
     return (
