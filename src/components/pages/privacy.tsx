@@ -1,160 +1,210 @@
-// import Layout from "./Layout";
+import React from "react";
+import LegalLayout from "../legal/LegalLayout";
+import { PageHero,BulletList, ContactBanner } from "../legal/LegalComponents";
 
-// export default function PrivacyPage() {
-//   return (
-//     <div className="min-h-screen bg-white text-black">
-//       <Layout>
-//         <main className="pt-16">
-//           <section className="py-20 bg-blue-700 text-white">
-//             <div className="max-w-6xl mx-auto px-4 text-center">
-//               <h1 className="text-4xl md:text-5xl font-bold mb-6">
-//                 Privacy Policy
-//               </h1>
-//             </div>
-//           </section>
-//           <section className="py-16 bg-white">
-//             <div className="max-w-4xl mx-auto px-4">
-//               <h2 className="text-2xl font-bold mb-6">Our Commitment to Your Privacy</h2>
-//               <p className="text-gray-700 mb-4">
-//                 Global Shooting League (GSL), powered by SportsGiri Private Limited, is committed to protecting the privacy and personal data of all users interacting with our website and mobile platforms. We collect only the information necessary to provide a seamless and personalized user experience, including for purposes of registration, communication, service enhancement, and analytics.
-//               </p>
-//               <p className="text-gray-700 mb-4">
-//                 All personal data is handled with the highest standards of confidentiality and stored securely in compliance with applicable data protection laws. We do not sell, rent, or disclose your information to third parties without your explicit consent, unless required by law or for essential service delivery by trusted partners operating under strict confidentiality agreements.
-//               </p>
-//               <p className="text-gray-700 mb-4">
-//                 By accessing and using our platform, you consent to the terms outlined in this Privacy Policy. Should you have any questions or require further clarification, please contact us at <a href="mailto:admin@sportsgiri.com" className="text-blue-700 underline">admin@sportsgiri.com</a>.
-//               </p>
-//             </div>
-//           </section>
-//         </main>
-//       </Layout>
-//     </div>
-//   );
-// } 
+interface PolicySectionProps {
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+}
 
-
-"use client";
-
-import { Shield, CheckCircle } from "lucide-react";
-import Layout from "./Layout";
-
-
-
-export default function PrivacyPolicy() {
+function PolicySection({ icon, title, children }: PolicySectionProps) {
   return (
-    <Layout>
-      <div className="space-y-6">
-        <div className="bg-green-50 border border-green-100 rounded-xl p-4 mb-6">
-          <div className="flex items-start">
-            <Shield className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
-            <p className="text-green-800 text-sm">
-              SportsGiri Pvt. Ltd. respects your privacy and is committed to protecting your personal data in line with applicable Indian law, including the Digital Personal Data Protection Act (DPDPA). This policy explains how personal data is collected, used, stored, and safeguarded when you interact with the Site and services.
+    <div className="group rounded-2xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.05] hover:border-[#D4AF37]/30 transition-all duration-300 p-6 md:p-8">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-9 h-9 rounded-xl bg-[#D4AF37]/15 border border-[#D4AF37]/20 flex items-center justify-center text-[#D4AF37] group-hover:bg-[#D4AF37]/25 transition-colors">
+          {icon}
+        </div>
+        <h3 className="text-base font-semibold text-white/90">{title}</h3>
+      </div>
+      <div className="text-[15px] text-white/55 leading-relaxed">{children}</div>
+    </div>
+  );
+}
+
+export default function PrivacyPage() {
+  return (
+    <LegalLayout>
+      <PageHero
+        badge="Privacy & Data"
+        title="Privacy Policy"
+        subtitle="Global Shooting League is committed to protecting your personal information. This policy explains what data we collect, how we use it, and your rights as a user."
+        lastUpdated="Review Pending"
+        icon={
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+        }
+      />
+
+      <div className="max-w-7xl mx-auto px-6 py-14">
+        {/* Commitment banner */}
+        <div className="mb-12 rounded-2xl bg-gradient-to-r from-[#D4AF37]/10 via-transparent to-transparent border border-[#D4AF37]/20 p-6 flex items-center gap-4">
+          <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-[#D4AF37]/15 flex items-center justify-center text-[#D4AF37]">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-[#D4AF37] font-semibold mb-1">Our Commitment to You</p>
+            <p className="text-white/50 text-sm">
+              We do not sell your personal data. Your privacy is fundamental to how we build and operate GSL.
             </p>
           </div>
         </div>
 
-        {[
-          {
-            title: "1. Information We Collect",
-            content: (
-              <>
-                <p className="mb-3">SprotsGiri Pvt. Ltd. (SportsGiri Pvt. Ltd.) may collect the following categories of personal information:</p>
-                <ul className="space-y-2 ml-4">
-                  <li className="flex items-start">
-                    <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 mr-2 flex-shrink-0" />
-                    <span><strong>Contact details:</strong> name, email, phone, organization, role, and address</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 mr-2 flex-shrink-0" />
-                    <span><strong>Application info:</strong> startup details, sector, stage, pitch decks, professional background</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 mr-2 flex-shrink-0" />
-                    <span><strong>Transaction data:</strong> registrations, payments, event participation, interactions</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 mr-2 flex-shrink-0" />
-                    <span><strong>Technical data:</strong> IP address, browser type, device identifiers, usage analytics</span>
-                  </li>
-                </ul>
-              </>
-            )
-          },
-          {
-            title: "2. How We Use Your Information",
-            content: (
-              <ul className="space-y-2">
-                <li className="flex items-start">
-                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 mr-2 flex-shrink-0" />
-                  <span>Process applications, registrations, and payments for programs, events, and services</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 mr-2 flex-shrink-0" />
-                  <span>Communicate regarding program updates, opportunities, events, and relevant information</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 mr-2 flex-shrink-0" />
-                  <span>Improve the Site, tailor offerings, and conduct research, analytics, and reporting</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 mr-2 flex-shrink-0" />
-                  <span>Comply with legal obligations, respond to lawful requests, and prevent fraud</span>
-                </li>
-              </ul>
-            )
-          },
-          {
-            title: "3. Legal Basis and Consent",
-            content: "Where required, SportsGiri Pvt. Ltd. will obtain your consent before collecting or using personal data for specific purposes such as marketing communications. You may withdraw consent at any time by using the unsubscribe mechanisms provided in communications or by contacting the team; withdrawal of consent may limit access to some services."
-          },
-          {
-            title: "4. Sharing of Information",
-            content: "SportsGiri Pvt. Ltd. may share limited personal data with trusted partners, mentors, service providers, or sponsors strictly for the purpose of delivering programs or services, under appropriate confidentiality and data‑protection obligations. Data may be disclosed where required by law, regulation, court order, or government authority."
-          },
-          {
-            title: "5. Data Security and Retention",
-            content: "Reasonable technical and organizational measures are implemented to protect personal data against unauthorized access, alteration, disclosure, or destruction. Data is retained only for as long as necessary to fulfil the purposes described in this policy or as required by applicable law, after which it is securely deleted or anonymized."
-          },
-          {
-            title: "6. Your Rights",
-            content: (
-              <ul className="space-y-2">
-                <li className="flex items-start">
-                  <Shield className="w-4 h-4 text-green-600 mt-0.5 mr-2 flex-shrink-0" />
-                  <span>Request access to the personal data held about you</span>
-                </li>
-                <li className="flex items-start">
-                  <Shield className="w-4 h-4 text-green-600 mt-0.5 mr-2 flex-shrink-0" />
-                  <span>Request correction or updating of inaccurate or incomplete data</span>
-                </li>
-                <li className="flex items-start">
-                  <Shield className="w-4 h-4 text-green-600 mt-0.5 mr-2 flex-shrink-0" />
-                  <span>Request deletion or restriction of processing of your data, where feasible</span>
-                </li>
-                <li className="flex items-start">
-                  <Shield className="w-4 h-4 text-green-600 mt-0.5 mr-2 flex-shrink-0" />
-                  <span>Object to certain types of processing, including direct marketing</span>
-                </li>
-              </ul>
-            )
-          },
-          {
-            title: "7. Cookies and Tracking Technologies",
-            content: "The Site may use cookies and similar technologies to enhance user experience, analyze traffic, and understand usage patterns. You can manage cookie preferences through your browser settings; however, disabling certain cookies may impact some Site features."
-          },
-          {
-            title: "8. Updates to this Policy",
-            content: "This Privacy Policy may be updated periodically to reflect changes in law, technology, or SportsGiri Pvt. Ltd.'s practices. The latest version will always be available on the Site, and continued use of the Site after changes indicates acceptance of the updated policy."
-          }
-        ].map((item, index) => (
-          <div key={index} className="border-l-4 border-green-200 pl-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">{item.title}</h3>
-            <div className="text-gray-700 leading-relaxed">
-              {item.content}
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <PolicySection
+            title="Information We Collect"
+            icon={
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <ellipse cx="12" cy="5" rx="9" ry="3" />
+                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+              </svg>
+            }
+          >
+            <BulletList
+              items={[
+                "Account details — name, email, date of birth, password (hashed)",
+                "Profile information — discipline, skill level, training preferences",
+                "Payment details — processed securely via third-party; no card data stored by us",
+                "Usage & device data — collected automatically to improve performance",
+              ]}
+            />
+          </PolicySection>
+
+          <PolicySection
+            title="How We Use Your Data"
+            icon={
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />
+              </svg>
+            }
+          >
+            <BulletList
+              items={[
+                "Platform operations and service delivery",
+                "AI coaching personalisation and performance insights",
+                "Secure payment processing and billing",
+                "Push notifications and important announcements",
+                "Continuous app improvement and bug resolution",
+              ]}
+            />
+          </PolicySection>
+
+          <PolicySection
+            title="Data Disclosure"
+            icon={
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            }
+          >
+            <p>
+              We do <strong className="text-white/80">not sell</strong> any of your personal information. Data is disclosed only to:
+            </p>
+            <BulletList
+              items={[
+                "Selected service providers who assist in platform operations",
+                "Legal authorities when required by applicable law",
+                "No advertising or data brokerage partners — ever",
+              ]}
+            />
+          </PolicySection>
+
+          <PolicySection
+            title="Data Retention & Deletion"
+            icon={
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+              </svg>
+            }
+          >
+            <p className="mb-3">
+              We retain your information for as long as your account is active or as needed to provide services.
+            </p>
+            <p>
+              Request full deletion at any time by emailing{" "}
+              <a href="mailto:admin@sportsgiri.com" className="text-[#D4AF37] hover:underline">
+                admin@sportsgiri.com
+              </a>
+              . Requests are processed within 30 days.
+            </p>
+          </PolicySection>
+
+          <PolicySection
+            title="Your Rights"
+            icon={
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            }
+          >
+            <p className="mb-3">You have full rights over your personal data:</p>
+            <BulletList
+              items={[
+                "Access — request a copy of all data we hold about you",
+                "Amend — correct any inaccurate or incomplete information",
+                "Delete — request permanent removal of your data",
+                "Restrict — limit how we process certain types of data",
+              ]}
+            />
+          </PolicySection>
+
+          <PolicySection
+            title="Security Measures"
+            icon={
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            }
+          >
+            <p className="mb-3">We implement industry-standard protections including:</p>
+            <BulletList
+              items={[
+                "End-to-end encryption for data in transit (TLS 1.3)",
+                "Encrypted storage on secure, access-controlled servers",
+                "Regular security audits and vulnerability assessments",
+                "We recommend using a unique, strong password for your account",
+              ]}
+            />
+          </PolicySection>
+        </div>
+
+        {/* Cookies & Minors */}
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
+            <h3 className="text-base font-semibold text-white/90 mb-3 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#D4AF37]" />
+              Cookies
+            </h3>
+            <p className="text-[15px] text-white/55 leading-relaxed">
+              We use cookies and similar tracking technologies to enhance your experience, remember preferences,
+              and analyse usage patterns to improve our services.
+            </p>
           </div>
-        ))}
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 md:p-8">
+            <h3 className="text-base font-semibold text-amber-400 mb-3 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              Age Restriction
+            </h3>
+            <p className="text-[15px] text-white/55 leading-relaxed">
+              Our application is intended for adults only. Users under the age of 13 should not access GSL.
+              If we discover a user is under 13, their account will be immediately removed.
+            </p>
+          </div>
+        </div>
+
+        <ContactBanner email="admin@sportsgiri.com" label="Privacy questions or data requests?" />
       </div>
-    </Layout>
+    </LegalLayout>
   );
 }

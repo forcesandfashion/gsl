@@ -1,143 +1,122 @@
-// import Layout from "./Layout";
+import LegalLayout from "../legal/LegalLayout";
+import { SectionCard, PageHero, ContactBanner } from "../legal/LegalComponents";
 
-// export default function TermsPage() {
-//   return (
-//     <div className="min-h-screen bg-white text-black">
-//       <Layout>
-//         <main className="pt-16">
-//           <section className="py-20 bg-blue-700 text-white">
-//             <div className="max-w-6xl mx-auto px-4 text-center">
-//               <h1 className="text-4xl md:text-5xl font-bold mb-6">
-//                 Terms & Conditions
-//               </h1>
-//             </div>
-//           </section>
-//           <section className="py-16 bg-white">
-//             <div className="max-w-4xl mx-auto px-4">
-//               <h2 className="text-2xl font-bold mb-6">Terms and Conditions</h2>
-//               <div className="text-gray-700 mb-4 text-justify">
-//                 <p className="mb-4">
-//                   By accessing and using the Global Shooting League (GSL) website and mobile applications, you agree to comply with the following terms and conditions. Please read them carefully before proceeding.
-//                 </p>
-//                 <ul className="list-disc pl-6 space-y-4">
-//                   <li className="text-justify">
-//                     <strong>Acceptance of Terms:</strong> Your use of the GSL platform constitutes your agreement to all applicable terms, policies, and notices outlined here.
-//                   </li>
-//                   <li className="text-justify">
-//                     <strong>Use of Content:</strong> All content, including text, images, videos, graphics, and data on this website, is the intellectual property of SportsGiri Pvt. Ltd. Unauthorized use, reproduction, or distribution is prohibited.
-//                   </li>
-//                   <li className="text-justify">
-//                     <strong>User Conduct:</strong> Users must refrain from any activity that disrupts or interferes with the website's functionality, violates applicable laws, or infringes on the rights of others.
-//                   </li>
-//                   <li className="text-justify">
-//                     <strong>Privacy Policy:</strong> All user data is handled in accordance with our Privacy Policy. By using the site, you consent to the collection and use of information as described therein.
-//                   </li>
-//                   <li className="text-justify">
-//                     <strong>Third-Party Links:</strong> The GSL website may contain links to external sites. We are not responsible for the content or policies of these third-party platforms.
-//                   </li>
-//                   <li className="text-justify">
-//                     <strong>Membership and Accounts:</strong> Registered users must provide accurate information. GSL reserves the right to suspend or terminate accounts that violate these terms or engage in misuse.
-//                   </li>
-//                   <li className="text-justify">
-//                     <strong>Limitation of Liability:</strong> GSL and SportsGiri Pvt. Ltd. shall not be liable for any direct, indirect, or incidental damages resulting from the use or inability to use this website.
-//                   </li>
-//                   <li className="text-justify">
-//                     <strong>Changes to Terms:</strong> We reserve the right to update or modify these Terms & Conditions at any time without prior notice. Continued use of the platform signifies acceptance of any changes.
-//                   </li>
-//                 </ul>
-//               </div>
-//               <p className="text-gray-700 mb-4">
-//                 For questions or concerns regarding our Terms & Conditions, please contact us at: <a href="mailto:admin@sportsgiri.com" className="text-blue-700 underline">admin@sportsgiri.com</a>
-//               </p>
-//             </div>
-//           </section>
-//         </main>
-//       </Layout>
-//     </div>
-//   );
-// } 
+const terms = [
+  {
+    title: "Use of the App",
+    content:
+      "GSL shall be used for personal use only. Unauthorized use, any attempt at hacking, and credential sharing will lead to immediate account termination without refund.",
+  },
+  {
+    title: "Account Management",
+    content:
+      "It is your responsibility to safeguard your login credentials. You are solely responsible for all activities conducted through your account. Notify us immediately of any unauthorized access.",
+  },
+  {
+    title: "Intellectual Property Rights",
+    content:
+      "GSL retains all rights to its material, including but not limited to training content, AI models, video assets, and platform design. Any unauthorized use or distribution is strictly forbidden.",
+  },
+  {
+    title: "User Submissions",
+    content:
+      "The content you post belongs to you, but by posting, you grant GSL a non-exclusive license to use the content for improving its service, training AI models, and platform development.",
+  },
+  {
+    title: "Privacy",
+    content:
+      "GSL handles your information as per the GSL Privacy Policy. Your data will never be sold to any third party. Please review our Privacy Policy for full details on data handling.",
+  },
+  {
+    title: "Payment and Subscription Services",
+    content:
+      "GSL offers premium services for a fee. Subscription plans will automatically renew at the end of each billing period unless you cancel before the renewal date through your account settings.",
+  },
+  {
+    title: "Third Party Websites",
+    content:
+      "GSL does not take responsibility for any third-party websites that may be linked to within the platform. Access external links at your own discretion and risk.",
+  },
+  {
+    title: "Disclaimers and Safeguards",
+    content:
+      "GSL provides information for educational and training purposes only. Users must follow all applicable local laws and regulations, and receive proper professional instruction before engaging in shooting sports.",
+  },
+  {
+    title: "Disclaimer of Liability",
+    content:
+      "GSL shall not be held liable for any indirect, incidental, special, or consequential damages incurred through the use of the Application, including but not limited to loss of data or profits.",
+  },
+  {
+    title: "Indemnification",
+    content:
+      "You agree to indemnify, defend, and hold GSL and its officers harmless from any claims, damages, or expenses arising from your use of the Application or violation of these Terms.",
+  },
+  {
+    title: "Termination",
+    content:
+      "GSL may revoke access to the Application at any time for violations of these Terms. Access terminates immediately upon revocation with no obligation for refund unless otherwise required by law.",
+  },
+  {
+    title: "Modification of Agreement",
+    content:
+      "GSL may update its Terms of Service at any time without prior notice. Your continued use of the Application constitutes acceptance of any modified Terms.",
+  },
+  {
+    title: "Governing Law",
+    content:
+      "These Terms of Service are governed by and construed in accordance with the laws of the applicable jurisdiction. Any disputes shall be resolved through binding arbitration.",
+  },
+];
 
-
-"use client";
-
-import {  AlertCircle } from "lucide-react";
-import Layout from "./Layout";
-
-export default function TermsAndConditions() {
+export default function TermsPage() {
   return (
-    <Layout>
-      <div className="space-y-6">
-        <div className="bg-purple-50 border border-purple-100 rounded-xl p-4 mb-6">
-          <p className="text-purple-800 text-sm">
-            These Terms and Conditions (&quot;Terms&quot;) govern your access to and use of the SportsGiri Pvt. Ltd. website (the "Site") and all services, programs, and content made available through it. By using the Site, you agree to be bound by these Terms of Nebula Def-SAT Private Limited.
-          </p>
+    <LegalLayout>
+      <PageHero
+        badge="Legal Document"
+        title="Terms & Conditions"
+        subtitle="Please read these terms carefully before using the Global Shooting League application. By using the app, you agree to be bound by these terms."
+        lastUpdated="Review Pending"
+        icon={
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+          </svg>
+        }
+      />
+
+      <div className="max-w-7xl mx-auto px-6 py-14">
+        {/* Acceptance banner */}
+        <div className="mb-12 flex items-start gap-4 p-5 rounded-2xl bg-amber-500/10 border border-amber-500/25">
+          <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400 mt-0.5">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-amber-400 font-semibold text-sm mb-1">Important Notice</p>
+            <p className="text-white/50 text-sm leading-relaxed">
+              By downloading, installing, or using the GSL application, you acknowledge that you have read,
+              understood, and agree to be bound by all of the following terms and conditions.
+            </p>
+          </div>
         </div>
 
-        {[
-          {
-            title: "1. Use of the Site",
-            content: "The Site is intended for founders, professionals, partners, and stakeholders interested in SportsGiri Pvt. Ltd.'s programs and initiatives. You agree to use the Site only for lawful purposes and in a manner that does not infringe the rights of, restrict, or inhibit the use and enjoyment of the Site by any other user."
-          },
-          {
-            title: "2. Eligibility and Registration",
-            content: "Some areas of the Site or certain services may require registration or application. You agree that the information provided during registration or application is accurate, current, and complete, and that you will update it as necessary."
-          },
-          {
-            title: "3. Intellectual Property",
-            content: "All content on the Site, including text, graphics, logos, images, videos, program materials, and designs, is owned by or licensed to SportsGiri Pvt. Ltd. and is protected by applicable intellectual property laws. You may view, download, or print limited copies of materials for personal, non‑commercial use only, provided you do not modify the content and retain all proprietary notices."
-          },
-          {
-            title: "4. Prohibited Activities",
-            content: (
-              <ul className="space-y-2">
-                <li className="flex items-start">
-                  <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 mr-2 flex-shrink-0" />
-                  <span>Use the Site to upload or transmit any unlawful, harmful, defamatory, or objectionable material.</span>
-                </li>
-                <li className="flex items-start">
-                  <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 mr-2 flex-shrink-0" />
-                  <span>Attempt to gain unauthorized access to the Site, its servers, or any associated systems.</span>
-                </li>
-                <li className="flex items-start">
-                  <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 mr-2 flex-shrink-0" />
-                  <span>Copy, distribute, or exploit any part of the Site or its content for commercial purposes without prior written consent.</span>
-                </li>
-              </ul>
-            )
-          },
-          {
-            title: "5. Third‑Party Links and Services",
-            content: "The Site may contain links to third‑party websites or services for convenience and information. SportsGiri Pvt. Ltd. does not endorse and is not responsible for the content, security, or privacy practices of any third‑party websites, and your use of them is at your own risk."
-          },
-          {
-            title: "6. Program and Service Modifications",
-            content: "SportsGiri Pvt. Ltd. may modify, update, or discontinue any program, offering, or feature of the Site at any time, with or without notice. Fees, eligibility criteria, and program structures may be revised periodically, and updated details will be reflected on the Site."
-          },
-          {
-            title: "7. Limitation of Liability",
-            content: "To the maximum extent permitted by law, SportsGiri Pvt. Ltd. shall not be liable for any direct, indirect, incidental, consequential, or punitive damages arising from your use or inability to use the Site or services. SportsGiri Pvt. Ltd. does not guarantee uninterrupted or error‑free access to the Site and may suspend operations for maintenance or upgrades."
-          },
-          {
-            title: "8. Indemnity",
-            content: "You agree to indemnify and hold harmless SportsGiri Pvt. Ltd., its team members, partners, and affiliates from any claims, losses, damages, liabilities, and expenses arising from your breach of these Terms or misuse of the Site."
-          },
-          {
-            title: "9. Changes to these Terms",
-            content: "SportsGiri Pvt. Ltd. may revise these Terms from time to time by updating this page. Continued use of the Site after such changes constitutes your acceptance of the revised Terms."
-          },
-          {
-            title: "10. Governing Law and Jurisdiction",
-            content: "These Terms shall be governed by and construed in accordance with the laws of India. Any disputes arising out of or in connection with the Site or these Terms shall be subject to the exclusive jurisdiction of the courts located in India."
-          }
-        ].map((item, index) => (
-          <div key={index} className="border-l-4 border-purple-200 pl-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">{item.title}</h3>
-            <div className="text-gray-700 leading-relaxed">
-              {item.content}
-            </div>
-          </div>
-        ))}
+        {/* Terms grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {terms.map((term, index) => (
+            <SectionCard key={index} number={index + 1} title={term.title}>
+              <p>{term.content}</p>
+            </SectionCard>
+          ))}
+        </div>
+
+        <ContactBanner email="admin@sportsgiri.com" label="Questions about our Terms?" />
       </div>
-    </Layout>
+    </LegalLayout>
   );
 }
