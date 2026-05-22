@@ -17,13 +17,13 @@ import ShootingRanges from "./components/pages/ranges";
 import Athletes from "./components/pages/shooters";
 import ParallaxScrollPage from "./components/pages/media";
 import ContactUs from "./components/pages/contact";
-import EventsSection from "./components/dashboard/Events";
+// import EventsSection from "./components/dashboard/Events";
 import EventDetailPage from "./components/pages/EventDetail";
 import EventPage from "./components/pages/EventPage";
 import TermsPage from "./components/pages/terms";
 import PrivacyPage from "./components/pages/privacy";
 import ShooterProfile from "./components/dashboard/ShooterProfile";
-import RangeListOwners from "./components/dashboard/RangeListOwners";
+// import RangeListOwners from "./components/dashboard/RangeListOwners";
 import RangeInfo from "./components/dashboard/RangeInfo";
 import BookRange from "./components/dashboard/BookRange";
 import WaitingPage from "./components/pages/WaitingPage";
@@ -33,9 +33,11 @@ import ForgetPassword from "./components/pages/ForgetPassword";
 import ShopPage from "./components/pages/shop";
 import SubscriptionPage from "./components/pages/subscriptionPage";
 import ProductInfoPage from "./components/pages/productInfoPage";
-import TechCoach from "./components/dashboard/TechCoach";
-import CoachProfilePage from "./components/dashboard/TeachCoachProfile";
-import InvestorDashboard from "./components/dashboard/InvestorDashboard";
+// import TechCoach from "./components/dashboard/TechCoach";
+// import CoachProfilePage from "./components/dashboard/TeachCoachProfile";
+// import InvestorDashboard from "./components/dashboard/InvestorDashboard";
+import RefundPage from "./components/pages/refund";
+import CancellationPage from "./components/pages/cancellation";
 
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -81,6 +83,8 @@ function App() {
           <Route path="/product/:productId" element={<ProductInfoPage />} />
           <Route path="/subscription/:rangeId" element={<SubscriptionPage />} />
           <Route path="/shop" element={<ShopPage />} />
+          <Route path="/refund" element={<RefundPage />} />
+          <Route path="/cancellation" element={<CancellationPage />} />
            <Route 
             path="/book-range/:rangeId" 
             element={

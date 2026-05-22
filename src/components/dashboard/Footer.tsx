@@ -106,6 +106,16 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
+                <Link to="/refund" className="text-gray hover:text-[#ff6b6b] transition-colors">
+                  Refund
+                </Link>
+              </li>
+              <li>
+                <Link to="/cancellation" className="text-gray hover:text-[#ff6b6b] transition-colors">
+                  Cancellation
+                </Link>
+              </li>
+              <li>
                 <Link to="/contact" className="text-gray hover:text-[#ff6b6b] transition-colors">
                   Contact Us
                 </Link>
